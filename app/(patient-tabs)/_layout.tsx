@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Heart, FileText, Calendar, User } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
+import React from 'react';
 
 export default function PatientTabsLayout() {
   return (
@@ -27,9 +28,7 @@ export default function PatientTabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Heart size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -54,9 +53,7 @@ export default function PatientTabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
     </Tabs>

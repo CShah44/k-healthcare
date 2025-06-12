@@ -1,473 +1,696 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Heart, FileText, Calendar, Activity, CircleAlert as AlertCircle, Clock, Pill, ChevronRight } from 'lucide-react-native';
+import {
+  Calendar,
+  FileText,
+  Clock,
+  ChevronRight,
+  TestTube2,
+  Plus,
+  Bell,
+} from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 export default function PatientHomeScreen() {
   const { user } = useAuth();
 
-  const quickStats = [
-    { icon: Activity, label: 'Health Score', value: '92%', color: Colors.medical.green },
-    { icon: Pill, label: 'Medications', value: '3', color: Colors.medical.blue },
-    { icon: Calendar, label: 'Next Appt', value: 'Oct 25', color: Colors.medical.orange },
+  const upcomingAppointments = [
+    {
+      id: '1',
+      doctor: 'Dr. Sarah Wilson',
+      date: 'Oct 25, 2024',
+      time: '10:30 AM',
+      department: 'Cardiology',
+      avatar:
+        'https://images.pexels.com/photos/5327585/pexels-photo-5327585.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      color: Colors.medical.red,
+    },
+    {
+      id: '2',
+      doctor: 'Dr. Michael Chen',
+      date: 'Nov 2, 2024',
+      time: '2:15 PM',
+      department: 'General Medicine',
+      avatar:
+        'https://images.pexels.com/photos/612999/pexels-photo-612999.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      color: Colors.primary,
+    },
   ];
 
   const recentRecords = [
     {
       id: '1',
-      type: 'Lab Result',
-      title: 'Blood Work Panel',
+      title: 'Blood Test Results - CBC',
+      type: 'Lab Report',
       date: 'Oct 15, 2024',
       status: 'Normal',
-      doctor: 'Dr. Sarah Wilson',
+      isNew: true,
+      color: Colors.medical.green,
     },
     {
       id: '2',
-      type: 'Consultation',
-      title: 'Annual Check-up',
+      title: 'Chest X-Ray Report',
+      type: 'Imaging',
+      date: 'Oct 12, 2024',
+      status: 'Reviewed',
+      isNew: false,
+      color: Colors.primary,
+    },
+    {
+      id: '3',
+      title: 'Blood Pressure Medication',
+      type: 'Prescription',
       date: 'Oct 10, 2024',
-      status: 'Completed',
-      doctor: 'Dr. Michael Chen',
+      status: 'Active',
+      isNew: false,
+      color: Colors.medical.orange,
     },
   ];
 
-  const upcomingAppointments = [
-    {
-      id: '1',
-      type: 'Follow-up',
-      doctor: 'Dr. Sarah Wilson',
-      date: 'Oct 25, 2024',
-      time: '10:30 AM',
-      department: 'Cardiology',
-    },
-  ];
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Good morning,</Text>
-            <Text style={styles.userName}>{user?.firstName} {user?.lastName}</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Image
-              source={{ uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop' }}
-              style={styles.profileImage}
-            />
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#f8fafc', '#e2e8f0']}
+        style={styles.backgroundGradient}
+      >
+        {/* Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
 
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          {quickStats.map((stat, index) => (
-            <View key={index} style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${stat.color}20` }]}>
-                <stat.icon size={20} color={stat.color} />
-              </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.greeting}>{getGreeting()},</Text>
+              <Text style={styles.userName}>
+                {user?.firstName} {user?.lastName}
+              </Text>
             </View>
-          ))}
-        </View>
-
-        {/* Health Alert */}
-        <View style={styles.alertCard}>
-          <View style={styles.alertHeader}>
-            <AlertCircle size={20} color={Colors.medical.orange} />
-            <Text style={styles.alertTitle}>Health Reminder</Text>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.notificationButton}>
+                <Bell size={20} color={Colors.text} strokeWidth={2} />
+                <View style={styles.notificationBadge} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.profileButton}
+                onPress={() => router.push('/(patient-tabs)/profile')}
+              >
+                <Image
+                  source={{
+                    uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+                  }}
+                  style={styles.profileImage}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.alertMessage}>
-            Don't forget to take your blood pressure medication at 2:00 PM today.
-          </Text>
-          <TouchableOpacity style={styles.alertButton}>
-            <Text style={styles.alertButtonText}>Mark as Taken</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Upcoming Appointments */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-            <TouchableOpacity onPress={() => router.push('/(patient-tabs)/appointments')}>
-              <Text style={styles.sectionLink}>View All</Text>
+          {/* Quick Actions */}
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/(patient-tabs)/appointments')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionCardContent}>
+                <View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: `${Colors.primary}15` },
+                  ]}
+                >
+                  <Calendar size={24} color={Colors.primary} strokeWidth={2} />
+                </View>
+                <Text style={styles.actionTitle}>Appointments</Text>
+                <Text style={styles.actionSubtitle}>Book & manage visits</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/(patient-tabs)/records')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionCardContent}>
+                <View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: `${Colors.medical.green}15` },
+                  ]}
+                >
+                  <FileText
+                    size={24}
+                    color={Colors.medical.green}
+                    strokeWidth={2}
+                  />
+                </View>
+                <Text style={styles.actionTitle}>Records</Text>
+                <Text style={styles.actionSubtitle}>View medical files</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} activeOpacity={0.7}>
+              <View style={styles.actionCardContent}>
+                <View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: `${Colors.medical.blue}15` },
+                  ]}
+                >
+                  <TestTube2
+                    size={24}
+                    color={Colors.medical.blue}
+                    strokeWidth={2}
+                  />
+                </View>
+                <Text style={styles.actionTitle}>Lab Results</Text>
+                <Text style={styles.actionSubtitle}>Latest test reports</Text>
+              </View>
             </TouchableOpacity>
           </View>
-          
-          {upcomingAppointments.length > 0 ? (
-            upcomingAppointments.map((appointment) => (
-              <TouchableOpacity key={appointment.id} style={styles.appointmentCard}>
-                <View style={styles.appointmentInfo}>
-                  <Text style={styles.appointmentDoctor}>{appointment.doctor}</Text>
-                  <Text style={styles.appointmentDepartment}>{appointment.department}</Text>
-                  <View style={styles.appointmentDateTime}>
-                    <Clock size={14} color={Colors.textSecondary} />
-                    <Text style={styles.appointmentTime}>
-                      {appointment.date} at {appointment.time}
+
+          {/* Upcoming Appointments */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/(patient-tabs)/appointments')}
+                style={styles.sectionLink}
+              >
+                <Text style={styles.sectionLinkText}>View All</Text>
+                <ChevronRight
+                  size={16}
+                  color={Colors.primary}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {upcomingAppointments.length > 0 ? (
+              upcomingAppointments.slice(0, 2).map((appointment) => (
+                <TouchableOpacity
+                  key={appointment.id}
+                  style={styles.appointmentCard}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.appointmentContent}>
+                    <View style={styles.appointmentLeft}>
+                      <Image
+                        source={{ uri: appointment.avatar }}
+                        style={[
+                          styles.doctorAvatar,
+                          { borderColor: `${appointment.color}40` },
+                        ]}
+                      />
+                      <View style={styles.appointmentInfo}>
+                        <Text style={styles.doctorName}>
+                          {appointment.doctor}
+                        </Text>
+                        <Text style={styles.department}>
+                          {appointment.department}
+                        </Text>
+                        <View style={styles.appointmentTime}>
+                          <Clock
+                            size={14}
+                            color={Colors.textSecondary}
+                            strokeWidth={2}
+                          />
+                          <Text style={styles.timeText}>
+                            {appointment.date} • {appointment.time}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <ChevronRight
+                      size={20}
+                      color={Colors.textLight}
+                      strokeWidth={2}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyAppointments}>
+                <Calendar
+                  size={40}
+                  color={Colors.textLight}
+                  strokeWidth={1.5}
+                />
+                <Text style={styles.emptyTitle}>No upcoming appointments</Text>
+                <TouchableOpacity
+                  style={styles.scheduleButton}
+                  activeOpacity={0.8}
+                >
+                  <Plus size={16} color={Colors.primary} strokeWidth={2} />
+                  <Text style={styles.scheduleButtonText}>
+                    Schedule Appointment
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Recent Records */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Records</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/(patient-tabs)/records')}
+                style={styles.sectionLink}
+              >
+                <Text style={styles.sectionLinkText}>View All</Text>
+                <ChevronRight
+                  size={16}
+                  color={Colors.primary}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {recentRecords.slice(0, 3).map((record) => (
+              <TouchableOpacity
+                key={record.id}
+                style={styles.recordCard}
+                activeOpacity={0.7}
+              >
+                <View style={styles.recordContent}>
+                  {record.isNew && <View style={styles.newBadge} />}
+                  <View style={styles.recordLeft}>
+                    <View
+                      style={[
+                        styles.recordIcon,
+                        { backgroundColor: `${record.color}15` },
+                      ]}
+                    >
+                      <FileText
+                        size={18}
+                        color={record.color}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <View style={styles.recordInfo}>
+                      <Text style={styles.recordTitle}>{record.title}</Text>
+                      <Text style={styles.recordMeta}>
+                        {record.type} • {record.date}
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.recordStatus,
+                      { backgroundColor: `${record.color}15` },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.recordStatusText, { color: record.color }]}
+                    >
+                      {record.status}
                     </Text>
                   </View>
                 </View>
-                <ChevronRight size={20} color={Colors.textLight} />
               </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Calendar size={40} color={Colors.textLight} />
-              <Text style={styles.emptyStateTitle}>No upcoming appointments</Text>
-              <Text style={styles.emptyStateSubtitle}>Schedule a visit with your doctor</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Recent Records */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Medical Records</Text>
-            <TouchableOpacity onPress={() => router.push('/(patient-tabs)/records')}>
-              <Text style={styles.sectionLink}>View All</Text>
-            </TouchableOpacity>
+            ))}
           </View>
-          
-          {recentRecords.map((record) => (
-            <TouchableOpacity key={record.id} style={styles.recordCard}>
-              <View style={styles.recordIcon}>
-                <FileText size={18} color={Colors.primary} />
-              </View>
-              <View style={styles.recordInfo}>
-                <Text style={styles.recordTitle}>{record.title}</Text>
-                <Text style={styles.recordType}>{record.type} • {record.doctor}</Text>
-                <Text style={styles.recordDate}>{record.date}</Text>
-              </View>
-              <View style={[styles.statusBadge, styles.statusNormal]}>
-                <Text style={styles.statusText}>{record.status}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Calendar size={24} color={Colors.primary} />
-              <Text style={styles.actionText}>Book Appointment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <FileText size={24} color={Colors.primary} />
-              <Text style={styles.actionText}>View Lab Results</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     backgroundColor: Colors.background,
   },
-  
+
+  backgroundGradient: {
+    flex: 1,
+  },
+
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+  },
+
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: 200,
+    left: -40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(34, 197, 94, 0.06)',
+  },
+
+  scrollContent: {
+    paddingBottom: 100,
+  },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
-    marginBottom: 20,
+    paddingTop: 20,
+    marginBottom: 32,
   },
-  
+
+  headerLeft: {
+    flex: 1,
+  },
+
   greeting: {
     fontSize: 16,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
   },
-  
+
   userName: {
-    fontSize: 24,
+    fontSize: 28,
     color: Colors.text,
     fontFamily: 'Inter-Bold',
-    marginTop: 2,
+    marginTop: 4,
+    letterSpacing: -0.5,
   },
-  
+
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    position: 'relative',
+  },
+
+  notificationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+
   profileButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
-  
+
   profileImage: {
     width: '100%',
     height: '100%',
   },
-  
-  statsContainer: {
+
+  quickActions: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 32,
   },
-  
-  statCard: {
+
+  actionCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+
+  actionCardContent: {
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
-  
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  
-  statValue: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
+
+  actionTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
     color: Colors.text,
+    marginBottom: 4,
   },
-  
-  statLabel: {
+
+  actionSubtitle: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
   },
-  
-  alertCard: {
-    backgroundColor: Colors.medical.lightOrange,
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.medical.orange,
-  },
-  
-  alertHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  
-  alertTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginLeft: 8,
-  },
-  
-  alertMessage: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  
-  alertButton: {
-    backgroundColor: Colors.medical.orange,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  
-  alertButtonText: {
-    fontSize: 14,
-    color: Colors.surface,
-    fontFamily: 'Inter-SemiBold',
-  },
-  
+
   section: {
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  
+
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  
+
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
     color: Colors.text,
+    letterSpacing: -0.3,
   },
-  
+
   sectionLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  sectionLinkText: {
     fontSize: 14,
     color: Colors.primary,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   appointmentCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+
+  appointmentContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    padding: 16,
   },
-  
+
+  appointmentLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  doctorAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+    borderWidth: 2,
+  },
+
   appointmentInfo: {
     flex: 1,
   },
-  
-  appointmentDoctor: {
+
+  doctorName: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
-    marginBottom: 4,
-  },
-  
-  appointmentDepartment: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 6,
-  },
-  
-  appointmentDateTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
-  appointmentTime: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginLeft: 6,
-  },
-  
-  recordCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  
-  recordIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: Colors.medical.lightBlue,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  
-  recordInfo: {
-    flex: 1,
-  },
-  
-  recordTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  
-  recordType: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
-  
-  recordDate: {
-    fontSize: 12,
-    color: Colors.textLight,
+
+  department: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginBottom: 4,
+  },
+
+  appointmentTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  timeText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
   },
-  
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  
-  statusNormal: {
-    backgroundColor: Colors.medical.lightGreen,
-  },
-  
-  statusText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.medical.green,
-  },
-  
-  emptyState: {
+
+  emptyAppointments: {
     alignItems: 'center',
     paddingVertical: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    borderStyle: 'dashed',
   },
-  
-  emptyStateTitle: {
+
+  emptyTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: Colors.textSecondary,
     marginTop: 12,
+    marginBottom: 16,
   },
-  
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: Colors.textLight,
-    fontFamily: 'Inter-Regular',
-    marginTop: 4,
-  },
-  
-  quickActions: {
+
+  scheduleButton: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  
-  actionButton: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
   },
-  
-  actionText: {
+
+  scheduleButtonText: {
     fontSize: 14,
+    color: Colors.primary,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  recordCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    position: 'relative',
+  },
+
+  recordContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+
+  newBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+
+  recordLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  recordIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  recordInfo: {
+    flex: 1,
+  },
+
+  recordTitle: {
+    fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
-    marginTop: 8,
-    textAlign: 'center',
+    marginBottom: 2,
+    lineHeight: 20,
+  },
+
+  recordMeta: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+  },
+
+  recordStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+  recordStatusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  bottomSpacing: {
+    height: 20,
   },
 });

@@ -1,17 +1,33 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
+} from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, Users, Shield } from 'lucide-react-native';
+import {
+  Heart,
+  Users,
+  Sparkles,
+  Shield,
+  ArrowRight,
+  Star,
+} from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
-import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const { isAuthenticated, user } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === 'patient') {
         router.replace('/(patient-tabs)');
@@ -26,119 +42,455 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Heart size={40} color={Colors.primary} />
-          <Text style={styles.appName}>K Healthcare</Text>
-        </View>
-        <Text>
-          Your comprehensive healthcare companion
-        </Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#f8fafc', '#e2e8f0', '#f1f5f9']}
+        style={styles.backgroundGradient}
+      >
+        {/* Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+        <View style={styles.decorativeCircle3} />
 
-      <View style={styles.content}>
-        {/* <Text style={styles.welcomeTitle}>Welcome</Text> */}
-        <Text style={styles.welcomeSubtitle}>
-          Choose your role to get started with K Healthcare
-        </Text>
-
-        <View style={styles.roleContainer}>
-          <TouchableOpacity
-            style={styles.roleCard}
-            onPress={() => handleRoleSelection('patient')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.roleIconContainer}>
-              <Heart size={32} color={Colors.primary} />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoWrapper}>
+                <LinearGradient
+                  colors={[Colors.primary, '#60a5fa']}
+                  style={styles.logoGradient}
+                >
+                  <Heart size={40} color="#ffffff" strokeWidth={2.5} />
+                </LinearGradient>
+                <View style={styles.sparkleContainer}>
+                  <Sparkles size={18} color="#fbbf24" style={styles.sparkle1} />
+                  <Star size={14} color="#f59e0b" style={styles.sparkle2} />
+                </View>
+              </View>
+              <Text style={styles.appName}>svastheya</Text>
+              <Text style={styles.appNameSubtext}>स्वास्थ्य</Text>
+              <View style={styles.taglineContainer}>
+                <Text style={styles.tagline}>
+                  Your comprehensive healthcare companion
+                </Text>
+                <Text style={styles.taglineSecondary}>
+                  Trusted • Secure • Accessible
+                </Text>
+              </View>
             </View>
-            <Text style={styles.roleTitle}>I'm a Patient</Text>
-            <Text style={styles.roleDescription}>
-              Access your medical records, book appointments, and manage your health
-            </Text>
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={styles.roleCard}
-            onPress={() => handleRoleSelection('healthcare')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.roleIconContainer}>
-              <Users size={32} color={Colors.primary} />
-            </View>
-            <Text style={styles.roleTitle}>I'm a Healthcare Worker</Text>
-            <Text style={styles.roleDescription}>
-              Manage patient records, lab results, and provide medical care
+          {/* Welcome Section */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeTitle}>Welcome to Better Health</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Choose your role to begin your personalized healthcare journey
+              with us
             </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+
+            {/* Stats Section */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>10K+</Text>
+                <Text style={styles.statLabel}>Patients</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>500+</Text>
+                <Text style={styles.statLabel}>Doctors</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>24/7</Text>
+                <Text style={styles.statLabel}>Support</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Role Selection Cards */}
+          <View style={styles.roleContainer}>
+            <TouchableOpacity
+              style={styles.roleCard}
+              onPress={() => handleRoleSelection('patient')}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['#ffffff', '#f8fafc']}
+                style={styles.roleCardGradient}
+              >
+                <View style={styles.roleHeader}>
+                  <View style={styles.roleIconContainer}>
+                    <LinearGradient
+                      colors={[
+                        'rgba(59, 130, 246, 0.1)',
+                        'rgba(59, 130, 246, 0.05)',
+                      ]}
+                      style={styles.roleIconGradient}
+                    >
+                      <Heart size={32} color={Colors.primary} strokeWidth={2} />
+                    </LinearGradient>
+                  </View>
+                  <View style={styles.roleArrow}>
+                    <ArrowRight
+                      size={20}
+                      color={Colors.primary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.roleContent}>
+                  <Text style={styles.roleTitle}>I'm a Patient</Text>
+                  <Text style={styles.roleDescription}>
+                    Access medical records, book appointments, track health
+                    metrics, and manage your complete health journey
+                  </Text>
+
+                  <View style={styles.roleFeatures}>
+                    <View style={styles.featureItem}>
+                      <View style={styles.featureDot} />
+                      <Text style={styles.featureText}>Medical Records</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <View style={styles.featureDot} />
+                      <Text style={styles.featureText}>
+                        Appointment Booking
+                      </Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <View style={styles.featureDot} />
+                      <Text style={styles.featureText}>Health Tracking</Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.roleCard}
+              onPress={() => handleRoleSelection('healthcare')}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['#ffffff', '#f8fafc']}
+                style={styles.roleCardGradient}
+              >
+                <View style={styles.roleHeader}>
+                  <View style={styles.roleIconContainer}>
+                    <LinearGradient
+                      colors={[
+                        'rgba(59, 130, 246, 0.1)',
+                        'rgba(59, 130, 246, 0.05)',
+                      ]}
+                      style={styles.roleIconGradient}
+                    >
+                      <Users size={32} color={Colors.primary} strokeWidth={2} />
+                    </LinearGradient>
+                  </View>
+                  <View style={styles.roleArrow}>
+                    <ArrowRight
+                      size={20}
+                      color={Colors.primary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.roleContent}>
+                  <Text style={styles.roleTitle}>
+                    I'm a Healthcare Professional
+                  </Text>
+                  <Text style={styles.roleDescription}>
+                    Manage patient records, lab results, appointments, and
+                    provide exceptional healthcare services
+                  </Text>
+
+                  <View style={styles.roleFeatures}>
+                    <View style={styles.featureItem}>
+                      <View style={styles.featureDot} />
+                      <Text style={styles.featureText}>Patient Management</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <View style={styles.featureDot} />
+                      <Text style={styles.featureText}>Lab Results</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <View style={styles.featureDot} />
+                      <Text style={styles.featureText}>
+                        Digital Prescriptions
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <View style={styles.securityBadge}>
+              <Shield size={18} color={Colors.primary} strokeWidth={2} />
+              <Text style={styles.securityText}>HIPAA Compliant & Secure</Text>
+            </View>
+
+            <Text style={styles.footerNote}>
+              Trusted by healthcare professionals and patients worldwide
+            </Text>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     backgroundColor: Colors.background,
   },
-  
+
+  backgroundGradient: {
+    flex: 1,
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -80,
+    right: -80,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+  },
+
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: -100,
+    left: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(59, 130, 246, 0.04)',
+  },
+
+  decorativeCircle3: {
+    position: 'absolute',
+    top: height * 0.4,
+    right: -50,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+  },
+
   header: {
     alignItems: 'center',
     paddingTop: 40,
     paddingHorizontal: 20,
+    marginBottom: 30,
   },
-  
+
   logoContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  
+
+  logoWrapper: {
+    position: 'relative',
+    marginBottom: 20,
+  },
+
+  logoGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+
+  sparkleContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    bottom: 0,
+  },
+
+  sparkle1: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+  },
+
+  sparkle2: {
+    position: 'absolute',
+    bottom: 5,
+    left: -5,
+  },
+
   appName: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
+    fontSize: 30,
+    fontFamily: 'DMSerif',
     color: Colors.text,
-    marginLeft: 12,
+    marginBottom: 4,
+    paddingBottom: 4,
+    // letterSpacing: -0.8,
   },
-  
-  tagline: {
+
+  appNameSubtext: {
     fontSize: 16,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Medium',
+    opacity: 0.8,
+    marginBottom: 16,
+  },
+
+  taglineContainer: {
+    alignItems: 'center',
+  },
+
+  tagline: {
+    fontSize: 18,
     color: Colors.textSecondary,
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
+    lineHeight: 26,
+    marginBottom: 8,
   },
-  
-  content: {
-    flex: 1,
+
+  taglineSecondary: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontFamily: 'Inter-SemiBold',
+    letterSpacing: 1,
+  },
+
+  welcomeSection: {
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    marginBottom: 40,
   },
-  
+
   welcomeTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
-  
+
   welcomeSubtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 40,
+    lineHeight: 24,
     fontFamily: 'Inter-Regular',
+    paddingHorizontal: 10,
+    marginBottom: 30,
   },
-  
-  roleContainer: {
-    gap: 20,
-  },
-  
-  roleCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 24,
+
+  statsContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgb(255, 255, 255)',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  statNumber: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+
+  statLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    marginHorizontal: 20,
+  },
+
+  roleContainer: {
+    paddingHorizontal: 20,
+    gap: 24,
+    marginBottom: 40,
+  },
+
+  roleCard: {
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  roleCardGradient: {
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.08)',
+  },
+
+  roleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  roleIconContainer: {
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -146,57 +498,112 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    elevation: 4,
   },
-  
-  roleIconContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: Colors.medical.lightBlue,
-    borderRadius: 32,
+
+  roleIconGradient: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.15)',
   },
-  
+
+  roleArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.15)',
+  },
+
+  roleContent: {
+    flex: 1,
+  },
+
   roleTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
     color: Colors.text,
-    marginBottom: 8,
+    marginBottom: 12,
+    letterSpacing: -0.3,
   },
-  
+
   roleDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
     fontFamily: 'Inter-Regular',
+    marginBottom: 20,
   },
-  
+
+  roleFeatures: {
+    gap: 8,
+  },
+
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+    marginRight: 12,
+  },
+
+  featureText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Medium',
+  },
+
   footer: {
     alignItems: 'center',
-    paddingBottom: 40,
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  
+
   securityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(59, 130, 246, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 16,
   },
-  
+
   securityText: {
+    fontSize: 13,
+    color: Colors.primary,
+    marginLeft: 10,
+    fontFamily: 'Inter-Bold',
+    letterSpacing: 0.5,
+  },
+
+  footerNote: {
     fontSize: 12,
     color: Colors.textSecondary,
-    marginLeft: 6,
-    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
+    opacity: 0.8,
   },
 });

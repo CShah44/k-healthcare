@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  FileText, 
-  Search, 
+import {
+  FileText,
+  Search,
   Filter,
   Plus,
   Calendar,
@@ -12,7 +19,7 @@ import {
   Pill,
   Scan,
   Activity,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
@@ -148,11 +155,13 @@ export default function HealthcareRecordsScreen() {
     }
   };
 
-  const filteredRecords = medicalRecords.filter(record => {
-    const matchesSearch = record.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         record.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         record.patientId.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || record.type === selectedFilter;
+  const filteredRecords = medicalRecords.filter((record) => {
+    const matchesSearch =
+      record.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.patientId.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter =
+      selectedFilter === 'all' || record.type === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
@@ -177,14 +186,14 @@ export default function HealthcareRecordsScreen() {
             placeholderTextColor={Colors.textLight}
           />
         </View>
-        <TouchableOpacity style={styles.filterButton}>
+        <TouchableOpacity style={styles.searchFilterButton}>
           <Filter size={20} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
       {/* Type Filters */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filtersContainer}
         contentContainerStyle={styles.filtersContent}
@@ -192,24 +201,26 @@ export default function HealthcareRecordsScreen() {
         {filters.map((filter) => {
           const IconComponent = filter.icon;
           const isSelected = selectedFilter === filter.id;
-          
+
           return (
             <TouchableOpacity
               key={filter.id}
               style={[
                 styles.filterButton,
-                isSelected && styles.filterButtonActive
+                isSelected && styles.filterButtonActive,
               ]}
               onPress={() => setSelectedFilter(filter.id)}
             >
-              <IconComponent 
-                size={16} 
-                color={isSelected ? Colors.surface : Colors.textSecondary} 
+              <IconComponent
+                size={16}
+                color={isSelected ? Colors.surface : Colors.textSecondary}
               />
-              <Text style={[
-                styles.filterText,
-                isSelected && styles.filterTextActive
-              ]}>
+              <Text
+                style={[
+                  styles.filterText,
+                  isSelected && styles.filterTextActive,
+                ]}
+              >
                 {filter.label}
               </Text>
             </TouchableOpacity>
@@ -218,11 +229,14 @@ export default function HealthcareRecordsScreen() {
       </ScrollView>
 
       {/* Records List */}
-      <ScrollView style={styles.recordsList} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.recordsList}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.recordsContainer}>
           {filteredRecords.map((record) => {
             const IconComponent = getRecordIcon(record.type);
-            
+
             return (
               <TouchableOpacity key={record.id} style={styles.recordCard}>
                 <View style={styles.recordHeader}>
@@ -231,37 +245,53 @@ export default function HealthcareRecordsScreen() {
                   </View>
                   <View style={styles.recordInfo}>
                     <Text style={styles.recordTitle}>{record.title}</Text>
-                    <Text style={styles.patientName}>{record.patientName} • {record.patientId}</Text>
+                    <Text style={styles.patientName}>
+                      {record.patientName} • {record.patientId}
+                    </Text>
                     <Text style={styles.recordDoctor}>{record.doctor}</Text>
                   </View>
                   <View style={styles.recordBadges}>
-                    <View style={[
-                      styles.priorityBadge,
-                      { borderColor: getPriorityColor(record.priority) }
-                    ]}>
-                      <Text style={[
-                        styles.priorityText,
-                        { color: getPriorityColor(record.priority) }
-                      ]}>
+                    <View
+                      style={[
+                        styles.priorityBadge,
+                        { borderColor: getPriorityColor(record.priority) },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.priorityText,
+                          { color: getPriorityColor(record.priority) },
+                        ]}
+                      >
                         {record.priority.toUpperCase()}
                       </Text>
                     </View>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusBackground(record.status) }
-                    ]}>
-                      <Text style={[
-                        styles.statusText,
-                        { color: getStatusColor(record.status) }
-                      ]}>
-                        {record.status.replace('_', ' ').charAt(0).toUpperCase() + record.status.replace('_', ' ').slice(1)}
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: getStatusBackground(record.status) },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: getStatusColor(record.status) },
+                        ]}
+                      >
+                        {record.status
+                          .replace('_', ' ')
+                          .charAt(0)
+                          .toUpperCase() +
+                          record.status.replace('_', ' ').slice(1)}
                       </Text>
                     </View>
                   </View>
                 </View>
-                
-                <Text style={styles.recordDescription}>{record.description}</Text>
-                
+
+                <Text style={styles.recordDescription}>
+                  {record.description}
+                </Text>
+
                 <View style={styles.recordFooter}>
                   <View style={styles.recordDate}>
                     <Calendar size={14} color={Colors.textSecondary} />
@@ -269,7 +299,7 @@ export default function HealthcareRecordsScreen() {
                       {new Date(record.date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
-                        year: 'numeric'
+                        year: 'numeric',
                       })}
                     </Text>
                   </View>
@@ -291,7 +321,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.background,
   },
-  
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -299,13 +329,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  
+
   headerTitle: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
   },
-  
+
   addButton: {
     width: 40,
     height: 40,
@@ -314,14 +344,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     marginBottom: 16,
     gap: 12,
   },
-  
+
   searchBar: {
     flex: 1,
     flexDirection: 'row',
@@ -333,7 +363,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  
+
   searchInput: {
     flex: 1,
     fontSize: 16,
@@ -341,8 +371,8 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontFamily: 'Inter-Regular',
   },
-  
-  filterButton: {
+
+  searchFilterButton: {
     width: 48,
     height: 48,
     borderRadius: 12,
@@ -350,16 +380,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   filtersContainer: {
     marginBottom: 20,
   },
-  
+
   filtersContent: {
     paddingHorizontal: 20,
     gap: 12,
   },
-  
+
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -371,31 +401,31 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     gap: 6,
   },
-  
+
   filterButtonActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  
+
   filterText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: Colors.textSecondary,
   },
-  
+
   filterTextActive: {
     color: Colors.surface,
   },
-  
+
   recordsList: {
     flex: 1,
   },
-  
+
   recordsContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  
+
   recordCard: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -407,13 +437,13 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   recordHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  
+
   recordIconContainer: {
     width: 40,
     height: 40,
@@ -423,59 +453,59 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  
+
   recordInfo: {
     flex: 1,
   },
-  
+
   recordTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
     marginBottom: 4,
   },
-  
+
   patientName: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
-  
+
   recordDoctor: {
     fontSize: 12,
     color: Colors.textLight,
     fontFamily: 'Inter-Regular',
   },
-  
+
   recordBadges: {
     alignItems: 'flex-end',
     gap: 6,
   },
-  
+
   priorityBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
   },
-  
+
   priorityText: {
     fontSize: 10,
     fontFamily: 'Inter-Bold',
   },
-  
+
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  
+
   statusText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   recordDescription: {
     fontSize: 14,
     color: Colors.textSecondary,
@@ -483,31 +513,31 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
-  
+
   recordFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  
+
   recordDate: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  
+
   recordDateText: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginLeft: 6,
   },
-  
+
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  
+
   viewButtonText: {
     fontSize: 14,
     color: Colors.primary,
