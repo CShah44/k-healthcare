@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Eye, EyeOff } from 'lucide-react-native';
+import { ArrowLeft, Heart, Eye, EyeOff, Calendar, MapPin, User } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { Button } from '@/components/ui/Button';
@@ -24,12 +26,15 @@ const { width } = Dimensions.get('window');
 export default function PatientSignupScreen() {
   const [formData, setFormData] = useState({
     firstName: '',
+    middleName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     phoneNumber: '',
     dateOfBirth: '',
+    address: '',
+    gender: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -46,52 +51,136 @@ export default function PatientSignupScreen() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.firstName) newErrors.firstName = 'First name is required';
-    if (!formData.lastName) newErrors.lastName = 'Last name is required';
+    // Name validation
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.middleName.trim()) newErrors.middleName = 'Middle name is required';
 
-    if (!formData.email) {
+    // Email validation
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
+    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain uppercase, lowercase, and number';
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (!formData.phoneNumber) {
+    // Phone validation
+    if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required';
+    } else if (!/^\+?[\d\s\-\(\)]{10,}$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+      newErrors.phoneNumber = 'Please enter a valid phone number';
     }
 
-    if (!formData.dateOfBirth) {
+    // Date of birth validation
+    if (!formData.dateOfBirth.trim()) {
       newErrors.dateOfBirth = 'Date of birth is required';
+    } else if (!/^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/.test(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = 'Please use MM/DD/YYYY format';
+    }
+
+    // Address validation
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = 'Please enter a complete address';
+    }
+
+    // Gender validation
+    if (!formData.gender.trim()) {
+      newErrors.gender = 'Gender is required';
+    } else if (!['male', 'female', 'other'].includes(formData.gender.toLowerCase())) {
+      newErrors.gender = 'Please enter male, female, or other';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const formatDateOfBirth = (text: string) => {
+    // Remove all non-digits
+    const cleaned = text.replace(/\D/g, '');
+    
+    // Format as MM/DD/YYYY
+    if (cleaned.length >= 5) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+    } else if (cleaned.length >= 3) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    } else {
+      return cleaned;
+    }
+  };
+
+  const formatPhoneNumber = (text: string) => {
+    // Remove all non-digits
+    const cleaned = text.replace(/\D/g, '');
+    
+    // Format as (XXX) XXX-XXXX
+    if (cleaned.length >= 6) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    } else if (cleaned.length >= 3) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    } else {
+      return cleaned;
+    }
+  };
+
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      Alert.alert(
+        'Please Check Your Information',
+        'Please fix the errors in the form and try again.'
+      );
+      return;
+    }
 
     try {
       await signup({
         ...formData,
         role: 'patient',
       });
-      router.replace('/(patient-tabs)');
-    } catch (error) {
+      
+      // Show success message
       Alert.alert(
-        'Signup Failed',
-        'Failed to create account. Please try again.'
+        'Account Created Successfully! 🎉',
+        'Welcome to Svastheya! Your account has been created and you are now signed in.',
+        [
+          {
+            text: 'Get Started',
+            onPress: () => router.replace('/(patient-tabs)'),
+          },
+        ]
       );
+    } catch (error: any) {
+      console.error('Signup error:', error);
+    
+      let message = 'Failed to create account. Please try again.';
+    
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'An account with this email already exists. Please log in.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'The email address is invalid.';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'Password is too weak. Use at least 8 characters with letters and numbers.';
+      }
+    
+      Alert.alert('Signup Failed', message);
     }
+    
   };
 
   if (isLoading) {
@@ -103,6 +192,7 @@ export default function PatientSignupScreen() {
         >
           <LoadingSpinner size="large" />
           <Text style={styles.loadingText}>Creating your account...</Text>
+          <Text style={styles.loadingSubtext}>Please wait while we set up your profile</Text>
         </LinearGradient>
       </SafeAreaView>
     );
@@ -114,180 +204,267 @@ export default function PatientSignupScreen() {
         colors={['#f8fafc', '#e2e8f0']}
         style={styles.backgroundGradient}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
-            <View style={styles.logoContainer}>
-              <View style={styles.iconWrapper}>
-                <Heart size={32} color={Colors.primary} strokeWidth={2} />
-              </View>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>Join Svastheya today</Text>
-            </View>
-
-            <View style={styles.formContainer}>
-              <View style={styles.nameRow}>
-                <View style={styles.nameInputContainer}>
-                  <Text style={styles.inputLabel}>First Name</Text>
-                  <Input
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChangeText={(value) => updateFormData('firstName', value)}
-                    style={styles.input}
-                  />
-                  {errors.firstName && (
-                    <Text style={styles.errorText}>{errors.firstName}</Text>
-                  )}
-                </View>
-                <View style={styles.nameInputContainer}>
-                  <Text style={styles.inputLabel}>Last Name</Text>
-                  <Input
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChangeText={(value) => updateFormData('lastName', value)}
-                    style={styles.input}
-                  />
-                  {errors.lastName && (
-                    <Text style={styles.errorText}>{errors.lastName}</Text>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email Address</Text>
-                <Input
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChangeText={(value) => updateFormData('email', value)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  style={styles.input}
-                />
-                {errors.email && (
-                  <Text style={styles.errorText}>{errors.email}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Phone Number</Text>
-                <Input
-                  placeholder="Enter your phone number"
-                  value={formData.phoneNumber}
-                  onChangeText={(value) => updateFormData('phoneNumber', value)}
-                  keyboardType="phone-pad"
-                  style={styles.input}
-                />
-                {errors.phoneNumber && (
-                  <Text style={styles.errorText}>{errors.phoneNumber}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Date of Birth</Text>
-                <Input
-                  placeholder="MM/DD/YYYY"
-                  value={formData.dateOfBirth}
-                  onChangeText={(value) => updateFormData('dateOfBirth', value)}
-                  style={styles.input}
-                />
-                {errors.dateOfBirth && (
-                  <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Input
-                    placeholder="Create a password"
-                    value={formData.password}
-                    onChangeText={(value) => updateFormData('password', value)}
-                    secureTextEntry={!showPassword}
-                    style={styles.input}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeIcon}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color={Colors.textSecondary} />
-                    ) : (
-                      <Eye size={20} color={Colors.textSecondary} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {errors.password && (
-                  <Text style={styles.errorText}>{errors.password}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Confirm Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Input
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChangeText={(value) =>
-                      updateFormData('confirmPassword', value)
-                    }
-                    secureTextEntry={!showConfirmPassword}
-                    style={styles.input}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeIcon}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={20} color={Colors.textSecondary} />
-                    ) : (
-                      <Eye size={20} color={Colors.textSecondary} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {errors.confirmPassword && (
-                  <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-                )}
-              </View>
-
-              <TouchableOpacity
-                onPress={handleSignup}
-                activeOpacity={0.8}
-                style={styles.signUpButtonContainer}
-              >
-                <LinearGradient
-                  colors={[Colors.primary, '#1e40af']}
-                  style={styles.signUpButton}
-                >
-                  <Text style={styles.signUpButtonText}>Create Account</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Already have an account?{' '}
-                <Text
-                  style={styles.signInLink}
-                  onPress={() => router.push('/auth/patient-login')}
-                >
-                  Sign In
-                </Text>
-              </Text>
-            </View>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              <View style={styles.logoContainer}>
+                <View style={styles.iconWrapper}>
+                  <Heart size={32} color={Colors.primary} strokeWidth={2} />
+                </View>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Join Svastheya today and take control of your health</Text>
+              </View>
+
+              <View style={styles.formContainer}>
+                {/* Name Section */}
+                <View style={styles.sectionHeader}>
+                  <User size={16} color={Colors.primary} />
+                  <Text style={styles.sectionTitle}>Personal Information</Text>
+                </View>
+
+                <View style={styles.nameRow}>
+                  <View style={styles.nameInputContainer}>
+                    <Text style={styles.inputLabel}>First Name *</Text>
+                    <Input
+                      placeholder="First name"
+                      value={formData.firstName}
+                      onChangeText={(value) => updateFormData('firstName', value)}
+                      style={[styles.input, errors.firstName && styles.inputError]}
+                    />
+                    {errors.firstName && (
+                      <Text style={styles.errorText}>{errors.firstName}</Text>
+                    )}
+                  </View>
+                  <View style={styles.nameInputContainer}>
+                    <Text style={styles.inputLabel}>Middle Name *</Text>
+                    <Input
+                      placeholder="Middle name"
+                      value={formData.middleName}
+                      onChangeText={(value) => updateFormData('middleName', value)}
+                      style={[styles.input, errors.middleName && styles.inputError]}
+                    />
+                    {errors.middleName && (
+                      <Text style={styles.errorText}>{errors.middleName}</Text>
+                    )}
+                  </View>
+                  <View style={styles.nameInputContainer}>
+                    <Text style={styles.inputLabel}>Last Name *</Text>
+                    <Input
+                      placeholder="Last name"
+                      value={formData.lastName}
+                      onChangeText={(value) => updateFormData('lastName', value)}
+                      style={[styles.input, errors.lastName && styles.inputError]}
+                    />
+                    {errors.lastName && (
+                      <Text style={styles.errorText}>{errors.lastName}</Text>
+                    )}
+                  </View>
+                </View>
+
+                {/* Contact Information */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Email Address *</Text>
+                  <Input
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChangeText={(value) => updateFormData('email', value.toLowerCase())}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[styles.input, errors.email && styles.inputError]}
+                  />
+                  {errors.email && (
+                    <Text style={styles.errorText}>{errors.email}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Phone Number *</Text>
+                  <Input
+                    placeholder="Enter your phone number"
+                    value={formData.phoneNumber}
+                    onChangeText={(value) => {
+                      const formatted = formatPhoneNumber(value);
+                      updateFormData('phoneNumber', formatted);
+                    }}
+                    keyboardType="phone-pad"
+                    style={[styles.input, errors.phoneNumber && styles.inputError]}
+                  />
+                  {errors.phoneNumber && (
+                    <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+                  )}
+                </View>
+
+                {/* Personal Details */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Date of Birth *</Text>
+                  <View style={styles.inputWrapper}>
+                    <Input
+                      placeholder="MM/DD/YYYY"
+                      value={formData.dateOfBirth}
+                      onChangeText={(value) => {
+                        const formatted = formatDateOfBirth(value);
+                        updateFormData('dateOfBirth', formatted);
+                      }}
+                      keyboardType="numeric"
+                      maxLength={10}
+                      style={[styles.input, errors.dateOfBirth && styles.inputError]}
+                    />
+                    <Calendar 
+                      size={16} 
+                      color={Colors.textSecondary} 
+                      style={styles.inputIcon}
+                    />
+                  </View>
+                  {errors.dateOfBirth && (
+                    <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Address *</Text>
+                  <View style={styles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your complete address"
+                      value={formData.address}
+                      onChangeText={(value) => updateFormData('address', value)}
+                      multiline
+                      numberOfLines={2}
+                      style={[styles.input, styles.multilineInput, errors.address && styles.inputError]}
+                    />
+                    <MapPin 
+                      size={16} 
+                      color={Colors.textSecondary} 
+                      style={styles.inputIcon}
+                    />
+                  </View>
+                  {errors.address && (
+                    <Text style={styles.errorText}>{errors.address}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Gender *</Text>
+                  <Input
+                    placeholder="Male, Female, or Other"
+                    value={formData.gender}
+                    onChangeText={(value) => updateFormData('gender', value.toLowerCase())}
+                    autoCapitalize="none"
+                    style={[styles.input, errors.gender && styles.inputError]}
+                  />
+                  {errors.gender && (
+                    <Text style={styles.errorText}>{errors.gender}</Text>
+                  )}
+                </View>
+
+                {/* Password Section */}
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Security</Text>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Password *</Text>
+                  <View style={styles.inputWrapper}>
+                    <Input
+                      placeholder="Create a strong password"
+                      value={formData.password}
+                      onChangeText={(value) => updateFormData('password', value)}
+                      secureTextEntry={!showPassword}
+                      style={[styles.input, errors.password && styles.inputError]}
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color={Colors.textSecondary} />
+                      ) : (
+                        <Eye size={20} color={Colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.passwordHint}>
+                    Password must be at least 8 characters with uppercase, lowercase, and number
+                  </Text>
+                  {errors.password && (
+                    <Text style={styles.errorText}>{errors.password}</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Confirm Password *</Text>
+                  <View style={styles.inputWrapper}>
+                    <Input
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
+                      onChangeText={(value) => updateFormData('confirmPassword', value)}
+                      secureTextEntry={!showConfirmPassword}
+                      style={[styles.input, errors.confirmPassword && styles.inputError]}
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeIcon}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={20} color={Colors.textSecondary} />
+                      ) : (
+                        <Eye size={20} color={Colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {errors.confirmPassword && (
+                    <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleSignup}
+                  activeOpacity={0.8}
+                  style={styles.signUpButtonContainer}
+                  disabled={isLoading}
+                >
+                  <LinearGradient
+                    colors={[Colors.primary, '#1e40af']}
+                    style={[styles.signUpButton, isLoading && styles.disabledButton]}
+                  >
+                    <Text style={styles.signUpButtonText}>
+                      {isLoading ? 'Creating Account...' : 'Create Account'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                  Already have an account?{' '}
+                  <Text
+                    style={styles.signInLink}
+                    onPress={() => router.push('/auth/patient-login')}
+                  >
+                    Sign In
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -297,7 +474,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    overflowY: 'auto',
+  },
+
+  keyboardAvoidingView: {
+    flex: 1,
   },
 
   backgroundGradient: {
@@ -379,10 +559,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 
   formContainer: {
     marginBottom: 30,
+  },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    marginLeft: 8,
   },
 
   nameRow: {
@@ -422,11 +618,35 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
 
+  inputError: {
+    borderColor: '#ef4444',
+    borderWidth: 2,
+  },
+
+  multilineInput: {
+    height: 64,
+    textAlignVertical: 'top',
+  },
+
+  inputIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 20,
+  },
+
   eyeIcon: {
     position: 'absolute',
     right: 16,
     top: 16,
     padding: 4,
+  },
+
+  passwordHint: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
   },
 
   errorText: {
@@ -453,6 +673,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+  },
+
+  disabledButton: {
+    opacity: 0.7,
   },
 
   signUpButtonText: {
@@ -482,5 +706,13 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 16,
     fontFamily: 'Inter-Regular',
+  },
+
+  loadingSubtext: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginTop: 8,
+    fontFamily: 'Inter-Regular',
+    opacity: 0.7,
   },
 });

@@ -134,7 +134,7 @@ export default function RoleSelectionScreen() {
                   colors={[Colors.primary, '#1e40af']}
                   style={styles.primaryButton}
                 >
-                  <Text style={styles.primaryButtonText}>Sign In</Text>
+                  <Text style={styles.primaryButtonText}>Log In</Text>
                 </LinearGradient>
               </TouchableOpacity>
 

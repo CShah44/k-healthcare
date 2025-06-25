@@ -21,14 +21,38 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
+interface UserData {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  address: string;
+  gender: string;
+  licenseNumber: string;
+  role: 'patient' | 'doctor' | 'lab_assistant';
+  department: string;
+  hospital: string;
+}
+
+interface SignupData extends UserData {
+  password: string;
+  confirmPassword: string;
+}
+
 export default function HealthcareSignupScreen() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SignupData>({
     firstName: '',
+    middleName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     phoneNumber: '',
+    dateOfBirth: '',
+    address: '',
+    gender: '',
     licenseNumber: '',
     role: 'doctor' as 'doctor' | 'lab_assistant',
     department: '',
@@ -37,7 +61,11 @@ export default function HealthcareSignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { signup, isLoading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Get auth context with fallback
+  const authContext = useAuth();
+  const { signup, isLoading } = authContext || { signup: null, isLoading: false };
 
   const updateFormData = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -49,10 +77,11 @@ export default function HealthcareSignupScreen() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.firstName) newErrors.firstName = 'First name is required';
-    if (!formData.lastName) newErrors.lastName = 'Last name is required';
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.middleName.trim()) newErrors.middleName = 'Middle name is required';
 
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
@@ -68,19 +97,27 @@ export default function HealthcareSignupScreen() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (!formData.phoneNumber) {
+    if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required';
     }
 
-    if (!formData.licenseNumber) {
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    if (!formData.gender.trim()) {
+      newErrors.gender = 'Gender is required';
+    }
+
+    if (!formData.licenseNumber.trim()) {
       newErrors.licenseNumber = 'License number is required';
     }
 
-    if (!formData.department) {
+    if (!formData.department.trim()) {
       newErrors.department = 'Department is required';
     }
 
-    if (!formData.hospital) {
+    if (!formData.hospital.trim()) {
       newErrors.hospital = 'Hospital/Clinic name is required';
     }
 
@@ -89,19 +126,58 @@ export default function HealthcareSignupScreen() {
   };
 
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    console.log('Sign up button pressed'); // Debug log
+    
+    // Prevent multiple submissions
+    if (isSubmitting || isLoading) {
+      console.log('Already submitting or loading');
+      return;
+    }
+
+    if (!validateForm()) {
+      console.log('Form validation failed', errors);
+      return;
+    }
+
+    // Check if signup function exists
+    if (!signup) {
+      Alert.alert(
+        'Error',
+        'Authentication service is not available. Please try again later.'
+      );
+      console.error('Signup function not available from AuthContext');
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
+      console.log('Attempting signup with data:', { ...formData, password: '[HIDDEN]', confirmPassword: '[HIDDEN]' });
+      
       await signup(formData);
+      
+      console.log('Signup successful, navigating to healthcare tabs');
       router.replace('/(healthcare-tabs)');
+      
     } catch (error) {
-      Alert.alert(
-        'Registration Failed',
-        'Failed to create account. Please try again.'
-      );
+      console.error('Signup error:', error);
+      
+      let errorMessage = 'Failed to create account. Please try again.';
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // Show loading state
   if (isLoading) {
     return (
       <SafeAreaView style={[GlobalStyles.container, styles.loadingContainer]}>
@@ -137,6 +213,7 @@ export default function HealthcareSignupScreen() {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
             <View style={styles.logoContainer}>
@@ -161,6 +238,18 @@ export default function HealthcareSignupScreen() {
                   />
                   {errors.firstName && (
                     <Text style={styles.errorText}>{errors.firstName}</Text>
+                  )}
+                </View>
+                <View style={styles.nameInputContainer}>
+                  <Text style={styles.inputLabel}>Middle Name</Text>
+                  <Input
+                    placeholder="Middle name"
+                    value={formData.middleName}
+                    onChangeText={(value) => updateFormData('middleName', value)}
+                    style={styles.input}
+                  />
+                  {errors.middleName && (
+                    <Text style={styles.errorText}>{errors.middleName}</Text>
                   )}
                 </View>
                 <View style={styles.nameInputContainer}>
@@ -291,6 +380,32 @@ export default function HealthcareSignupScreen() {
               </View>
 
               <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Address</Text>
+                <Input
+                  placeholder="Enter your address"
+                  value={formData.address}
+                  onChangeText={(value) => updateFormData('address', value)}
+                  style={styles.input}
+                />
+                {errors.address && (
+                  <Text style={styles.errorText}>{errors.address}</Text>
+                )}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Gender</Text>
+                <Input
+                  placeholder="Gender (male, female, other)"
+                  value={formData.gender}
+                  onChangeText={(value) => updateFormData('gender', value)}
+                  style={styles.input}
+                />
+                {errors.gender && (
+                  <Text style={styles.errorText}>{errors.gender}</Text>
+                )}
+              </View>
+
+              <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Password</Text>
                 <View style={styles.inputWrapper}>
                   <Input
@@ -347,14 +462,22 @@ export default function HealthcareSignupScreen() {
               <TouchableOpacity
                 onPress={handleSignup}
                 activeOpacity={0.8}
-                style={styles.signUpButtonContainer}
+                style={[
+                  styles.signUpButtonContainer,
+                  (isSubmitting || isLoading) && styles.buttonDisabled
+                ]}
+                disabled={isSubmitting || isLoading}
               >
                 <LinearGradient
-                  colors={[Colors.primary, '#1e40af']}
+                  colors={
+                    isSubmitting || isLoading 
+                      ? ['#9ca3af', '#6b7280'] 
+                      : [Colors.primary, '#1e40af']
+                  }
                   style={styles.signUpButton}
                 >
                   <Text style={styles.signUpButtonText}>
-                    Create Professional Account
+                    {isSubmitting ? 'Creating Account...' : 'Create Professional Account'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -568,6 +691,10 @@ const styles = StyleSheet.create({
 
   signUpButtonContainer: {
     marginTop: 8,
+  },
+
+  buttonDisabled: {
+    opacity: 0.7,
   },
 
   signUpButton: {

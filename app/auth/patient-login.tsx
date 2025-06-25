@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { query, where, getDocs } from 'firebase/firestore';
+
 import {
   View,
   Text,
@@ -21,44 +24,43 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width } = Dimensions.get('window');
 
 export default function PatientLoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
-  const { login, isLoading } = useAuth();
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
+  const { login, isLoading, forgotPassword } = useAuth();
+  const [showForgot, setShowForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
-
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
+    const newErrors: { identifier?: string; password?: string } = {};
+    if (!identifier) newErrors.identifier = 'Username, email, or phone is required';
+    if (!password) newErrors.password = 'Password is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-
     try {
-      await login(email, password, 'patient');
+      await login(identifier, password, 'patient');
       router.replace('/(patient-tabs)');
     } catch (error) {
-      Alert.alert(
-        'Login Failed',
-        'Invalid email or password. Please try again.'
-      );
+      Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      setResetMessage('Please enter your email.');
+      return;
+    }
+    try {
+      await forgotPassword(resetEmail);
+      setResetMessage('Password reset email sent!');
+    } catch (e) {
+      setResetMessage('Failed to send reset email.');
     }
   };
 
@@ -103,25 +105,24 @@ export default function PatientLoginScreen() {
             </View>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>
-              Sign in to your Svastheya account
+              Log in to your Svastheya account
             </Text>
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email Address</Text>
+              <Text style={styles.inputLabel}>Username / Email / Phone</Text>
               <View style={styles.inputWrapper}>
                 <Input
-                  placeholder="Enter your email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  placeholder="Enter your username, email, or phone"
+                  value={identifier}
+                  onChangeText={setIdentifier}
                   autoCapitalize="none"
                   style={styles.input}
                 />
               </View>
-              {errors.email && (
-                <Text style={styles.errorText}>{errors.email}</Text>
+              {errors.identifier && (
+                <Text style={styles.errorText}>{errors.identifier}</Text>
               )}
             </View>
 
@@ -151,7 +152,7 @@ export default function PatientLoginScreen() {
               )}
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowForgot(true)}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -160,7 +161,7 @@ export default function PatientLoginScreen() {
                 colors={[Colors.primary, '#1e40af']}
                 style={styles.signInButton}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>Log In</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -178,6 +179,22 @@ export default function PatientLoginScreen() {
           </View>
         </View>
       </LinearGradient>
+
+      {showForgot && (
+        <View style={{ marginVertical: 16 }}>
+          <Text style={{ marginBottom: 8 }}>Enter your email to reset password:</Text>
+          <Input
+            placeholder="Email address"
+            value={resetEmail}
+            onChangeText={setResetEmail}
+            autoCapitalize="none"
+            style={styles.input}
+          />
+          <Button title="Send Reset Email" onPress={handleForgotPassword} />
+          {resetMessage ? <Text style={{ color: 'green', marginTop: 8 }}>{resetMessage}</Text> : null}
+          <Button title="Close" onPress={() => setShowForgot(false)} style={{ marginTop: 8 }} />
+        </View>
+      )}
     </SafeAreaView>
   );
 }

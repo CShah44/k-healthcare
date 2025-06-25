@@ -16,43 +16,49 @@ import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Button } from '@/components/ui/Button';
 
 const { width } = Dimensions.get('window');
 
 export default function HealthcareLoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
-  const { login, isLoading } = useAuth();
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
+  const { login, isLoading, forgotPassword } = useAuth();
+  const [showForgot, setShowForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+  const [role, setRole] = useState<'doctor' | 'lab_assistant'>('doctor');
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
-
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (!password) {
-      newErrors.password = 'Password is required';
-    }
-
+    const newErrors: { identifier?: string; password?: string } = {};
+    if (!identifier) newErrors.identifier = 'Username, email, or phone is required';
+    if (!password) newErrors.password = 'Password is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-
     try {
-      await login(email, password, 'doctor');
+      await login(identifier, password, role);
       router.replace('/(healthcare-tabs)');
     } catch (error) {
       Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      setResetMessage('Please enter your email.');
+      return;
+    }
+    try {
+      await forgotPassword(resetEmail);
+      setResetMessage('Password reset email sent!');
+    } catch (e) {
+      setResetMessage('Failed to send reset email.');
     }
   };
 
@@ -101,19 +107,18 @@ export default function HealthcareLoginScreen() {
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Professional Email</Text>
+              <Text style={styles.inputLabel}>Username / Email / Phone</Text>
               <View style={styles.inputWrapper}>
                 <Input
-                  placeholder="Enter your work email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  placeholder="Enter your username, email, or phone"
+                  value={identifier}
+                  onChangeText={setIdentifier}
                   autoCapitalize="none"
                   style={styles.input}
                 />
               </View>
-              {errors.email && (
-                <Text style={styles.errorText}>{errors.email}</Text>
+              {errors.identifier && (
+                <Text style={styles.errorText}>{errors.identifier}</Text>
               )}
             </View>
 
@@ -143,7 +148,7 @@ export default function HealthcareLoginScreen() {
               )}
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowForgot(true)}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -169,6 +174,22 @@ export default function HealthcareLoginScreen() {
             </Text>
           </View>
         </View>
+
+        {showForgot && (
+          <View style={{ marginVertical: 16 }}>
+            <Text style={{ marginBottom: 8 }}>Enter your email to reset password:</Text>
+            <Input
+              placeholder="Email address"
+              value={resetEmail}
+              onChangeText={setResetEmail}
+              autoCapitalize="none"
+              style={styles.input}
+            />
+            <Button title="Send Reset Email" onPress={handleForgotPassword} />
+            {resetMessage ? <Text style={{ color: 'green', marginTop: 8 }}>{resetMessage}</Text> : null}
+            <Button title="Close" onPress={() => setShowForgot(false)} style={{ marginTop: 8 }} />
+          </View>
+        )}
       </LinearGradient>
     </SafeAreaView>
   );
@@ -323,7 +344,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontFamily: 'Inter-Medium',
   },
-
+  
   signInButton: {
     height: 56,
     borderRadius: 16,

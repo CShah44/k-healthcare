@@ -4,12 +4,14 @@ export interface User {
   id: string;
   email: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   role: UserRole;
   phoneNumber?: string;
   dateOfBirth?: string;
   gender?: 'male' | 'female' | 'other';
   profileImage?: string;
+  address?: string;
   createdAt: string;
 }
 
