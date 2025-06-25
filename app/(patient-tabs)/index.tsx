@@ -26,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width } = Dimensions.get('window');
 
 export default function PatientHomeScreen() {
-  const { user } = useAuth();
+  const { userData: user } = useAuth();
 
   const upcomingAppointments = [
     {

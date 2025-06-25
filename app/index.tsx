@@ -25,17 +25,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
-  const { isAuthenticated, user } = useAuth();
+  const { userData: user } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (user) {
       if (user.role === 'patient') {
         router.replace('/(patient-tabs)');
       } else {
         router.replace('/(healthcare-tabs)');
       }
     }
-  }, [isAuthenticated, user]);
+  }, [user]);
 
   const handleRoleSelection = (role: 'patient' | 'healthcare') => {
     router.push(`/auth/role-selection?role=${role}`);

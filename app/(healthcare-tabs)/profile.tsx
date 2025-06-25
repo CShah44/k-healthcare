@@ -1,14 +1,37 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Settings, Phone, Mail, MapPin, Award, Shield, FileText, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, CreditCard as Edit, Stethoscope, Building } from 'lucide-react-native';
+import {
+  User,
+  Settings,
+  Phone,
+  Mail,
+  MapPin,
+  Award,
+  Shield,
+  FileText,
+  Bell,
+  CircleHelp as HelpCircle,
+  LogOut,
+  ChevronRight,
+  CreditCard as Edit,
+  Stethoscope,
+  Building,
+} from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function HealthcareProfileScreen() {
-  const { user, logout } = useAuth();
+  const { userData: user, logout } = useAuth();
 
   const profileData = [
     { icon: Mail, label: 'Email', value: user?.email || 'Not provided' },
@@ -29,10 +52,14 @@ export default function HealthcareProfileScreen() {
     {
       title: 'Professional',
       items: [
-        { icon: Award, label: 'Credentials & Certifications', action: () => {} },
+        {
+          icon: Award,
+          label: 'Credentials & Certifications',
+          action: () => {},
+        },
         { icon: Building, label: 'Hospital Affiliations', action: () => {} },
         { icon: FileText, label: 'Professional Documents', action: () => {} },
-      ]
+      ],
     },
     {
       title: 'App Settings',
@@ -40,7 +67,7 @@ export default function HealthcareProfileScreen() {
         { icon: Bell, label: 'Notifications', action: () => {} },
         { icon: Settings, label: 'Account Settings', action: () => {} },
         { icon: Shield, label: 'Privacy & Security', action: () => {} },
-      ]
+      ],
     },
     {
       title: 'Support',
@@ -48,8 +75,8 @@ export default function HealthcareProfileScreen() {
         { icon: HelpCircle, label: 'Help & Support', action: () => {} },
         { icon: FileText, label: 'Terms of Service', action: () => {} },
         { icon: Shield, label: 'Privacy Policy', action: () => {} },
-      ]
-    }
+      ],
+    },
   ];
 
   const handleLogout = () => {
@@ -72,7 +99,9 @@ export default function HealthcareProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/5327921/pexels-photo-5327921.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop' }}
+              source={{
+                uri: 'https://images.pexels.com/photos/5327921/pexels-photo-5327921.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
+              }}
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.editImageButton}>
@@ -127,7 +156,8 @@ export default function HealthcareProfileScreen() {
                   key={itemIndex}
                   style={[
                     styles.menuItem,
-                    itemIndex < section.items.length - 1 && styles.menuItemBorder
+                    itemIndex < section.items.length - 1 &&
+                      styles.menuItemBorder,
                   ]}
                   onPress={item.action}
                 >
@@ -154,7 +184,9 @@ export default function HealthcareProfileScreen() {
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>K Healthcare Professional v1.0.0</Text>
+          <Text style={styles.versionText}>
+            K Healthcare Professional v1.0.0
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -165,7 +197,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.background,
   },
-  
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -173,13 +205,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  
+
   headerTitle: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
   },
-  
+
   editButton: {
     width: 40,
     height: 40,
@@ -188,7 +220,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   profileCard: {
     backgroundColor: Colors.surface,
     marginHorizontal: 20,
@@ -202,18 +234,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  
+
   profileImageContainer: {
     position: 'relative',
     marginBottom: 16,
   },
-  
+
   profileImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
   },
-  
+
   editImageButton: {
     position: 'absolute',
     bottom: 0,
@@ -225,27 +257,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   userName: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
     marginBottom: 4,
   },
-  
+
   userRole: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
-  
+
   hospital: {
     fontSize: 12,
     color: Colors.textLight,
     fontFamily: 'Inter-Regular',
   },
-  
+
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -253,7 +285,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 24,
   },
-  
+
   statCard: {
     flex: 1,
     minWidth: '47%',
@@ -267,7 +299,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   statIcon: {
     width: 36,
     height: 36,
@@ -277,33 +309,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  
+
   statValue: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
     marginBottom: 4,
   },
-  
+
   statLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
   },
-  
+
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  
+
   sectionTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
     marginBottom: 12,
   },
-  
+
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -312,7 +344,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 8,
   },
-  
+
   infoIcon: {
     width: 36,
     height: 36,
@@ -322,47 +354,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  
+
   infoContent: {
     flex: 1,
   },
-  
+
   infoLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
-  
+
   infoValue: {
     fontSize: 14,
     color: Colors.text,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   menuCard: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  
+
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
   },
-  
+
   menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  
+
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  
+
   menuIcon: {
     width: 32,
     height: 32,
@@ -370,13 +402,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  
+
   menuLabel: {
     fontSize: 16,
     color: Colors.text,
     fontFamily: 'Inter-Regular',
   },
-  
+
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,18 +420,18 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
     gap: 8,
   },
-  
+
   logoutText: {
     fontSize: 16,
     color: Colors.error,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   versionContainer: {
     alignItems: 'center',
     paddingVertical: 20,
   },
-  
+
   versionText: {
     fontSize: 12,
     color: Colors.textLight,

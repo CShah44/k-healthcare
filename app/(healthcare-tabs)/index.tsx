@@ -1,20 +1,62 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Activity, Users, FileText, Calendar, TriangleAlert as AlertTriangle, TrendingUp, Clock, CircleCheck as CheckCircle, Plus, ChevronRight } from 'lucide-react-native';
+import {
+  Activity,
+  Users,
+  FileText,
+  Calendar,
+  TriangleAlert as AlertTriangle,
+  TrendingUp,
+  Clock,
+  CircleCheck as CheckCircle,
+  Plus,
+  ChevronRight,
+} from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function HealthcareDashboardScreen() {
-  const { user } = useAuth();
+  const { userData: user } = useAuth();
 
   const dashboardStats = [
-    { icon: Users, label: 'Total Patients', value: '247', change: '+12', color: Colors.medical.blue },
-    { icon: Calendar, label: 'Today\'s Appointments', value: '18', change: '+3', color: Colors.medical.green },
-    { icon: FileText, label: 'Pending Reports', value: '8', change: '-2', color: Colors.medical.orange },
-    { icon: AlertTriangle, label: 'Critical Cases', value: '3', change: '0', color: Colors.medical.red },
+    {
+      icon: Users,
+      label: 'Total Patients',
+      value: '247',
+      change: '+12',
+      color: Colors.medical.blue,
+    },
+    {
+      icon: Calendar,
+      label: "Today's Appointments",
+      value: '18',
+      change: '+3',
+      color: Colors.medical.green,
+    },
+    {
+      icon: FileText,
+      label: 'Pending Reports',
+      value: '8',
+      change: '-2',
+      color: Colors.medical.orange,
+    },
+    {
+      icon: AlertTriangle,
+      label: 'Critical Cases',
+      value: '3',
+      change: '0',
+      color: Colors.medical.red,
+    },
   ];
 
   const recentPatients = [
@@ -25,7 +67,8 @@ export default function HealthcareDashboardScreen() {
       condition: 'Hypertension',
       lastVisit: '2024-10-20',
       status: 'stable',
-      avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
     {
       id: '2',
@@ -34,7 +77,8 @@ export default function HealthcareDashboardScreen() {
       condition: 'Diabetes Type 2',
       lastVisit: '2024-10-19',
       status: 'monitoring',
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
     {
       id: '3',
@@ -43,7 +87,8 @@ export default function HealthcareDashboardScreen() {
       condition: 'Post-Surgery',
       lastVisit: '2024-10-18',
       status: 'critical',
-      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
   ];
 
@@ -112,11 +157,15 @@ export default function HealthcareDashboardScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Good morning,</Text>
-            <Text style={styles.userName}>Dr. {user?.firstName} {user?.lastName}</Text>
+            <Text style={styles.userName}>
+              Dr. {user?.firstName} {user?.lastName}
+            </Text>
           </View>
           <TouchableOpacity style={styles.profileButton}>
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/5327921/pexels-photo-5327921.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop' }}
+              source={{
+                uri: 'https://images.pexels.com/photos/5327921/pexels-photo-5327921.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+              }}
               style={styles.profileImage}
             />
           </TouchableOpacity>
@@ -126,17 +175,35 @@ export default function HealthcareDashboardScreen() {
         <View style={styles.statsContainer}>
           {dashboardStats.map((stat, index) => (
             <View key={index} style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${stat.color}20` }]}>
+              <View
+                style={[
+                  styles.statIcon,
+                  { backgroundColor: `${stat.color}20` },
+                ]}
+              >
                 <stat.icon size={20} color={stat.color} />
               </View>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
               <View style={styles.statChange}>
-                <TrendingUp size={12} color={stat.change.startsWith('+') ? Colors.medical.green : Colors.medical.red} />
-                <Text style={[
-                  styles.statChangeText,
-                  { color: stat.change.startsWith('+') ? Colors.medical.green : Colors.medical.red }
-                ]}>
+                <TrendingUp
+                  size={12}
+                  color={
+                    stat.change.startsWith('+')
+                      ? Colors.medical.green
+                      : Colors.medical.red
+                  }
+                />
+                <Text
+                  style={[
+                    styles.statChangeText,
+                    {
+                      color: stat.change.startsWith('+')
+                        ? Colors.medical.green
+                        : Colors.medical.red,
+                    },
+                  ]}
+                >
                   {stat.change}
                 </Text>
               </View>
@@ -152,9 +219,12 @@ export default function HealthcareDashboardScreen() {
               <Text style={styles.sectionLink}>View All</Text>
             </TouchableOpacity>
           </View>
-          
+
           {todayAppointments.map((appointment) => (
-            <TouchableOpacity key={appointment.id} style={styles.appointmentCard}>
+            <TouchableOpacity
+              key={appointment.id}
+              style={styles.appointmentCard}
+            >
               <View style={styles.appointmentTime}>
                 <Clock size={16} color={Colors.textSecondary} />
                 <Text style={styles.timeText}>{appointment.time}</Text>
@@ -163,15 +233,20 @@ export default function HealthcareDashboardScreen() {
                 <Text style={styles.patientName}>{appointment.patient}</Text>
                 <Text style={styles.appointmentType}>{appointment.type}</Text>
               </View>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: getStatusBackground(appointment.status) }
-              ]}>
-                <Text style={[
-                  styles.statusText,
-                  { color: getStatusColor(appointment.status) }
-                ]}>
-                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusBackground(appointment.status) },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: getStatusColor(appointment.status) },
+                  ]}
+                >
+                  {appointment.status.charAt(0).toUpperCase() +
+                    appointment.status.slice(1)}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -182,28 +257,42 @@ export default function HealthcareDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Patients</Text>
-            <TouchableOpacity onPress={() => router.push('/(healthcare-tabs)/patients')}>
+            <TouchableOpacity
+              onPress={() => router.push('/(healthcare-tabs)/patients')}
+            >
               <Text style={styles.sectionLink}>View All</Text>
             </TouchableOpacity>
           </View>
-          
+
           {recentPatients.map((patient) => (
             <TouchableOpacity key={patient.id} style={styles.patientCard}>
-              <Image source={{ uri: patient.avatar }} style={styles.patientAvatar} />
+              <Image
+                source={{ uri: patient.avatar }}
+                style={styles.patientAvatar}
+              />
               <View style={styles.patientInfo}>
                 <Text style={styles.patientName}>{patient.name}</Text>
-                <Text style={styles.patientDetails}>Age {patient.age} • {patient.condition}</Text>
-                <Text style={styles.lastVisit}>Last visit: {new Date(patient.lastVisit).toLocaleDateString()}</Text>
+                <Text style={styles.patientDetails}>
+                  Age {patient.age} • {patient.condition}
+                </Text>
+                <Text style={styles.lastVisit}>
+                  Last visit: {new Date(patient.lastVisit).toLocaleDateString()}
+                </Text>
               </View>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: getStatusBackground(patient.status) }
-              ]}>
-                <Text style={[
-                  styles.statusText,
-                  { color: getStatusColor(patient.status) }
-                ]}>
-                  {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusBackground(patient.status) },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: getStatusColor(patient.status) },
+                  ]}
+                >
+                  {patient.status.charAt(0).toUpperCase() +
+                    patient.status.slice(1)}
                 </Text>
               </View>
               <ChevronRight size={20} color={Colors.textLight} />
@@ -242,7 +331,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.background,
   },
-  
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -251,32 +340,32 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     marginBottom: 20,
   },
-  
+
   greeting: {
     fontSize: 16,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
   },
-  
+
   userName: {
     fontSize: 24,
     color: Colors.text,
     fontFamily: 'Inter-Bold',
     marginTop: 2,
   },
-  
+
   profileButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
     overflow: 'hidden',
   },
-  
+
   profileImage: {
     width: '100%',
     height: '100%',
   },
-  
+
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -284,7 +373,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  
+
   statCard: {
     flex: 1,
     minWidth: '47%',
@@ -297,7 +386,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   statIcon: {
     width: 40,
     height: 40,
@@ -306,56 +395,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  
+
   statValue: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
     marginBottom: 4,
   },
-  
+
   statLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginBottom: 8,
   },
-  
+
   statChange: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  
+
   statChangeText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  
+
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  
+
   sectionTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
   },
-  
+
   sectionLink: {
     fontSize: 14,
     color: Colors.primary,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   appointmentCard: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -369,38 +458,38 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   appointmentTime: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
     minWidth: 80,
   },
-  
+
   timeText: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-SemiBold',
     marginLeft: 6,
   },
-  
+
   appointmentInfo: {
     flex: 1,
   },
-  
+
   patientName: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
     marginBottom: 2,
   },
-  
+
   appointmentType: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
   },
-  
+
   patientCard: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -414,49 +503,49 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   patientAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
     marginRight: 12,
   },
-  
+
   patientInfo: {
     flex: 1,
   },
-  
+
   patientDetails: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
-  
+
   lastVisit: {
     fontSize: 12,
     color: Colors.textLight,
     fontFamily: 'Inter-Regular',
   },
-  
+
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     marginRight: 8,
   },
-  
+
   statusText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
-  
+
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  
+
   actionButton: {
     flex: 1,
     minWidth: '47%',
@@ -470,7 +559,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   actionText: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
