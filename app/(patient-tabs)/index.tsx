@@ -18,6 +18,7 @@ import {
   TestTube2,
   Plus,
   Bell,
+  Users, // Add this import
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -129,7 +130,7 @@ export default function PatientHomeScreen() {
             </View>
           </View>
 
-          {/* Quick Actions */}
+          {/* Quick Actions - Updated to include Family Tree */}
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={styles.actionCard}
@@ -173,6 +174,32 @@ export default function PatientHomeScreen() {
               </View>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/(patient-tabs)/family-tree')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionCardContent}>
+                <View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: `${Colors.medical.blue}15` },
+                  ]}
+                >
+                  <Users
+                    size={24}
+                    color={Colors.medical.blue}
+                    strokeWidth={2}
+                  />
+                </View>
+                <Text style={styles.actionTitle}>Family Tree</Text>
+                <Text style={styles.actionSubtitle}>Connect with family</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Additional Quick Actions Row */}
+          <View style={styles.quickActions}>
             <TouchableOpacity style={styles.actionCard} activeOpacity={0.7}>
               <View style={styles.actionCardContent}>
                 <View
@@ -191,6 +218,25 @@ export default function PatientHomeScreen() {
                 <Text style={styles.actionSubtitle}>Latest test reports</Text>
               </View>
             </TouchableOpacity>
+
+            <View style={styles.actionCard}>
+              <View style={styles.actionCardContent}>
+                <View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: `${Colors.medical.orange}15` },
+                  ]}
+                >
+                  <Plus
+                    size={24}
+                    color={Colors.medical.orange}
+                    strokeWidth={2}
+                  />
+                </View>
+                <Text style={styles.actionTitle}>More</Text>
+                <Text style={styles.actionSubtitle}>Additional features</Text>
+              </View>
+            </View>
           </View>
 
           {/* Upcoming Appointments */}
@@ -450,7 +496,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 32,
+    marginBottom: 16, // Reduced margin for multiple rows
   },
 
   actionCard: {
@@ -500,6 +546,7 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 20,
     marginBottom: 32,
+    marginTop: 16, // Added margin top for spacing
   },
 
   sectionHeader: {

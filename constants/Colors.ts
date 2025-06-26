@@ -14,7 +14,7 @@ export const Colors = {
   warning: '#F59E0B',
   error: '#EF4444',
   info: '#3B82F6',
-  
+
   // Healthcare specific colors
   medical: {
     blue: '#3B82F6',
@@ -25,5 +25,6 @@ export const Colors = {
     lightRed: '#FEF2F2',
     orange: '#F59E0B',
     lightOrange: '#FFFBEB',
-  }
+    purple: '#8B5CF6', // Purple for special cases
+  },
 };

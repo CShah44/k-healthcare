@@ -29,6 +29,7 @@ interface UserData {
   licenseNumber?: string;
   department?: string;
   hospital?: string;
+  familyId?: string; // Add familyId field
 }
 
 interface SignupData extends UserData {
@@ -45,9 +46,10 @@ interface AuthContextType {
     identifier: string,
     password: string,
     role: 'patient' | 'doctor' | 'lab_assistant'
-  ) => Promise<void>; // ✅ updated
+  ) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  refreshUserData: () => Promise<void>; // Add refreshUserData function
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,19 +69,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Function to fetch user data from Firestore
+  const fetchUserData = async (userId: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data() as UserData;
+        setUserData(data);
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
+    }
+  };
+
+  // Function to refresh user data
+  const refreshUserData = async () => {
+    if (user) {
+      await fetchUserData(user.uid);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
         // Fetch user data from Firestore
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserData(userDoc.data() as UserData);
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
+        await fetchUserData(user.uid);
       } else {
         setUser(null);
         setUserData(null);
@@ -118,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         licenseNumber: data.licenseNumber || '',
         department: data.department || '',
         hospital: data.hospital || '',
+        familyId: '', // Initialize familyId as empty
         uid: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -163,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         licenseNumber: data.licenseNumber,
         department: data.department,
         hospital: data.hospital,
+        familyId: '',
       });
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -208,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           usersRef,
           where('role', '==', role),
           where('email', '!=', '')
-        ); // fallback
+        );
 
         const snapshot = await getDocs(q);
         const matchedDoc = snapshot.docs.find((doc) => {
@@ -236,10 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const user = userCredential.user;
 
       // Fetch user data
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        setUserData(userDoc.data() as UserData);
-      }
+      await fetchUserData(user.uid);
     } catch (error: any) {
       console.error('Login error:', error);
       let errorMessage = 'Login failed. Please check your credentials.';
@@ -268,6 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(false);
     }
   };
+
   const forgotPassword = async (email: string) => {
     try {
       const signInMethods = await fetchSignInMethodsForEmail(auth, email);
@@ -288,7 +306,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     signup,
     login,
     logout,
-    forgotPassword, // 👈 include it here
+    forgotPassword,
+    refreshUserData, // Add refreshUserData to the context value
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
