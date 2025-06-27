@@ -239,6 +239,16 @@ export default function PatientHomeScreen() {
             </View>
           </View>
 
+          {/* Insert Records/Prescriptions Button */}
+          <TouchableOpacity
+            style={styles.insertButton}
+            activeOpacity={0.8}
+            onPress={() => router.push('/(patient-tabs)/upload-record')}
+          >
+            <Plus size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.insertButtonText}>Insert Past Records & Prescriptions</Text>
+          </TouchableOpacity>
+
           {/* Upcoming Appointments */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -739,5 +749,26 @@ const styles = StyleSheet.create({
 
   bottomSpacing: {
     height: 20,
+  },
+
+  insertButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  insertButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });

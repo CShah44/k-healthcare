@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Modal,
+  Image,
+  Alert,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -23,82 +28,49 @@ import {
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/constants/firebase';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function MedicalRecordsScreen() {
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const { user } = useAuth();
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      if (!user) return;
+      try {
+        const q = query(
+          collection(db, 'patients', user.uid, 'records'),
+          orderBy('uploadedAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMedicalRecords(records);
+      } catch (e) {
+        console.error('Failed to fetch records:', e);
+      }
+    };
+    fetchRecords();
+  }, [user]);
 
   const filters = [
-    { id: 'all', label: 'All', count: 24 },
-    { id: 'uploaded', label: 'My Uploads', count: 8 },
-    { id: 'lab_reports', label: 'Lab Reports', count: 12 },
-    { id: 'prescriptions', label: 'Prescriptions', count: 4 },
-  ];
-
-  const medicalRecords = [
-    {
-      id: '1',
-      title: 'Blood Test Results - CBC',
-      type: 'lab_reports',
-      source: 'lab_uploaded', // lab_uploaded or user_uploaded
-      date: '2024-10-15',
-      lab: 'PathLab Diagnostics',
-      doctor: 'Dr. Sarah Wilson',
-      fileType: 'PDF',
-      fileSize: '2.4 MB',
-      status: 'normal',
-      isNew: true,
-    },
-    {
-      id: '2',
-      title: 'Chest X-Ray Report',
-      type: 'uploaded',
-      source: 'user_uploaded',
-      date: '2024-10-12',
-      doctor: 'Dr. Michael Chen',
-      fileType: 'PDF',
-      fileSize: '5.1 MB',
-      status: 'reviewed',
-      isNew: false,
-    },
-    {
-      id: '3',
-      title: 'Hypertension Medication',
-      type: 'prescriptions',
-      source: 'user_uploaded',
-      date: '2024-10-10',
-      doctor: 'Dr. Sarah Wilson',
-      fileType: 'JPG',
-      fileSize: '1.2 MB',
-      status: 'active',
-      isNew: false,
-    },
-    {
-      id: '4',
-      title: 'Lipid Profile Test',
-      type: 'lab_reports',
-      source: 'lab_uploaded',
-      date: '2024-10-08',
-      lab: 'MedLab Services',
-      doctor: 'Dr. Jennifer Martinez',
-      fileType: 'PDF',
-      fileSize: '1.8 MB',
-      status: 'high',
-      isNew: false,
-    },
-    {
-      id: '5',
-      title: 'Previous Medical History',
-      type: 'uploaded',
-      source: 'user_uploaded',
-      date: '2024-10-05',
-      doctor: 'Self Uploaded',
-      fileType: 'PDF',
-      fileSize: '3.2 MB',
-      status: 'archived',
-      isNew: false,
-    },
+    { id: 'all', label: 'All', count: medicalRecords.length },
+    { id: 'uploaded', label: 'My Uploads', count: medicalRecords.filter(r => r.type === 'uploaded').length },
+    { id: 'lab_reports', label: 'Lab Reports', count: medicalRecords.filter(r => r.type === 'lab_reports').length },
+    { id: 'prescriptions', label: 'Prescriptions', count: medicalRecords.filter(r => r.type === 'prescriptions').length },
   ];
 
   const getRecordIcon = (type: string, source: string) => {
@@ -138,6 +110,70 @@ export default function MedicalRecordsScreen() {
       ? medicalRecords
       : medicalRecords.filter((record) => record.type === selectedFilter);
 
+  const openDocumentPicker = async () => {
+    try {
+      setUploading(true);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      setUploading(false);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedFile(result.assets[0]);
+        setSelectedImage(null);
+      }
+    } catch (e) {
+      setUploading(false);
+      Alert.alert('Error', 'Could not pick document.');
+    }
+  };
+
+  const openImagePicker = async () => {
+    try {
+      setUploading(true);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+      setUploading(false);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImage(result.assets[0]);
+        setSelectedFile(null);
+      }
+    } catch (e) {
+      setUploading(false);
+      Alert.alert('Error', 'Could not pick image.');
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      setUploading(true);
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+      setUploading(false);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImage(result.assets[0]);
+        setSelectedFile(null);
+      }
+    } catch (e) {
+      setUploading(false);
+      Alert.alert('Error', 'Could not open camera.');
+    }
+  };
+
+  const handleUpload = async () => {
+    // Placeholder: Implement upload logic here (e.g., upload to Firebase or backend)
+    Alert.alert('Upload', 'File/photo upload logic goes here.');
+    setUploadModalVisible(false);
+    setSelectedFile(null);
+    setSelectedImage(null);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -156,7 +192,7 @@ export default function MedicalRecordsScreen() {
             <TouchableOpacity style={styles.headerButton}>
               <Search size={20} color={Colors.text} strokeWidth={2} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.uploadButton}>
+            <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('/(patient-tabs)/upload-record')}>
               <Plus size={20} color="#ffffff" strokeWidth={2} />
             </TouchableOpacity>
           </View>
@@ -228,6 +264,10 @@ export default function MedicalRecordsScreen() {
                 key={record.id}
                 style={styles.recordCard}
                 activeOpacity={0.7}
+                onPress={() => {
+                  setSelectedRecord(record);
+                  setPreviewModalVisible(true);
+                }}
               >
                 <View style={styles.recordCardContent}>
                   {record.isNew && <View style={styles.newBadge} />}
@@ -346,15 +386,86 @@ export default function MedicalRecordsScreen() {
           <View style={styles.bottomSpacing} />
         </ScrollView>
 
-        {/* Floating Upload Button */}
-        <TouchableOpacity style={styles.floatingButton} activeOpacity={0.8}>
-          <LinearGradient
-            colors={[Colors.primary, '#1e40af']}
-            style={styles.floatingButtonGradient}
-          >
-            <Upload size={24} color="#ffffff" strokeWidth={2} />
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Upload Modal */}
+        <Modal
+          visible={uploadModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setUploadModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Insert Past Record/Prescription</Text>
+              {uploading ? (
+                <ActivityIndicator size="large" color={Colors.primary} />
+              ) : (
+                <>
+                  <TouchableOpacity style={styles.uploadOption} onPress={openDocumentPicker}>
+                    <Text style={styles.uploadOptionText}>Upload PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.uploadOption} onPress={openImagePicker}>
+                    <Text style={styles.uploadOptionText}>Upload Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.uploadOption} onPress={openCamera}>
+                    <Text style={styles.uploadOptionText}>Take Photo</Text>
+                  </TouchableOpacity>
+                  {(selectedFile || selectedImage) && (
+                    <View style={styles.previewContainer}>
+                      {selectedFile && (
+                        <Text style={styles.previewText}>Selected PDF: {selectedFile.name}</Text>
+                      )}
+                      {selectedImage && (
+                        <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
+                      )}
+                      <TouchableOpacity style={styles.uploadConfirmButton} onPress={handleUpload}>
+                        <Text style={styles.uploadConfirmText}>Upload</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <TouchableOpacity style={styles.closeModalButton} onPress={() => setUploadModalVisible(false)}>
+                    <Text style={styles.closeModalText}>Cancel</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Preview Modal */}
+        <Modal
+          visible={previewModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setPreviewModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              {selectedRecord && (
+                <>
+                  <Text style={styles.modalTitle}>{selectedRecord.title}</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Uploaded: {selectedRecord.uploadedAt?.toDate ? selectedRecord.uploadedAt.toDate().toLocaleString() : (selectedRecord.uploadedAt ? new Date(selectedRecord.uploadedAt.seconds * 1000).toLocaleString() : 'N/A')}
+                  </Text>
+                  {selectedRecord.fileType?.startsWith('image') ? (
+                    <Image source={{ uri: selectedRecord.fileUrl }} style={{ width: 220, height: 300, borderRadius: 12, marginVertical: 16 }} resizeMode="contain" />
+                  ) : selectedRecord.fileType === 'application/pdf' ? (
+                    <TouchableOpacity
+                      style={styles.openPdfButton}
+                      onPress={() => Linking.openURL(selectedRecord.fileUrl)}
+                    >
+                      <Text style={styles.openPdfText}>Open PDF</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={{ marginVertical: 16 }}>File type not supported for preview.</Text>
+                  )}
+                  <TouchableOpacity style={styles.closeModalButton} onPress={() => setPreviewModalVisible(false)}>
+                    <Text style={styles.closeModalText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -673,32 +784,95 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
   },
 
-  floatingButton: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-
-  floatingButtonGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   bottomSpacing: {
     height: 100,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    marginBottom: 20,
+    color: Colors.text,
+  },
+  uploadOption: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginBottom: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  uploadOptionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  previewContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  previewText: {
+    fontSize: 15,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  previewImage: {
+    width: 120,
+    height: 160,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  uploadConfirmButton: {
+    backgroundColor: Colors.medical.green,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  uploadConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  closeModalButton: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  closeModalText: {
+    color: Colors.error,
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginBottom: 16,
+  },
+  openPdfButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  openPdfText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });
