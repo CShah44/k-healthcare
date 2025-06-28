@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,12 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -29,28 +35,31 @@ const { width } = Dimensions.get('window');
 export default function PatientHomeScreen() {
   const { userData: user } = useAuth();
 
-  const upcomingAppointments = [
-    {
-      id: '1',
-      doctor: 'Dr. Sarah Wilson',
-      date: 'Oct 25, 2024',
-      time: '10:30 AM',
-      department: 'Cardiology',
-      avatar:
-        'https://images.pexels.com/photos/5327585/pexels-photo-5327585.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-      color: Colors.medical.red,
-    },
-    {
-      id: '2',
-      doctor: 'Dr. Michael Chen',
-      date: 'Nov 2, 2024',
-      time: '2:15 PM',
-      department: 'General Medicine',
-      avatar:
-        'https://images.pexels.com/photos/612999/pexels-photo-612999.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-      color: Colors.primary,
-    },
-  ];
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-20);
+  const cardScale = useSharedValue(0.8);
+  const cardOpacity = useSharedValue(0);
+  const recordsOpacity = useSharedValue(0);
+  const recordsTranslateY = useSharedValue(30);
+
+  useEffect(() => {
+    // Animate header
+    headerOpacity.value = withTiming(1, { duration: 800 });
+    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+
+    // Animate cards with stagger
+    setTimeout(() => {
+      cardScale.value = withSpring(1, { damping: 12, stiffness: 80 });
+      cardOpacity.value = withTiming(1, { duration: 600 });
+    }, 200);
+
+    // Animate records section
+    setTimeout(() => {
+      recordsOpacity.value = withTiming(1, { duration: 800 });
+      recordsTranslateY.value = withSpring(0, { damping: 10, stiffness: 60 });
+    }, 400);
+  }, []);
 
   const recentRecords = [
     {
@@ -89,6 +98,22 @@ export default function PatientHomeScreen() {
     return 'Good evening';
   };
 
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: cardOpacity.value,
+    transform: [{ scale: cardScale.value }],
+  }));
+
+  const recordsAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: recordsOpacity.value,
+    transform: [{ translateY: recordsTranslateY.value }],
+  }));
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -104,7 +129,7 @@ export default function PatientHomeScreen() {
           contentContainerStyle={styles.scrollContent}
         >
           {/* Header */}
-          <View style={styles.header}>
+          <Animated.View style={[styles.header, headerAnimatedStyle]}>
             <View style={styles.headerLeft}>
               <Text style={styles.greeting}>{getGreeting()},</Text>
               <Text style={styles.userName}>
@@ -128,29 +153,10 @@ export default function PatientHomeScreen() {
                 />
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Quick Actions - Updated to include Family Tree */}
-          <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => router.push('/(patient-tabs)/appointments')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.actionCardContent}>
-                <View
-                  style={[
-                    styles.actionIcon,
-                    { backgroundColor: `${Colors.primary}15` },
-                  ]}
-                >
-                  <Calendar size={24} color={Colors.primary} strokeWidth={2} />
-                </View>
-                <Text style={styles.actionTitle}>Appointments</Text>
-                <Text style={styles.actionSubtitle}>Book & manage visits</Text>
-              </View>
-            </TouchableOpacity>
-
+          {/* Quick Actions */}
+          <Animated.View style={[styles.quickActions, cardAnimatedStyle]}>
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => router.push('/(patient-tabs)/records')}
@@ -196,10 +202,7 @@ export default function PatientHomeScreen() {
                 <Text style={styles.actionSubtitle}>Connect with family</Text>
               </View>
             </TouchableOpacity>
-          </View>
 
-          {/* Additional Quick Actions Row */}
-          <View style={styles.quickActions}>
             <TouchableOpacity style={styles.actionCard} activeOpacity={0.7}>
               <View style={styles.actionCardContent}>
                 <View
@@ -218,120 +221,24 @@ export default function PatientHomeScreen() {
                 <Text style={styles.actionSubtitle}>Latest test reports</Text>
               </View>
             </TouchableOpacity>
-
-            <View style={styles.actionCard}>
-              <View style={styles.actionCardContent}>
-                <View
-                  style={[
-                    styles.actionIcon,
-                    { backgroundColor: `${Colors.medical.orange}15` },
-                  ]}
-                >
-                  <Plus
-                    size={24}
-                    color={Colors.medical.orange}
-                    strokeWidth={2}
-                  />
-                </View>
-                <Text style={styles.actionTitle}>More</Text>
-                <Text style={styles.actionSubtitle}>Additional features</Text>
-              </View>
-            </View>
-          </View>
+          </Animated.View>
 
           {/* Insert Records/Prescriptions Button */}
-          <TouchableOpacity
-            style={styles.insertButton}
-            activeOpacity={0.8}
-            onPress={() => router.push('/(patient-tabs)/upload-record')}
-          >
-            <Plus size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.insertButtonText}>Insert Past Records & Prescriptions</Text>
-          </TouchableOpacity>
-
-          {/* Upcoming Appointments */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-              <TouchableOpacity
-                onPress={() => router.push('/(patient-tabs)/appointments')}
-                style={styles.sectionLink}
-              >
-                <Text style={styles.sectionLinkText}>View All</Text>
-                <ChevronRight
-                  size={16}
-                  color={Colors.primary}
-                  strokeWidth={2}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {upcomingAppointments.length > 0 ? (
-              upcomingAppointments.slice(0, 2).map((appointment) => (
-                <TouchableOpacity
-                  key={appointment.id}
-                  style={styles.appointmentCard}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.appointmentContent}>
-                    <View style={styles.appointmentLeft}>
-                      <Image
-                        source={{ uri: appointment.avatar }}
-                        style={[
-                          styles.doctorAvatar,
-                          { borderColor: `${appointment.color}40` },
-                        ]}
-                      />
-                      <View style={styles.appointmentInfo}>
-                        <Text style={styles.doctorName}>
-                          {appointment.doctor}
-                        </Text>
-                        <Text style={styles.department}>
-                          {appointment.department}
-                        </Text>
-                        <View style={styles.appointmentTime}>
-                          <Clock
-                            size={14}
-                            color={Colors.textSecondary}
-                            strokeWidth={2}
-                          />
-                          <Text style={styles.timeText}>
-                            {appointment.date} • {appointment.time}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                    <ChevronRight
-                      size={20}
-                      color={Colors.textLight}
-                      strokeWidth={2}
-                    />
-                  </View>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.emptyAppointments}>
-                <Calendar
-                  size={40}
-                  color={Colors.textLight}
-                  strokeWidth={1.5}
-                />
-                <Text style={styles.emptyTitle}>No upcoming appointments</Text>
-                <TouchableOpacity
-                  style={styles.scheduleButton}
-                  activeOpacity={0.8}
-                >
-                  <Plus size={16} color={Colors.primary} strokeWidth={2} />
-                  <Text style={styles.scheduleButtonText}>
-                    Schedule Appointment
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+          <Animated.View style={cardAnimatedStyle}>
+            <TouchableOpacity
+              style={styles.insertButton}
+              activeOpacity={0.8}
+              onPress={() => router.push('/(patient-tabs)/upload-record')}
+            >
+              <Plus size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.insertButtonText}>
+                Insert Past Records & Prescriptions
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
 
           {/* Recent Records */}
-          <View style={styles.section}>
+          <Animated.View style={[styles.section, recordsAnimatedStyle]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Records</Text>
               <TouchableOpacity
@@ -390,7 +297,7 @@ export default function PatientHomeScreen() {
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+          </Animated.View>
 
           <View style={styles.bottomSpacing} />
         </ScrollView>
@@ -454,7 +361,7 @@ const styles = StyleSheet.create({
 
   userName: {
     fontSize: 28,
-    color: Colors.text,
+    color: Colors.teal,
     fontFamily: 'Inter-Bold',
     marginTop: 4,
     letterSpacing: -0.5,
@@ -580,98 +487,6 @@ const styles = StyleSheet.create({
   },
 
   sectionLinkText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  appointmentCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-
-  appointmentContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-
-  appointmentLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  doctorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-    borderWidth: 2,
-  },
-
-  appointmentInfo: {
-    flex: 1,
-  },
-
-  doctorName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-
-  department: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 4,
-  },
-
-  appointmentTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-
-  timeText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  emptyAppointments: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    borderStyle: 'dashed',
-  },
-
-  emptyTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.textSecondary,
-    marginTop: 12,
-    marginBottom: 16,
-  },
-
-  scheduleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 8,
-  },
-
-  scheduleButtonText: {
     fontSize: 14,
     color: Colors.primary,
     fontFamily: 'Inter-SemiBold',

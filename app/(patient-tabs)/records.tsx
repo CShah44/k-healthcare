@@ -12,11 +12,17 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   FileText,
   Search,
-  Calendar,
   Download,
   Eye,
   Upload,
@@ -24,7 +30,6 @@ import {
   Pill,
   FileImage,
   Plus,
-  Filter,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,7 +37,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  onSnapshot,
+} from 'firebase/firestore';
 import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
@@ -41,36 +53,91 @@ export default function MedicalRecordsScreen() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [selectedFile, setSelectedFile] =
+    useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [selectedImage, setSelectedImage] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
 
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-20);
+  const filterOpacity = useSharedValue(0);
+  const filterTranslateX = useSharedValue(-30);
+
   useEffect(() => {
-    const fetchRecords = async () => {
-      if (!user) return;
-      try {
-        const q = query(
-          collection(db, 'patients', user.uid, 'records'),
-          orderBy('uploadedAt', 'desc')
-        );
-        const snapshot = await getDocs(q);
-        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Animate header entrance
+    headerOpacity.value = withTiming(1, { duration: 800 });
+    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+
+    // Animate filters with delay
+    setTimeout(() => {
+      filterOpacity.value = withTiming(1, { duration: 600 });
+      filterTranslateX.value = withSpring(0, { damping: 12, stiffness: 80 });
+    }, 200);
+  }, []);
+
+  // Real-time Firebase syncing
+  useEffect(() => {
+    if (!user) return;
+
+    setLoading(true);
+    const q = query(
+      collection(db, 'patients', user.uid, 'records'),
+      orderBy('uploadedAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const records = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setMedicalRecords(records);
-      } catch (e) {
-        console.error('Failed to fetch records:', e);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Failed to fetch records:', error);
+        setLoading(false);
       }
-    };
-    fetchRecords();
+    );
+
+    return () => unsubscribe();
   }, [user]);
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const filterAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: filterOpacity.value,
+    transform: [{ translateX: filterTranslateX.value }],
+  }));
 
   const filters = [
     { id: 'all', label: 'All', count: medicalRecords.length },
-    { id: 'uploaded', label: 'My Uploads', count: medicalRecords.filter(r => r.type === 'uploaded').length },
-    { id: 'lab_reports', label: 'Lab Reports', count: medicalRecords.filter(r => r.type === 'lab_reports').length },
-    { id: 'prescriptions', label: 'Prescriptions', count: medicalRecords.filter(r => r.type === 'prescriptions').length },
+    {
+      id: 'uploaded',
+      label: 'My Uploads',
+      count: medicalRecords.filter((r) => r.type === 'uploaded').length,
+    },
+    {
+      id: 'lab_reports',
+      label: 'Lab Reports',
+      count: medicalRecords.filter((r) => r.type === 'lab_reports').length,
+    },
+    {
+      id: 'prescriptions',
+      label: 'Prescriptions',
+      count: medicalRecords.filter((r) => r.type === 'prescriptions').length,
+    },
   ];
 
   const getRecordIcon = (type: string, source: string) => {
@@ -181,25 +248,28 @@ export default function MedicalRecordsScreen() {
         style={styles.backgroundGradient}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <Animated.View style={[styles.header, headerAnimatedStyle]}>
           <View>
             <Text style={styles.headerTitle}>Medical Records</Text>
             <Text style={styles.headerSubtitle}>
-              {filteredRecords.length} documents
+              {loading ? 'Loading...' : `${filteredRecords.length} documents`}
             </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.headerButton}>
               <Search size={20} color={Colors.text} strokeWidth={2} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('/(patient-tabs)/upload-record')}>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={() => router.push('/(patient-tabs)/upload-record')}
+            >
               <Plus size={20} color="#ffffff" strokeWidth={2} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Filter Tabs */}
-        <View style={styles.filtersContainer}>
+        <Animated.View style={[styles.filtersContainer, filterAnimatedStyle]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -245,146 +315,177 @@ export default function MedicalRecordsScreen() {
               );
             })}
           </ScrollView>
-        </View>
+        </Animated.View>
 
-        {/* Records List */}
-        <ScrollView
-          style={styles.recordsList}
-          contentContainerStyle={styles.recordsContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {filteredRecords.map((record) => {
-            const { icon: IconComponent, color } = getRecordIcon(
-              record.type,
-              record.source
-            );
+        {/* Loading State */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Loading your records...</Text>
+          </View>
+        ) : (
+          /* Records List */
+          <ScrollView
+            style={styles.recordsList}
+            contentContainerStyle={styles.recordsContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {filteredRecords.map((record, index) => {
+              const { icon: IconComponent, color } = getRecordIcon(
+                record.type,
+                record.source
+              );
 
-            return (
-              <TouchableOpacity
-                key={record.id}
-                style={styles.recordCard}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setSelectedRecord(record);
-                  setPreviewModalVisible(true);
-                }}
-              >
-                <View style={styles.recordCardContent}>
-                  {record.isNew && <View style={styles.newBadge} />}
+              return (
+                <Animated.View
+                  key={record.id}
+                  entering={FadeInDown.delay(index * 100).springify()}
+                >
+                  <TouchableOpacity
+                    style={styles.recordCard}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setSelectedRecord(record);
+                      setPreviewModalVisible(true);
+                    }}
+                  >
+                    <View style={styles.recordCardContent}>
+                      {record.isNew && <View style={styles.newBadge} />}
 
-                  <View style={styles.recordMain}>
-                    <View style={styles.recordLeft}>
-                      <View
-                        style={[
-                          styles.recordIcon,
-                          { backgroundColor: `${color}15` },
-                        ]}
-                      >
-                        <IconComponent
-                          size={20}
-                          color={color}
-                          strokeWidth={2}
-                        />
-                      </View>
-                      <View style={styles.recordInfo}>
-                        <Text style={styles.recordTitle} numberOfLines={2}>
-                          {record.title}
-                        </Text>
-                        <View style={styles.recordMeta}>
-                          <Text style={styles.recordSource}>
-                            {record.source === 'lab_uploaded'
-                              ? record.lab
-                              : record.doctor}
-                          </Text>
-                          <View style={styles.metaDot} />
-                          <Text style={styles.recordDate}>
-                            {new Date(record.date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </Text>
-                        </View>
-                        <View style={styles.recordDetails}>
-                          <Text style={styles.fileInfo}>
-                            {record.fileType} • {record.fileSize}
-                          </Text>
-                          {record.source === 'lab_uploaded' && (
-                            <View style={styles.labBadge}>
-                              <Text style={styles.labBadgeText}>
-                                Lab Report
+                      <View style={styles.recordMain}>
+                        <View style={styles.recordLeft}>
+                          <View
+                            style={[
+                              styles.recordIcon,
+                              { backgroundColor: `${color}15` },
+                            ]}
+                          >
+                            <IconComponent
+                              size={20}
+                              color={color}
+                              strokeWidth={2}
+                            />
+                          </View>
+                          <View style={styles.recordInfo}>
+                            <Text style={styles.recordTitle} numberOfLines={2}>
+                              {record.title}
+                            </Text>
+                            <View style={styles.recordMeta}>
+                              <Text style={styles.recordSource}>
+                                {record.source === 'lab_uploaded'
+                                  ? record.lab
+                                  : record.doctor}
+                              </Text>
+                              <View style={styles.metaDot} />
+                              <Text style={styles.recordDate}>
+                                {record.uploadedAt?.toDate
+                                  ? record.uploadedAt
+                                      .toDate()
+                                      .toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
+                                  : record.uploadedAt?.seconds
+                                  ? new Date(
+                                      record.uploadedAt.seconds * 1000
+                                    ).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })
+                                  : 'N/A'}
                               </Text>
                             </View>
-                          )}
+                            <View style={styles.recordDetails}>
+                              <Text style={styles.fileInfo}>
+                                {record.fileType} • {record.fileSize}
+                              </Text>
+                              {record.source === 'lab_uploaded' && (
+                                <View style={styles.labBadge}>
+                                  <Text style={styles.labBadgeText}>
+                                    Lab Report
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        </View>
+
+                        <View style={styles.recordActions}>
+                          <TouchableOpacity style={styles.actionButton}>
+                            <Eye
+                              size={16}
+                              color={Colors.primary}
+                              strokeWidth={2}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.actionButton}>
+                            <Download
+                              size={16}
+                              color={Colors.primary}
+                              strokeWidth={2}
+                            />
+                          </TouchableOpacity>
                         </View>
                       </View>
+
+                      {record.status !== 'archived' && (
+                        <View style={styles.recordFooter}>
+                          <View
+                            style={[
+                              styles.statusIndicator,
+                              {
+                                backgroundColor: `${getStatusColor(
+                                  record.status
+                                )}20`,
+                              },
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.statusDot,
+                                {
+                                  backgroundColor: getStatusColor(
+                                    record.status
+                                  ),
+                                },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.statusText,
+                                { color: getStatusColor(record.status) },
+                              ]}
+                            >
+                              {record.status.charAt(0).toUpperCase() +
+                                record.status.slice(1)}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
                     </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
 
-                    <View style={styles.recordActions}>
-                      <TouchableOpacity style={styles.actionButton}>
-                        <Eye size={16} color={Colors.primary} strokeWidth={2} />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.actionButton}>
-                        <Download
-                          size={16}
-                          color={Colors.primary}
-                          strokeWidth={2}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+            {/* Empty State */}
+            {filteredRecords.length === 0 && (
+              <View style={styles.emptyState}>
+                <FileText size={48} color={Colors.textLight} strokeWidth={1} />
+                <Text style={styles.emptyTitle}>No records found</Text>
+                <Text style={styles.emptySubtitle}>
+                  Upload your medical documents or wait for lab reports
+                </Text>
+                <TouchableOpacity style={styles.uploadEmptyButton}>
+                  <Upload size={16} color={Colors.primary} strokeWidth={2} />
+                  <Text style={styles.uploadEmptyText}>Upload Document</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-                  {record.status !== 'archived' && (
-                    <View style={styles.recordFooter}>
-                      <View
-                        style={[
-                          styles.statusIndicator,
-                          {
-                            backgroundColor: `${getStatusColor(
-                              record.status
-                            )}20`,
-                          },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.statusDot,
-                            { backgroundColor: getStatusColor(record.status) },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.statusText,
-                            { color: getStatusColor(record.status) },
-                          ]}
-                        >
-                          {record.status.charAt(0).toUpperCase() +
-                            record.status.slice(1)}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Empty State */}
-          {filteredRecords.length === 0 && (
-            <View style={styles.emptyState}>
-              <FileText size={48} color={Colors.textLight} strokeWidth={1} />
-              <Text style={styles.emptyTitle}>No records found</Text>
-              <Text style={styles.emptySubtitle}>
-                Upload your medical documents or wait for lab reports
-              </Text>
-              <TouchableOpacity style={styles.uploadEmptyButton}>
-                <Upload size={16} color={Colors.primary} strokeWidth={2} />
-                <Text style={styles.uploadEmptyText}>Upload Document</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.bottomSpacing} />
-        </ScrollView>
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+        )}
 
         {/* Upload Modal */}
         <Modal
@@ -395,34 +496,56 @@ export default function MedicalRecordsScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Insert Past Record/Prescription</Text>
+              <Text style={styles.modalTitle}>
+                Insert Past Record/Prescription
+              </Text>
               {uploading ? (
                 <ActivityIndicator size="large" color={Colors.primary} />
               ) : (
                 <>
-                  <TouchableOpacity style={styles.uploadOption} onPress={openDocumentPicker}>
+                  <TouchableOpacity
+                    style={styles.uploadOption}
+                    onPress={openDocumentPicker}
+                  >
                     <Text style={styles.uploadOptionText}>Upload PDF</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.uploadOption} onPress={openImagePicker}>
+                  <TouchableOpacity
+                    style={styles.uploadOption}
+                    onPress={openImagePicker}
+                  >
                     <Text style={styles.uploadOptionText}>Upload Photo</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.uploadOption} onPress={openCamera}>
+                  <TouchableOpacity
+                    style={styles.uploadOption}
+                    onPress={openCamera}
+                  >
                     <Text style={styles.uploadOptionText}>Take Photo</Text>
                   </TouchableOpacity>
                   {(selectedFile || selectedImage) && (
                     <View style={styles.previewContainer}>
                       {selectedFile && (
-                        <Text style={styles.previewText}>Selected PDF: {selectedFile.name}</Text>
+                        <Text style={styles.previewText}>
+                          Selected PDF: {selectedFile.name}
+                        </Text>
                       )}
                       {selectedImage && (
-                        <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
+                        <Image
+                          source={{ uri: selectedImage.uri }}
+                          style={styles.previewImage}
+                        />
                       )}
-                      <TouchableOpacity style={styles.uploadConfirmButton} onPress={handleUpload}>
+                      <TouchableOpacity
+                        style={styles.uploadConfirmButton}
+                        onPress={handleUpload}
+                      >
                         <Text style={styles.uploadConfirmText}>Upload</Text>
                       </TouchableOpacity>
                     </View>
                   )}
-                  <TouchableOpacity style={styles.closeModalButton} onPress={() => setUploadModalVisible(false)}>
+                  <TouchableOpacity
+                    style={styles.closeModalButton}
+                    onPress={() => setUploadModalVisible(false)}
+                  >
                     <Text style={styles.closeModalText}>Cancel</Text>
                   </TouchableOpacity>
                 </>
@@ -444,10 +567,26 @@ export default function MedicalRecordsScreen() {
                 <>
                   <Text style={styles.modalTitle}>{selectedRecord.title}</Text>
                   <Text style={styles.modalSubtitle}>
-                    Uploaded: {selectedRecord.uploadedAt?.toDate ? selectedRecord.uploadedAt.toDate().toLocaleString() : (selectedRecord.uploadedAt ? new Date(selectedRecord.uploadedAt.seconds * 1000).toLocaleString() : 'N/A')}
+                    Uploaded:{' '}
+                    {selectedRecord.uploadedAt?.toDate
+                      ? selectedRecord.uploadedAt.toDate().toLocaleString()
+                      : selectedRecord.uploadedAt
+                      ? new Date(
+                          selectedRecord.uploadedAt.seconds * 1000
+                        ).toLocaleString()
+                      : 'N/A'}
                   </Text>
                   {selectedRecord.fileType?.startsWith('image') ? (
-                    <Image source={{ uri: selectedRecord.fileUrl }} style={{ width: 220, height: 300, borderRadius: 12, marginVertical: 16 }} resizeMode="contain" />
+                    <Image
+                      source={{ uri: selectedRecord.fileUrl }}
+                      style={{
+                        width: 220,
+                        height: 300,
+                        borderRadius: 12,
+                        marginVertical: 16,
+                      }}
+                      resizeMode="contain"
+                    />
                   ) : selectedRecord.fileType === 'application/pdf' ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
@@ -456,9 +595,14 @@ export default function MedicalRecordsScreen() {
                       <Text style={styles.openPdfText}>Open PDF</Text>
                     </TouchableOpacity>
                   ) : (
-                    <Text style={{ marginVertical: 16 }}>File type not supported for preview.</Text>
+                    <Text style={{ marginVertical: 16 }}>
+                      File type not supported for preview.
+                    </Text>
                   )}
-                  <TouchableOpacity style={styles.closeModalButton} onPress={() => setPreviewModalVisible(false)}>
+                  <TouchableOpacity
+                    style={styles.closeModalButton}
+                    onPress={() => setPreviewModalVisible(false)}
+                  >
                     <Text style={styles.closeModalText}>Close</Text>
                   </TouchableOpacity>
                 </>
@@ -786,6 +930,20 @@ const styles = StyleSheet.create({
 
   bottomSpacing: {
     height: 100,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Medium',
+    marginTop: 16,
   },
 
   modalOverlay: {

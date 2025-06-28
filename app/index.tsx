@@ -6,7 +6,18 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+  interpolate,
+  Extrapolate,
+} from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -25,7 +36,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
-  const { userData: user } = useAuth();
+  const { userData: user, isLoading } = useAuth();
+
+  // Animation values
+  const logoScale = useSharedValue(0);
+  const sparkleRotation = useSharedValue(0);
+  const cardScale = useSharedValue(0.9);
+  const cardOpacity = useSharedValue(0);
+  const statsScale = useSharedValue(0.8);
+  const statsOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (user) {
@@ -37,9 +56,87 @@ export default function WelcomeScreen() {
     }
   }, [user]);
 
+  useEffect(() => {
+    // Animate logo entrance
+    logoScale.value = withSpring(1, { damping: 15, stiffness: 150 });
+
+    // Animate sparkles rotation
+    sparkleRotation.value = withRepeat(
+      withTiming(360, { duration: 8000 }),
+      -1,
+      false
+    );
+
+    // Animate cards with stagger
+    setTimeout(() => {
+      cardScale.value = withSpring(1, { damping: 12, stiffness: 100 });
+      cardOpacity.value = withTiming(1, { duration: 800 });
+    }, 300);
+
+    // Animate stats
+    setTimeout(() => {
+      statsScale.value = withSpring(1, { damping: 10, stiffness: 80 });
+      statsOpacity.value = withTiming(1, { duration: 600 });
+    }, 600);
+  }, []);
+
   const handleRoleSelection = (role: 'patient' | 'healthcare') => {
     router.push(`/auth/role-selection?role=${role}`);
   };
+
+  // Animated styles
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value }],
+  }));
+
+  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${sparkleRotation.value}deg` }],
+  }));
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+    opacity: cardOpacity.value,
+  }));
+
+  const statsAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: statsScale.value }],
+    opacity: statsOpacity.value,
+  }));
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#f8fafc', '#e2e8f0', '#f1f5f9']}
+          style={styles.backgroundGradient}
+        >
+          <View style={styles.loadingContainer}>
+            <View style={styles.loadingContent}>
+              <View style={styles.logoWrapper}>
+                <LinearGradient
+                  colors={[Colors.primary, '#60a5fa']}
+                  style={styles.logoGradient}
+                >
+                  <Heart size={40} color="#ffffff" strokeWidth={2.5} />
+                </LinearGradient>
+              </View>
+              <Text style={styles.appName}>svastheya</Text>
+              <Text style={styles.appNameSubtext}>स्वास्थ्य</Text>
+              <ActivityIndicator
+                size="large"
+                color={Colors.primary}
+                style={styles.loadingSpinner}
+              />
+              <Text style={styles.loadingText}>
+                Loading your health journey...
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,18 +158,20 @@ export default function WelcomeScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoWrapper}>
+              <Animated.View style={[styles.logoWrapper, logoAnimatedStyle]}>
                 <LinearGradient
                   colors={[Colors.primary, '#60a5fa']}
                   style={styles.logoGradient}
                 >
                   <Heart size={40} color="#ffffff" strokeWidth={2.5} />
                 </LinearGradient>
-                <View style={styles.sparkleContainer}>
+                <Animated.View
+                  style={[styles.sparkleContainer, sparkleAnimatedStyle]}
+                >
                   <Sparkles size={18} color="#fbbf24" style={styles.sparkle1} />
                   <Star size={14} color="#f59e0b" style={styles.sparkle2} />
-                </View>
-              </View>
+                </Animated.View>
+              </Animated.View>
               <Text style={styles.appName}>svastheya</Text>
               <Text style={styles.appNameSubtext}>स्वास्थ्य</Text>
               <View style={styles.taglineContainer}>
@@ -95,7 +194,7 @@ export default function WelcomeScreen() {
             </Text>
 
             {/* Stats Section */}
-            <View style={styles.statsContainer}>
+            <Animated.View style={[styles.statsContainer, statsAnimatedStyle]}>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>10K+</Text>
                 <Text style={styles.statLabel}>Patients</Text>
@@ -110,126 +209,138 @@ export default function WelcomeScreen() {
                 <Text style={styles.statNumber}>24/7</Text>
                 <Text style={styles.statLabel}>Support</Text>
               </View>
-            </View>
+            </Animated.View>
           </View>
 
           {/* Role Selection Cards */}
           <View style={styles.roleContainer}>
-            <TouchableOpacity
-              style={styles.roleCard}
-              onPress={() => handleRoleSelection('patient')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#ffffff', '#f8fafc']}
-                style={styles.roleCardGradient}
+            <Animated.View style={cardAnimatedStyle}>
+              <TouchableOpacity
+                style={styles.roleCard}
+                onPress={() => handleRoleSelection('patient')}
+                activeOpacity={0.7}
               >
-                <View style={styles.roleHeader}>
-                  <View style={styles.roleIconContainer}>
-                    <LinearGradient
-                      colors={[
-                        'rgba(59, 130, 246, 0.1)',
-                        'rgba(59, 130, 246, 0.05)',
-                      ]}
-                      style={styles.roleIconGradient}
-                    >
-                      <Heart size={32} color={Colors.primary} strokeWidth={2} />
-                    </LinearGradient>
-                  </View>
-                  <View style={styles.roleArrow}>
-                    <ArrowRight
-                      size={20}
-                      color={Colors.primary}
-                      strokeWidth={2}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.roleContent}>
-                  <Text style={styles.roleTitle}>I'm a Patient</Text>
-                  <Text style={styles.roleDescription}>
-                    Access medical records, book appointments, track health
-                    metrics, and manage your complete health journey
-                  </Text>
-
-                  <View style={styles.roleFeatures}>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureDot} />
-                      <Text style={styles.featureText}>Medical Records</Text>
+                <LinearGradient
+                  colors={['#ffffff', '#f8fafc']}
+                  style={styles.roleCardGradient}
+                >
+                  <View style={styles.roleHeader}>
+                    <View style={styles.roleIconContainer}>
+                      <LinearGradient
+                        colors={[
+                          'rgba(59, 130, 246, 0.1)',
+                          'rgba(59, 130, 246, 0.05)',
+                        ]}
+                        style={styles.roleIconGradient}
+                      >
+                        <Heart
+                          size={32}
+                          color={Colors.primary}
+                          strokeWidth={2}
+                        />
+                      </LinearGradient>
                     </View>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureDot} />
-                      <Text style={styles.featureText}>
-                        Appointment Booking
-                      </Text>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureDot} />
-                      <Text style={styles.featureText}>Health Tracking</Text>
+                    <View style={styles.roleArrow}>
+                      <ArrowRight
+                        size={20}
+                        color={Colors.primary}
+                        strokeWidth={2}
+                      />
                     </View>
                   </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.roleCard}
-              onPress={() => handleRoleSelection('healthcare')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#ffffff', '#f8fafc']}
-                style={styles.roleCardGradient}
+                  <View style={styles.roleContent}>
+                    <Text style={styles.roleTitle}>I'm a Patient</Text>
+                    <Text style={styles.roleDescription}>
+                      Access medical records, track health metrics, and manage
+                      your complete health journey with ease
+                    </Text>
+
+                    <View style={styles.roleFeatures}>
+                      <View style={styles.featureItem}>
+                        <View style={styles.featureDot} />
+                        <Text style={styles.featureText}>Medical Records</Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={styles.featureDot} />
+                        <Text style={styles.featureText}>Health Tracking</Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={styles.featureDot} />
+                        <Text style={styles.featureText}>Family Tree</Text>
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={cardAnimatedStyle}>
+              <TouchableOpacity
+                style={styles.roleCard}
+                onPress={() => handleRoleSelection('healthcare')}
+                activeOpacity={0.7}
               >
-                <View style={styles.roleHeader}>
-                  <View style={styles.roleIconContainer}>
-                    <LinearGradient
-                      colors={[
-                        'rgba(59, 130, 246, 0.1)',
-                        'rgba(59, 130, 246, 0.05)',
-                      ]}
-                      style={styles.roleIconGradient}
-                    >
-                      <Users size={32} color={Colors.primary} strokeWidth={2} />
-                    </LinearGradient>
+                <LinearGradient
+                  colors={['#ffffff', '#f8fafc']}
+                  style={styles.roleCardGradient}
+                >
+                  <View style={styles.roleHeader}>
+                    <View style={styles.roleIconContainer}>
+                      <LinearGradient
+                        colors={[
+                          'rgba(59, 130, 246, 0.1)',
+                          'rgba(59, 130, 246, 0.05)',
+                        ]}
+                        style={styles.roleIconGradient}
+                      >
+                        <Users
+                          size={32}
+                          color={Colors.primary}
+                          strokeWidth={2}
+                        />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.roleArrow}>
+                      <ArrowRight
+                        size={20}
+                        color={Colors.primary}
+                        strokeWidth={2}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.roleArrow}>
-                    <ArrowRight
-                      size={20}
-                      color={Colors.primary}
-                      strokeWidth={2}
-                    />
-                  </View>
-                </View>
 
-                <View style={styles.roleContent}>
-                  <Text style={styles.roleTitle}>
-                    I'm a Healthcare Professional
-                  </Text>
-                  <Text style={styles.roleDescription}>
-                    Manage patient records, lab results, appointments, and
-                    provide exceptional healthcare services
-                  </Text>
+                  <View style={styles.roleContent}>
+                    <Text style={styles.roleTitle}>
+                      I'm a Healthcare Professional
+                    </Text>
+                    <Text style={styles.roleDescription}>
+                      Manage patient records, lab results, and provide
+                      exceptional healthcare services
+                    </Text>
 
-                  <View style={styles.roleFeatures}>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureDot} />
-                      <Text style={styles.featureText}>Patient Management</Text>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureDot} />
-                      <Text style={styles.featureText}>Lab Results</Text>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <View style={styles.featureDot} />
-                      <Text style={styles.featureText}>
-                        Digital Prescriptions
-                      </Text>
+                    <View style={styles.roleFeatures}>
+                      <View style={styles.featureItem}>
+                        <View style={styles.featureDot} />
+                        <Text style={styles.featureText}>
+                          Patient Management
+                        </Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={styles.featureDot} />
+                        <Text style={styles.featureText}>Lab Results</Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={styles.featureDot} />
+                        <Text style={styles.featureText}>
+                          Digital Prescriptions
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
 
           {/* Footer */}
@@ -605,5 +716,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
     opacity: 0.8,
+  },
+
+  // Loading state styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+
+  loadingContent: {
+    alignItems: 'center',
+  },
+
+  loadingSpinner: {
+    marginTop: 30,
+    marginBottom: 20,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
   },
 });
