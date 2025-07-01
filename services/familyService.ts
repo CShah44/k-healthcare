@@ -418,6 +418,68 @@ export class FamilyService {
     }
   }
 
+  // Add child user to family after Firebase authentication (used with AuthContext.createChildAccount)
+  static async addChildToFamily(
+    familyId: string,
+    childUserId: string,
+    childData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    },
+    relation: FamilyRelation,
+    parentId: string
+  ): Promise<void> {
+    try {
+      const now = new Date().toISOString();
+      
+      // Add child to family members
+      const newMember: FamilyMember = {
+        userId: childUserId,
+        firstName: childData.firstName,
+        lastName: childData.lastName,
+        email: childData.email,
+        relation: relation,
+        addedAt: now,
+        status: 'accepted',
+        addedBy: parentId,
+      };
+
+      await updateDoc(doc(db, 'families', familyId), {
+        members: arrayUnion(newMember),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error adding child to family:', error);
+      throw new Error('Failed to add child to family');
+    }
+  }
+
+  // Create child account and add to family directly (DEPRECATED - use AuthContext.createChildAccount instead)
+  static async createChildFamilyMember(
+    familyId: string,
+    parentId: string,
+    parentName: string,
+    childData: {
+      firstName: string;
+      middleName: string;
+      lastName: string;
+      phoneNumber: string;
+      dateOfBirth: string;
+      address: string;
+      gender: string;
+    },
+    relation: FamilyRelation
+  ): Promise<string> {
+    try {
+      // This method is deprecated - use AuthContext.createChildAccount followed by addChildToFamily
+      throw new Error('This method is deprecated. Please use AuthContext.createChildAccount followed by FamilyService.addChildToFamily');
+    } catch (error) {
+      console.error('Error creating child family member:', error);
+      throw new Error('This method is deprecated. Please use AuthContext.createChildAccount followed by FamilyService.addChildToFamily');
+    }
+  }
+
   // Get family member's medical records (basic info only for privacy)
   static async getFamilyMemberRecords(
     memberId: string,

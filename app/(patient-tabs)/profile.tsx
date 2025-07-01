@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -23,18 +25,105 @@ import {
   LogOut,
   ChevronRight,
   CreditCard as Edit,
+  Users,
+  ArrowLeftRight,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDoc, doc } from 'firebase/firestore';
+import { db } from '@/constants/firebase';
 
 export default function PatientProfileScreen() {
-  const { userData: user, logout } = useAuth();
+  const { 
+    userData: user, 
+    logout, 
+    switchToAccount, 
+    getAccessibleAccounts, 
+    removeParentLink,
+    isSwitchedAccount,
+    originalUserId
+  } = useAuth();
+  const [accessibleAccounts, setAccessibleAccounts] = useState<any[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+  // Fetch accessible accounts when component mounts
+  useEffect(() => {
+    const fetchAccessibleAccounts = async () => {
+      setLoadingAccounts(true);
+      try {
+        const accounts = await getAccessibleAccounts();
+        setAccessibleAccounts(accounts);
+        console.log('Accessible accounts fetched:', accounts);
+      } catch (error) {
+        console.error('Error fetching accessible accounts:', error);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+
+    fetchAccessibleAccounts();
+  }, [user?.linkedAccounts, user?.parentAccountId]);
+
+  const handleSwitchAccount = async (accountId: string) => {
+    try {
+      await switchToAccount(accountId);
+      Alert.alert('Success', 'Switched to account successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  // Calculate age from date of birth
+  const calculateAge = (dateOfBirth: string): number => {
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  // Check if user is 16+ and can remove parent link
+  const canRemoveParentLink = (): boolean => {
+    if (!user?.isChildAccount || !user?.dateOfBirth) return false;
+    return calculateAge(user.dateOfBirth) >= 16;
+  };
+
+  const handleRemoveParentLink = () => {
+    Alert.alert(
+      'Remove Parent Link',
+      'Are you sure you want to remove the link with your parent account? This will make your account independent and your parent will no longer be able to access it.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove Link',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeParentLink();
+              Alert.alert('Success', 'Parent link removed successfully! Your account is now independent.');
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const profileData = [
     { icon: Mail, label: 'Email', value: user?.email || 'Not provided' },
     { icon: Phone, label: 'Phone', value: user?.phoneNumber || 'Not provided' },
-    { icon: Calendar, label: 'Date of Birth', value: 'January 15, 1990' },
+    {
+      icon: Calendar,
+      label: 'Date of Birth',
+      value: user?.dateOfBirth || 'Not provided',
+    },
     { icon: Heart, label: 'Blood Type', value: 'O+' },
   ];
 
@@ -97,8 +186,80 @@ export default function PatientProfileScreen() {
           <Text style={styles.userName}>
             {user?.firstName} {user?.lastName}
           </Text>
-          <Text style={styles.userRole}>Patient</Text>
+          <Text style={styles.userRole}>
+            {user?.isChildAccount ? 'Child Account' : 'Patient'}
+          </Text>
+          {user?.isChildAccount && (
+            <Text style={styles.childAccountNote}>
+              Managed by parent account
+            </Text>
+          )}
+          {isSwitchedAccount && (
+            <View style={styles.switchedAccountIndicator}>
+              <Text style={styles.switchedAccountText}>
+                👤 Switched Account
+              </Text>
+              <TouchableOpacity
+                style={styles.switchBackButton}
+                onPress={() => handleSwitchAccount(originalUserId || '')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.switchBackButtonText}>Switch Back</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
+
+        {/* Accessible Accounts Section */}
+        {accessibleAccounts.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account Switching</Text>
+            <View style={styles.linkedAccountsCard}>
+              <Text style={styles.linkedAccountsDescription}>
+                {user?.isChildAccount 
+                  ? "Switch back to your parent's account"
+                  : "Switch between your account and your children's accounts"
+                }
+              </Text>
+              {loadingAccounts ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                accessibleAccounts.map((account) => (
+                  <TouchableOpacity
+                    key={account.id}
+                    style={styles.linkedAccountItem}
+                    onPress={() => handleSwitchAccount(account.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.linkedAccountInfo}>
+                      <View style={[
+                        styles.linkedAccountAvatar,
+                        account.type === 'parent' && styles.parentAccountAvatar
+                      ]}>
+                        <Text style={styles.linkedAccountInitials}>
+                          {account.firstName[0]}
+                          {account.lastName[0]}
+                        </Text>
+                      </View>
+                      <View style={styles.linkedAccountDetails}>
+                        <Text style={styles.linkedAccountName}>
+                          {account.firstName} {account.lastName}
+                        </Text>
+                        <Text style={[
+                          styles.linkedAccountType,
+                          account.type === 'parent' && styles.parentAccountType
+                        ]}>
+                          {account.type === 'parent' ? 'Parent Account' : 'Child Account'}
+                        </Text>
+                      </View>
+                    </View>
+                    <ArrowLeftRight size={16} color={Colors.primary} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Profile Information */}
         <View style={styles.section}>
@@ -143,6 +304,29 @@ export default function PatientProfileScreen() {
             </View>
           </View>
         ))}
+
+        {/* Remove Parent Link Section (for 16+ child accounts) */}
+        {canRemoveParentLink() && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account Independence</Text>
+            <TouchableOpacity
+              style={styles.removeParentLinkButton}
+              onPress={handleRemoveParentLink}
+              activeOpacity={0.7}
+            >
+              <Users size={18} color={Colors.medical.orange} />
+              <View style={styles.removeParentLinkContent}>
+                <Text style={styles.removeParentLinkTitle}>
+                  Remove Parent Link
+                </Text>
+                <Text style={styles.removeParentLinkDescription}>
+                  You're 16+ and can make your account independent
+                </Text>
+              </View>
+              <ChevronRight size={18} color={Colors.medical.orange} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Logout Button */}
         <View style={styles.section}>
@@ -239,6 +423,44 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
 
+  childAccountNote: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontFamily: 'Inter-Medium',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
+  switchedAccountIndicator: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+    alignItems: 'center',
+  },
+
+  switchedAccountText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontFamily: 'Inter-Medium',
+    marginBottom: 8,
+  },
+
+  switchBackButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+
+  switchBackButtonText: {
+    fontSize: 12,
+    color: 'white',
+    fontFamily: 'Inter-SemiBold',
+  },
+
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
@@ -249,6 +471,84 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
     marginBottom: 12,
+  },
+
+  // Linked Accounts Styles
+  linkedAccountsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+
+  linkedAccountsDescription: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+
+  linkedAccountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+
+  linkedAccountInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  linkedAccountAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  linkedAccountInitials: {
+    fontSize: 14,
+    color: 'white',
+    fontFamily: 'Inter-Bold',
+  },
+
+  linkedAccountDetails: {
+    flex: 1,
+  },
+
+  linkedAccountName: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+
+  linkedAccountType: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+  },
+
+  parentAccountAvatar: {
+    backgroundColor: Colors.medical.orange,
+  },
+
+  parentAccountType: {
+    color: Colors.medical.orange,
+    fontFamily: 'Inter-SemiBold',
   },
 
   infoRow: {
@@ -321,6 +621,35 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 16,
     color: Colors.text,
+    fontFamily: 'Inter-Regular',
+  },
+
+  // Remove Parent Link Styles
+  removeParentLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 146, 60, 0.2)',
+    gap: 12,
+  },
+
+  removeParentLinkContent: {
+    flex: 1,
+  },
+
+  removeParentLinkTitle: {
+    fontSize: 16,
+    color: Colors.medical.orange,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 2,
+  },
+
+  removeParentLinkDescription: {
+    fontSize: 12,
+    color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
   },
 

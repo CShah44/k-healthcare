@@ -38,8 +38,15 @@ export default function PatientSignupScreen() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signup, isLoading } = useAuth();
+
+  const genderOptions = [
+    { label: 'Male', value: 'male' },
+    { label: 'Female', value: 'female' },
+    { label: 'Other', value: 'other' },
+  ];
 
   const updateFormData = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -91,6 +98,20 @@ export default function PatientSignupScreen() {
       newErrors.dateOfBirth = 'Date of birth is required';
     } else if (!/^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/.test(formData.dateOfBirth)) {
       newErrors.dateOfBirth = 'Please use MM/DD/YYYY format';
+    } else {
+      // Check if user is at least 16 years old
+      const today = new Date();
+      const birthDate = new Date(formData.dateOfBirth);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      if (age < 16) {
+        newErrors.dateOfBirth = 'You must be at least 16 years old to create an account';
+      }
     }
 
     // Address validation
@@ -362,13 +383,31 @@ export default function PatientSignupScreen() {
 
                 <View style={styles.inputContainer}>
                   <Text style={styles.inputLabel}>Gender *</Text>
-                  <Input
-                    placeholder="Male, Female, or Other"
-                    value={formData.gender}
-                    onChangeText={(value) => updateFormData('gender', value.toLowerCase())}
-                    autoCapitalize="none"
-                    style={[styles.input, errors.gender && styles.inputError]}
-                  />
+                  <TouchableOpacity
+                    style={[styles.dropdownButton, errors.gender && styles.inputError]}
+                    onPress={() => setShowGenderDropdown(!showGenderDropdown)}
+                  >
+                    <Text style={[styles.dropdownText, !formData.gender && styles.placeholderText]}>
+                      {formData.gender ? genderOptions.find(opt => opt.value === formData.gender)?.label : 'Select gender'}
+                    </Text>
+                    <Text style={styles.dropdownArrow}>{showGenderDropdown ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  {showGenderDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      {genderOptions.map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={styles.dropdownOption}
+                          onPress={() => {
+                            updateFormData('gender', option.value);
+                            setShowGenderDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownOptionText}>{option.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                   {errors.gender && (
                     <Text style={styles.errorText}>{errors.gender}</Text>
                   )}
@@ -714,5 +753,62 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: 'Inter-Regular',
     opacity: 0.7,
+  },
+
+  // Dropdown Styles
+  dropdownButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  dropdownText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
+  },
+
+  placeholderText: {
+    color: Colors.textLight,
+  },
+
+  dropdownArrow: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+
+  dropdownMenu: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderRadius: 12,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  dropdownOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+
+  dropdownOptionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
   },
 });
