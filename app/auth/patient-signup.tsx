@@ -9,6 +9,8 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,6 +43,11 @@ export default function PatientSignupScreen() {
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signup, isLoading } = useAuth();
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   const genderOptions = [
     { label: 'Male', value: 'male' },
@@ -168,40 +175,64 @@ export default function PatientSignupScreen() {
       );
       return;
     }
-
+    setOtpLoading(true);
+    setOtpError('');
     try {
-      await signup({
-        ...formData,
-        role: 'patient',
+      // Send OTP to email
+      const response = await fetch('http://localhost:3001/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
       });
-      
-      // Show success message
-      Alert.alert(
-        'Account Created Successfully! 🎉',
-        'Welcome to Svastheya! Your account has been created and you are now signed in.',
-        [
-          {
-            text: 'Get Started',
-            onPress: () => router.replace('/(patient-tabs)'),
-          },
-        ]
-      );
-    } catch (error: any) {
-      console.error('Signup error:', error);
-    
-      let message = 'Failed to create account. Please try again.';
-    
-      if (error.code === 'auth/email-already-in-use') {
-        message = 'An account with this email already exists. Please log in.';
-      } else if (error.code === 'auth/invalid-email') {
-        message = 'The email address is invalid.';
-      } else if (error.code === 'auth/weak-password') {
-        message = 'Password is too weak. Use at least 8 characters with letters and numbers.';
+      const data = await response.json();
+      if (data.success) {
+        setOtpSent(true);
+        setShowOtpModal(true);
+      } else {
+        setOtpError('Failed to send OTP. Please try again.');
       }
-    
-      Alert.alert('Signup Failed', message);
+    } catch (error) {
+      setOtpError('Failed to send OTP. Please try again.');
+    } finally {
+      setOtpLoading(false);
     }
-    
+  };
+
+  const handleVerifyOtp = async () => {
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const response = await fetch('http://localhost:3001/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, otp }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setShowOtpModal(false);
+        // Proceed with actual signup
+        await signup({
+          ...formData,
+          role: 'patient',
+        });
+        Alert.alert(
+          'Account Created Successfully! 🎉',
+          'Welcome to Svastheya! Your account has been created and you are now signed in.',
+          [
+            {
+              text: 'Get Started',
+              onPress: () => router.replace('/(patient-tabs)'),
+            },
+          ]
+        );
+      } else {
+        setOtpError(data.message || 'Invalid OTP. Please try again.');
+      }
+    } catch (error) {
+      setOtpError('Failed to verify OTP. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -505,6 +536,30 @@ export default function PatientSignupScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
+      <Modal
+        visible={showOtpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOtpModal(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+          <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 12, width: '80%' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Enter OTP</Text>
+            <Text style={{ marginBottom: 8 }}>An OTP has been sent to your email. Please enter it below to verify your email address.</Text>
+            <TextInput
+              value={otp}
+              onChangeText={setOtp}
+              placeholder="Enter OTP"
+              keyboardType="numeric"
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginBottom: 12 }}
+              maxLength={6}
+            />
+            {otpError ? <Text style={{ color: 'red', marginBottom: 8 }}>{otpError}</Text> : null}
+            <Button title={otpLoading ? 'Verifying...' : 'Verify OTP'} onPress={handleVerifyOtp} disabled={otpLoading || otp.length !== 6} />
+            <Button title="Cancel" onPress={() => setShowOtpModal(false)} style={{ marginTop: 8 }} variant="secondary" />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

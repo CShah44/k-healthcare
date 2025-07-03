@@ -9,6 +9,8 @@ declare module '@env' {
     export const SUPABASE_URL: string;
     export const SUPABASE_ANON_KEY: string;
   
+    export const EMAIL_USER: string;
+    export const EMAIL_PASS: string;
     // Add any other environment variables you use here
   }
   

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -62,6 +64,11 @@ export default function HealthcareSignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [showOtpModal, setShowOtpModal] = useState(false);
   
   // Get auth context with fallback
   const authContext = useAuth();
@@ -139,40 +146,52 @@ export default function HealthcareSignupScreen() {
       return;
     }
 
-    // Check if signup function exists
-    if (!signup) {
-      Alert.alert(
-        'Error',
-        'Authentication service is not available. Please try again later.'
-      );
-      console.error('Signup function not available from AuthContext');
-      return;
-    }
-
-    setIsSubmitting(true);
-
+    setOtpLoading(true);
+    setOtpError('');
     try {
-      console.log('Attempting signup with data:', { ...formData, password: '[HIDDEN]', confirmPassword: '[HIDDEN]' });
-      
-      await signup(formData);
-      
-      console.log('Signup successful, navigating to healthcare tabs');
-      router.replace('/(healthcare-tabs)');
-      
-    } catch (error) {
-      console.error('Signup error:', error);
-      
-      let errorMessage = 'Failed to create account. Please try again.';
-      
-      // Handle specific error types
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
+      // Send OTP to email
+      const response = await fetch('http://localhost:3001/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOtpSent(true);
+        setShowOtpModal(true);
+      } else {
+        setOtpError('Failed to send OTP. Please try again.');
       }
-      
-      Alert.alert('Registration Failed', errorMessage);
+    } catch (error) {
+      setOtpError('Failed to send OTP. Please try again.');
     } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const response = await fetch('http://localhost:3001/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, otp }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setShowOtpModal(false);
+        setIsSubmitting(true);
+        // Proceed with actual signup
+        await signup(formData);
+        router.replace('/(healthcare-tabs)');
+      } else {
+        setOtpError(data.message || 'Invalid OTP. Please try again.');
+      }
+    } catch (error) {
+      setOtpError('Failed to verify OTP. Please try again.');
+    } finally {
+      setOtpLoading(false);
       setIsSubmitting(false);
     }
   };
@@ -497,6 +516,30 @@ export default function HealthcareSignupScreen() {
           </View>
         </ScrollView>
       </LinearGradient>
+      <Modal
+        visible={showOtpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOtpModal(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+          <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 12, width: '80%' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Enter OTP</Text>
+            <Text style={{ marginBottom: 8 }}>An OTP has been sent to your email. Please enter it below to verify your email address.</Text>
+            <TextInput
+              value={otp}
+              onChangeText={setOtp}
+              placeholder="Enter OTP"
+              keyboardType="numeric"
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginBottom: 12 }}
+              maxLength={6}
+            />
+            {otpError ? <Text style={{ color: 'red', marginBottom: 8 }}>{otpError}</Text> : null}
+            <Button title={otpLoading ? 'Verifying...' : 'Verify OTP'} onPress={handleVerifyOtp} disabled={otpLoading || otp.length !== 6} />
+            <Button title="Cancel" onPress={() => setShowOtpModal(false)} style={{ marginTop: 8 }} variant="secondary" />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

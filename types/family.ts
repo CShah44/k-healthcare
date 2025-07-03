@@ -28,7 +28,6 @@ export type FamilyRelation =
   | 'grandchild'
   | 'uncle'
   | 'aunt'
-  | 'cousin'
   | 'other';
 
 export interface FamilyInvitation {
@@ -53,6 +52,5 @@ export const FAMILY_RELATIONS: { value: FamilyRelation; label: string }[] = [
   { value: 'grandchild', label: 'Grandchild' },
   { value: 'uncle', label: 'Uncle' },
   { value: 'aunt', label: 'Aunt' },
-  { value: 'cousin', label: 'Cousin' },
   { value: 'other', label: 'Other' },
 ];
