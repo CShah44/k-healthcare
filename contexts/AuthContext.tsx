@@ -68,6 +68,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   refreshUserData: () => Promise<void>; // Add refreshUserData function
+  updateUserProfile: (updates: Partial<UserData>) => Promise<void>; // Add updateUserProfile function
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -629,6 +630,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Update user profile function
+  const updateUserProfile = async (updates: Partial<UserData>) => {
+    if (!user || !userData) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      setIsLoading(true);
+
+      const updatedData = {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      };
+
+      // Update main users collection
+      await updateDoc(doc(db, 'users', user.uid), updatedData);
+
+      // Update role-specific collection
+      if (userData.role === 'patient') {
+        await updateDoc(doc(db, 'patients', user.uid), updatedData);
+      } else if (userData.role === 'doctor') {
+        await updateDoc(doc(db, 'doctors', user.uid), updatedData);
+      } else if (userData.role === 'lab_assistant') {
+        await updateDoc(doc(db, 'lab_assistants', user.uid), updatedData);
+      }
+
+      // Update local state
+      setUserData(prev => prev ? { ...prev, ...updates } : null);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      throw new Error('Failed to update profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     userData,
@@ -644,6 +681,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     logout,
     forgotPassword,
     refreshUserData, // Add refreshUserData to the context value
+    updateUserProfile, // Add updateUserProfile to the context value
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

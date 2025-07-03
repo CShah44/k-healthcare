@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  TextInput,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -30,38 +31,111 @@ import {
   Pill,
   FileImage,
   Plus,
+  Tag,
+  X,
+  Filter,
+  FolderOpen,
+  Heart,
+  Brain,
+  Bone,
+  Activity,
+  Check,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
 import {
   collection,
   query,
-  where,
-  getDocs,
   orderBy,
   onSnapshot,
+  updateDoc,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
+// Predefined tags for medical records
+const PREDEFINED_TAGS = [
+  {
+    id: 'cardiology',
+    label: 'Cardiology',
+    icon: Heart,
+    color: Colors.medical.red,
+    isCustom: false,
+  },
+  {
+    id: 'neurology',
+    label: 'Neurology',
+    icon: Brain,
+    color: Colors.medical.blue,
+    isCustom: false,
+  },
+  {
+    id: 'orthopedics',
+    label: 'Orthopedics',
+    icon: Bone,
+    color: Colors.medical.orange,
+    isCustom: false,
+  },
+  {
+    id: 'general',
+    label: 'General',
+    icon: Activity,
+    color: Colors.medical.green,
+    isCustom: false,
+  },
+  {
+    id: 'lab_reports',
+    label: 'Lab Reports',
+    icon: TestTube2,
+    color: Colors.medical.purple,
+    isCustom: false,
+  },
+  {
+    id: 'prescriptions',
+    label: 'Prescriptions',
+    icon: Pill,
+    color: Colors.medical.yellow,
+    isCustom: false,
+  },
+  {
+    id: 'imaging',
+    label: 'Imaging',
+    icon: FileText,
+    color: Colors.primary,
+    isCustom: false,
+  },
+  {
+    id: 'emergency',
+    label: 'Emergency',
+    icon: Activity,
+    color: Colors.error,
+    isCustom: false,
+  },
+];
+
 export default function MedicalRecordsScreen() {
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [uploadModalVisible, setUploadModalVisible] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] =
-    useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [selectedImage, setSelectedImage] =
-    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [showCustomTagModal, setShowCustomTagModal] = useState(false);
+  const [newTagInput, setNewTagInput] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [loadingTags, setLoadingTags] = useState(false);
+  const [addingTag, setAddingTag] = useState(false);
+  const { user } = useAuth();
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -110,6 +184,46 @@ export default function MedicalRecordsScreen() {
     return () => unsubscribe();
   }, [user]);
 
+  // Real-time user's custom tags syncing
+  useEffect(() => {
+    if (!user) return;
+
+    setLoadingTags(true);
+    
+    const unsubscribeUserTags = onSnapshot(
+      doc(db, 'userTags', user.uid),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          setCustomTags(data.customTags || []);
+        } else {
+          setCustomTags([]);
+        }
+        setLoadingTags(false);
+      },
+      (error) => {
+        console.error('Error listening to custom tags:', error);
+        setLoadingTags(false);
+      }
+    );
+
+    return () => unsubscribeUserTags();
+  }, [user]);
+
+  const saveUserCustomTags = async (tags: string[]) => {
+    if (!user) return;
+    
+    try {
+      await setDoc(doc(db, 'userTags', user.uid), {
+        customTags: tags,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error saving custom tags:', error);
+      throw error;
+    }
+  };
+
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
@@ -121,22 +235,55 @@ export default function MedicalRecordsScreen() {
     transform: [{ translateX: filterTranslateX.value }],
   }));
 
+  // Filter records based on search, tags, and type
+  const filteredRecords = medicalRecords.filter((record) => {
+    // Search filter
+    const matchesSearch =
+      searchQuery === '' ||
+      record.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.doctor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.lab?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Tag filter
+    const matchesTags =
+      selectedTags.length === 0 ||
+      (record.tags &&
+        record.tags.some((tag: string) => selectedTags.includes(tag)));
+
+    // Type filter
+    const matchesType =
+      selectedFilter === 'all' || record.type === selectedFilter;
+
+    return matchesSearch && matchesTags && matchesType;
+  });
+
+  // Get unique tags from records and combine with custom tags
+  const availableTags = Array.from(
+    new Set(
+      medicalRecords
+        .flatMap((record) => record.tags || [])
+        .concat(PREDEFINED_TAGS.map((tag) => tag.id))
+        .concat(customTags)
+    )
+  );
+
+  
   const filters = [
-    { id: 'all', label: 'All', count: medicalRecords.length },
+    { id: 'all', label: 'All', count: filteredRecords.length },
     {
       id: 'uploaded',
       label: 'My Uploads',
-      count: medicalRecords.filter((r) => r.type === 'uploaded').length,
+      count: filteredRecords.filter((r) => r.type === 'uploaded').length,
     },
     {
       id: 'lab_reports',
       label: 'Lab Reports',
-      count: medicalRecords.filter((r) => r.type === 'lab_reports').length,
+      count: filteredRecords.filter((r) => r.type === 'lab_reports').length,
     },
     {
       id: 'prescriptions',
       label: 'Prescriptions',
-      count: medicalRecords.filter((r) => r.type === 'prescriptions').length,
+      count: filteredRecords.filter((r) => r.type === 'prescriptions').length,
     },
   ];
 
@@ -150,6 +297,8 @@ export default function MedicalRecordsScreen() {
         return { icon: Pill, color: Colors.medical.orange };
       case 'uploaded':
         return { icon: FileImage, color: Colors.primary };
+      case 'lab_reports':
+        return { icon: TestTube2, color: Colors.medical.green };
       default:
         return { icon: FileText, color: Colors.textSecondary };
     }
@@ -172,73 +321,136 @@ export default function MedicalRecordsScreen() {
     }
   };
 
-  const filteredRecords =
-    selectedFilter === 'all'
-      ? medicalRecords
-      : medicalRecords.filter((record) => record.type === selectedFilter);
-
-  const openDocumentPicker = async () => {
-    try {
-      setUploading(true);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf'],
-        copyToCacheDirectory: true,
-      });
-      setUploading(false);
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedFile(result.assets[0]);
-        setSelectedImage(null);
+  const getTagInfo = (tagId: string) => {
+    const predefinedTag = PREDEFINED_TAGS.find((tag) => tag.id === tagId);
+    return (
+      predefinedTag || {
+        id: tagId,
+        label: tagId.charAt(0).toUpperCase() + tagId.slice(1),
+        icon: Tag,
+        color: Colors.primary,
+        isCustom: true,
       }
-    } catch (e) {
-      setUploading(false);
-      Alert.alert('Error', 'Could not pick document.');
+    );
+  };
+
+  const getAllAvailableTags = () => {
+    return [
+      ...PREDEFINED_TAGS,
+      ...customTags.map((tag) => ({
+        id: tag,
+        label: tag.charAt(0).toUpperCase() + tag.slice(1),
+        icon: Tag,
+        color: Colors.primary,
+        isCustom: true,
+      })),
+    ];
+  };
+
+  const addCustomTag = async () => {
+    const trimmedTag = newTagInput.trim().toLowerCase();
+    if (!trimmedTag) {
+      Alert.alert('Error', 'Please enter a tag name');
+      return;
+    }
+
+    // Check if tag already exists (in predefined or custom tags)
+    const allExistingTags = [
+      ...PREDEFINED_TAGS.map((t) => t.id),
+      ...customTags,
+    ];
+    if (allExistingTags.includes(trimmedTag)) {
+      Alert.alert('Error', 'This tag already exists');
+      return;
+    }
+
+    try {
+      setAddingTag(true);
+      
+      // Add to custom tags and select it
+      const newCustomTags = [...customTags, trimmedTag];
+      setCustomTags(newCustomTags);
+      setSelectedTags((prev) => [...prev, trimmedTag]);
+      
+      // Save to database
+      await saveUserCustomTags(newCustomTags);
+      
+      setNewTagInput('');
+      setShowCustomTagModal(false);
+      
+      // Show success feedback
+      Alert.alert('Success', `Tag "${trimmedTag}" has been added and is now available for filtering!`);
+    } catch (error) {
+      console.error('Error adding custom tag:', error);
+      Alert.alert('Error', 'Failed to save custom tag. Please try again.');
+      
+      // Revert local changes on error
+      setCustomTags((prev) => prev.filter(tag => tag !== trimmedTag));
+      setSelectedTags((prev) => prev.filter(tag => tag !== trimmedTag));
+    } finally {
+      setAddingTag(false);
     }
   };
 
-  const openImagePicker = async () => {
+  const removeCustomTag = async (tagId: string) => {
     try {
-      setUploading(true);
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 1,
-      });
-      setUploading(false);
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedImage(result.assets[0]);
-        setSelectedFile(null);
-      }
-    } catch (e) {
-      setUploading(false);
-      Alert.alert('Error', 'Could not pick image.');
+      const newCustomTags = customTags.filter((id) => id !== tagId);
+      setCustomTags(newCustomTags);
+      setSelectedTags((prev) => prev.filter((id) => id !== tagId));
+      
+      // Save to database
+      await saveUserCustomTags(newCustomTags);
+    } catch (error) {
+      console.error('Error removing custom tag:', error);
+      Alert.alert('Error', 'Failed to remove custom tag. Please try again.');
+      
+      // Revert local changes on error
+      setCustomTags((prev) => [...prev, tagId]);
     }
   };
 
-  const openCamera = async () => {
+  const toggleTag = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
+  const addTagToRecord = async (recordId: string, tagId: string) => {
     try {
-      setUploading(true);
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 1,
+      const record = medicalRecords.find((r) => r.id === recordId);
+      if (!record) return;
+
+      const currentTags = record.tags || [];
+      if (currentTags.includes(tagId)) return;
+
+      const updatedTags = [...currentTags, tagId];
+
+      await updateDoc(doc(db, 'patients', user!.uid, 'records', recordId), {
+        tags: updatedTags,
       });
-      setUploading(false);
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedImage(result.assets[0]);
-        setSelectedFile(null);
-      }
-    } catch (e) {
-      setUploading(false);
-      Alert.alert('Error', 'Could not open camera.');
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      Alert.alert('Error', 'Failed to add tag to record');
     }
   };
 
-  const handleUpload = async () => {
-    // Placeholder: Implement upload logic here (e.g., upload to Firebase or backend)
-    Alert.alert('Upload', 'File/photo upload logic goes here.');
-    setUploadModalVisible(false);
-    setSelectedFile(null);
-    setSelectedImage(null);
+  const removeTagFromRecord = async (recordId: string, tagId: string) => {
+    try {
+      const record = medicalRecords.find((r) => r.id === recordId);
+      if (!record) return;
+
+      const currentTags = record.tags || [];
+      const updatedTags = currentTags.filter((tag: string) => tag !== tagId);
+
+      await updateDoc(doc(db, 'patients', user!.uid, 'records', recordId), {
+        tags: updatedTags,
+      });
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      Alert.alert('Error', 'Failed to remove tag from record');
+    }
   };
 
   return (
@@ -249,15 +461,45 @@ export default function MedicalRecordsScreen() {
       >
         {/* Header */}
         <Animated.View style={[styles.header, headerAnimatedStyle]}>
-          <View>
+          <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>Medical Records</Text>
             <Text style={styles.headerSubtitle}>
               {loading ? 'Loading...' : `${filteredRecords.length} documents`}
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerButton}>
-              <Search size={20} color={Colors.text} strokeWidth={2} />
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                showSearch && styles.headerButtonActive,
+              ]}
+              onPress={() => setShowSearch(!showSearch)}
+            >
+              <Search
+                size={20}
+                color={showSearch ? Colors.primary : Colors.text}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                selectedTags.length > 0 && styles.headerButtonActive,
+              ]}
+              onPress={() => setShowTagModal(true)}
+            >
+              <Filter
+                size={20}
+                color={selectedTags.length > 0 ? Colors.primary : Colors.text}
+                strokeWidth={2}
+              />
+              {selectedTags.length > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>
+                    {selectedTags.length}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.uploadButton}
@@ -267,6 +509,69 @@ export default function MedicalRecordsScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+
+        {/* Search Bar */}
+        {showSearch && (
+          <Animated.View
+            style={styles.searchContainer}
+            entering={FadeInDown.springify()}
+          >
+            <View style={styles.searchInputContainer}>
+              <Search size={18} color={Colors.textSecondary} strokeWidth={2} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search records, doctors, labs..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={Colors.textLight}
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <X size={18} color={Colors.textSecondary} strokeWidth={2} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Selected Tags */}
+        {selectedTags.length > 0 && (
+          <View style={styles.selectedTagsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.selectedTagsList}>
+                {selectedTags.map((tagId) => {
+                  const tagInfo = getTagInfo(tagId);
+                  return (
+                    <TouchableOpacity
+                      key={tagId}
+                      style={[
+                        styles.selectedTag,
+                        { backgroundColor: `${tagInfo.color}20` },
+                      ]}
+                      onPress={() => toggleTag(tagId)}
+                    >
+                      <tagInfo.icon
+                        size={14}
+                        color={tagInfo.color}
+                        strokeWidth={2}
+                      />
+                      <Text
+                        style={[
+                          styles.selectedTagText,
+                          { color: tagInfo.color },
+                        ]}
+                      >
+                        {tagInfo.label}
+                      </Text>
+                      <X size={12} color={tagInfo.color} strokeWidth={2} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Filter Tabs */}
         <Animated.View style={[styles.filtersContainer, filterAnimatedStyle]}>
@@ -330,156 +635,217 @@ export default function MedicalRecordsScreen() {
             contentContainerStyle={styles.recordsContent}
             showsVerticalScrollIndicator={false}
           >
-            {filteredRecords.map((record, index) => {
-              const { icon: IconComponent, color } = getRecordIcon(
-                record.type,
-                record.source
-              );
+            {filteredRecords.length > 0 ? (
+              filteredRecords.map((record, index) => {
+                const { icon: IconComponent, color } = getRecordIcon(
+                  record.type,
+                  record.source
+                );
 
-              return (
-                <Animated.View
-                  key={record.id}
-                  entering={FadeInDown.delay(index * 100).springify()}
-                >
-                  <TouchableOpacity
-                    style={styles.recordCard}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setSelectedRecord(record);
-                      setPreviewModalVisible(true);
-                    }}
+                return (
+                  <Animated.View
+                    key={record.id}
+                    entering={FadeInDown.delay(index * 100).springify()}
                   >
-                    <View style={styles.recordCardContent}>
-                      {record.isNew && <View style={styles.newBadge} />}
+                    <TouchableOpacity
+                      style={styles.recordCard}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setSelectedRecord(record);
+                        setPreviewModalVisible(true);
+                      }}
+                    >
+                      <View style={styles.recordCardContent}>
+                        {record.isNew && <View style={styles.newBadge} />}
 
-                      <View style={styles.recordMain}>
-                        <View style={styles.recordLeft}>
-                          <View
-                            style={[
-                              styles.recordIcon,
-                              { backgroundColor: `${color}15` },
-                            ]}
-                          >
-                            <IconComponent
-                              size={20}
-                              color={color}
-                              strokeWidth={2}
-                            />
-                          </View>
-                          <View style={styles.recordInfo}>
-                            <Text style={styles.recordTitle} numberOfLines={2}>
-                              {record.title}
-                            </Text>
-                            <View style={styles.recordMeta}>
-                              <Text style={styles.recordSource}>
-                                {record.source === 'lab_uploaded'
-                                  ? record.lab
-                                  : record.doctor}
+                        <View style={styles.recordMain}>
+                          <View style={styles.recordLeft}>
+                            <View
+                              style={[
+                                styles.recordIcon,
+                                { backgroundColor: `${color}15` },
+                              ]}
+                            >
+                              <IconComponent
+                                size={20}
+                                color={color}
+                                strokeWidth={2}
+                              />
+                            </View>
+                            <View style={styles.recordInfo}>
+                              <Text
+                                style={styles.recordTitle}
+                                numberOfLines={2}
+                              >
+                                {record.title}
                               </Text>
-                              <View style={styles.metaDot} />
-                              <Text style={styles.recordDate}>
-                                {record.uploadedAt?.toDate
-                                  ? record.uploadedAt
-                                      .toDate()
-                                      .toLocaleDateString('en-US', {
+                              <View style={styles.recordMeta}>
+                                <Text style={styles.recordSource}>
+                                  {record.source === 'lab_uploaded'
+                                    ? record.lab
+                                    : record.doctor || 'Self-uploaded'}
+                                </Text>
+                                <View style={styles.metaDot} />
+                                <Text style={styles.recordDate}>
+                                  {record.uploadedAt?.toDate
+                                    ? record.uploadedAt
+                                        .toDate()
+                                        .toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                        })
+                                    : record.uploadedAt?.seconds
+                                    ? new Date(
+                                        record.uploadedAt.seconds * 1000
+                                      ).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                       })
-                                  : record.uploadedAt?.seconds
-                                  ? new Date(
-                                      record.uploadedAt.seconds * 1000
-                                    ).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
-                                  : 'N/A'}
-                              </Text>
-                            </View>
-                            <View style={styles.recordDetails}>
-                              <Text style={styles.fileInfo}>
-                                {record.fileType} • {record.fileSize}
-                              </Text>
-                              {record.source === 'lab_uploaded' && (
-                                <View style={styles.labBadge}>
-                                  <Text style={styles.labBadgeText}>
-                                    Lab Report
-                                  </Text>
+                                    : 'N/A'}
+                                </Text>
+                              </View>
+
+                              {/* Tags */}
+                              {record.tags && record.tags.length > 0 && (
+                                <View style={styles.recordTags}>
+                                  {record.tags
+                                    .slice(0, 2)
+                                    .map((tagId: string) => {
+                                      const tagInfo = getTagInfo(tagId);
+                                      return (
+                                        <View
+                                          key={tagId}
+                                          style={[
+                                            styles.recordTag,
+                                            {
+                                              backgroundColor: `${tagInfo.color}15`,
+                                            },
+                                          ]}
+                                        >
+                                          <tagInfo.icon
+                                            size={10}
+                                            color={tagInfo.color}
+                                            strokeWidth={2}
+                                          />
+                                          <Text
+                                            style={[
+                                              styles.recordTagText,
+                                              { color: tagInfo.color },
+                                            ]}
+                                          >
+                                            {tagInfo.label}
+                                          </Text>
+                                        </View>
+                                      );
+                                    })}
+                                  {record.tags.length > 2 && (
+                                    <Text style={styles.moreTagsText}>
+                                      +{record.tags.length - 2}
+                                    </Text>
+                                  )}
                                 </View>
                               )}
+
+                              <View style={styles.recordDetails}>
+                                <Text style={styles.fileInfo}>
+                                  {record.fileType} •{' '}
+                                  {record.fileSize || 'Unknown size'}
+                                </Text>
+                                {record.source === 'lab_uploaded' && (
+                                  <View style={styles.labBadge}>
+                                    <Text style={styles.labBadgeText}>
+                                      Lab Report
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
                             </View>
                           </View>
-                        </View>
 
-                        <View style={styles.recordActions}>
-                          <TouchableOpacity style={styles.actionButton}>
-                            <Eye
-                              size={16}
-                              color={Colors.primary}
-                              strokeWidth={2}
-                            />
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.actionButton}>
-                            <Download
-                              size={16}
-                              color={Colors.primary}
-                              strokeWidth={2}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-
-                      {record.status !== 'archived' && (
-                        <View style={styles.recordFooter}>
-                          <View
-                            style={[
-                              styles.statusIndicator,
-                              {
-                                backgroundColor: `${getStatusColor(
-                                  record.status
-                                )}20`,
-                              },
-                            ]}
-                          >
-                            <View
-                              style={[
-                                styles.statusDot,
-                                {
-                                  backgroundColor: getStatusColor(
-                                    record.status
-                                  ),
-                                },
-                              ]}
-                            />
-                            <Text
-                              style={[
-                                styles.statusText,
-                                { color: getStatusColor(record.status) },
-                              ]}
-                            >
-                              {record.status.charAt(0).toUpperCase() +
-                                record.status.slice(1)}
-                            </Text>
+                          <View style={styles.recordActions}>
+                            <TouchableOpacity style={styles.actionButton}>
+                              <Eye
+                                size={16}
+                                color={Colors.primary}
+                                strokeWidth={2}
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionButton}>
+                              <Download
+                                size={16}
+                                color={Colors.primary}
+                                strokeWidth={2}
+                              />
+                            </TouchableOpacity>
                           </View>
                         </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
 
-            {/* Empty State */}
-            {filteredRecords.length === 0 && (
+                        {record.status && record.status !== 'archived' && (
+                          <View style={styles.recordFooter}>
+                            <View
+                              style={[
+                                styles.statusIndicator,
+                                {
+                                  backgroundColor: `${getStatusColor(
+                                    record.status
+                                  )}20`,
+                                },
+                              ]}
+                            >
+                              <View
+                                style={[
+                                  styles.statusDot,
+                                  {
+                                    backgroundColor: getStatusColor(
+                                      record.status
+                                    ),
+                                  },
+                                ]}
+                              />
+                              <Text
+                                style={[
+                                  styles.statusText,
+                                  { color: getStatusColor(record.status) },
+                                ]}
+                              >
+                                {record.status.charAt(0).toUpperCase() +
+                                  record.status.slice(1)}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })
+            ) : (
+              /* Empty State */
               <View style={styles.emptyState}>
-                <FileText size={48} color={Colors.textLight} strokeWidth={1} />
-                <Text style={styles.emptyTitle}>No records found</Text>
-                <Text style={styles.emptySubtitle}>
-                  Upload your medical documents or wait for lab reports
+                <FolderOpen
+                  size={64}
+                  color={Colors.textLight}
+                  strokeWidth={1}
+                />
+                <Text style={styles.emptyTitle}>
+                  {searchQuery || selectedTags.length > 0
+                    ? 'No matching records found'
+                    : 'No medical records yet'}
                 </Text>
-                <TouchableOpacity style={styles.uploadEmptyButton}>
-                  <Upload size={16} color={Colors.primary} strokeWidth={2} />
-                  <Text style={styles.uploadEmptyText}>Upload Document</Text>
-                </TouchableOpacity>
+                <Text style={styles.emptySubtitle}>
+                  {searchQuery || selectedTags.length > 0
+                    ? 'Try adjusting your search or filters'
+                    : 'Upload your medical documents to get started'}
+                </Text>
+                {!searchQuery && selectedTags.length === 0 && (
+                  <TouchableOpacity
+                    style={styles.uploadEmptyButton}
+                    onPress={() => router.push('/(patient-tabs)/upload-record')}
+                  >
+                    <Upload size={16} color={Colors.primary} strokeWidth={2} />
+                    <Text style={styles.uploadEmptyText}>Upload Document</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -487,69 +853,170 @@ export default function MedicalRecordsScreen() {
           </ScrollView>
         )}
 
-        {/* Upload Modal */}
+        {/* Tag Filter Modal */}
         <Modal
-          visible={uploadModalVisible}
+          visible={showTagModal}
           animationType="slide"
           transparent
-          onRequestClose={() => setUploadModalVisible(false)}
+          onRequestClose={() => setShowTagModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                Insert Past Record/Prescription
-              </Text>
-              {uploading ? (
-                <ActivityIndicator size="large" color={Colors.primary} />
-              ) : (
-                <>
+            <View style={styles.tagModalContent}>
+              <View style={styles.tagModalHeader}>
+                <Text style={styles.modalTitle}>Filter by Tags</Text>
+                <View style={styles.tagModalHeaderActions}>
                   <TouchableOpacity
-                    style={styles.uploadOption}
-                    onPress={openDocumentPicker}
+                    style={styles.addCustomTagHeaderButton}
+                    onPress={() => {
+                      setShowTagModal(false);
+                      setShowCustomTagModal(true);
+                    }}
                   >
-                    <Text style={styles.uploadOptionText}>Upload PDF</Text>
+                    <Plus size={16} color={Colors.primary} strokeWidth={2} />
+                    <Text style={styles.addCustomTagHeaderText}>Add</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.uploadOption}
-                    onPress={openImagePicker}
+                  <TouchableOpacity onPress={() => setShowTagModal(false)}>
+                    <X size={24} color={Colors.text} strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView style={styles.tagsList}>
+                {loadingTags ? (
+                  <View style={styles.loadingTagsContainer}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                    <Text style={styles.loadingTagsText}>Loading your tags...</Text>
+                  </View>
+                ) : (
+                  getAllAvailableTags().map((tag) => (
+                    <TouchableOpacity
+                    key={tag.id}
+                    style={[
+                      styles.tagOption,
+                      selectedTags.includes(tag.id) && styles.tagOptionSelected,
+                    ]}
+                    onPress={() => toggleTag(tag.id)}
                   >
-                    <Text style={styles.uploadOptionText}>Upload Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.uploadOption}
-                    onPress={openCamera}
-                  >
-                    <Text style={styles.uploadOptionText}>Take Photo</Text>
-                  </TouchableOpacity>
-                  {(selectedFile || selectedImage) && (
-                    <View style={styles.previewContainer}>
-                      {selectedFile && (
-                        <Text style={styles.previewText}>
-                          Selected PDF: {selectedFile.name}
-                        </Text>
+                    <View style={styles.tagOptionLeft}>
+                      <tag.icon size={18} color={tag.color} strokeWidth={2} />
+                      <Text style={styles.tagOptionText}>{tag.label}</Text>
+                      {tag.isCustom && (
+                        <View style={styles.customTagBadge}>
+                          <Text style={styles.customTagBadgeText}>Custom</Text>
+                        </View>
                       )}
-                      {selectedImage && (
-                        <Image
-                          source={{ uri: selectedImage.uri }}
-                          style={styles.previewImage}
-                        />
-                      )}
-                      <TouchableOpacity
-                        style={styles.uploadConfirmButton}
-                        onPress={handleUpload}
-                      >
-                        <Text style={styles.uploadConfirmText}>Upload</Text>
-                      </TouchableOpacity>
                     </View>
-                  )}
-                  <TouchableOpacity
-                    style={styles.closeModalButton}
-                    onPress={() => setUploadModalVisible(false)}
-                  >
-                    <Text style={styles.closeModalText}>Cancel</Text>
+                    <View style={styles.tagOptionRight}>
+                      {selectedTags.includes(tag.id) && (
+                        <View
+                          style={[
+                            styles.tagCheckmark,
+                            { backgroundColor: tag.color },
+                          ]}
+                        >
+                          <Text style={styles.tagCheckmarkText}>✓</Text>
+                        </View>
+                      )}
+                      {tag.isCustom && (
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            removeCustomTag(tag.id);
+                          }}
+                          style={styles.removeTagButton}
+                        >
+                          <X
+                            size={14}
+                            color={Colors.textLight}
+                            strokeWidth={2}
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </TouchableOpacity>
-                </>
-              )}
+                  ))
+                )}
+              </ScrollView>
+
+              <View style={styles.tagModalActions}>
+                <TouchableOpacity
+                  style={styles.clearTagsButton}
+                  onPress={() => setSelectedTags([])}
+                >
+                  <Text style={styles.clearTagsText}>Clear All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.applyTagsButton}
+                  onPress={() => setShowTagModal(false)}
+                >
+                  <Text style={styles.applyTagsText}>Apply Filters</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Custom Tag Modal */}
+        <Modal
+          visible={showCustomTagModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowCustomTagModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.customTagModalContent}>
+              <View style={styles.customTagModalHeader}>
+                <Text style={styles.modalTitle}>Add Custom Tag</Text>
+                <TouchableOpacity onPress={() => setShowCustomTagModal(false)}>
+                  <X size={24} color={Colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalDescription}>
+                Create a custom category to better organize your medical records
+              </Text>
+
+              <View style={styles.customTagInputContainer}>
+                <TextInput
+                  style={styles.customTagInput}
+                  value={newTagInput}
+                  onChangeText={setNewTagInput}
+                  placeholder="Enter tag name (e.g., Dermatology, Dental)"
+                  placeholderTextColor={Colors.textLight}
+                  autoFocus
+                  maxLength={20}
+                />
+              </View>
+
+              <View style={styles.customTagModalActions}>
+                <TouchableOpacity
+                  style={styles.cancelCustomTagButton}
+                  onPress={() => {
+                    setNewTagInput('');
+                    setShowCustomTagModal(false);
+                  }}
+                >
+                  <Text style={styles.cancelCustomTagText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.addCustomTagConfirmButton,
+                    (!newTagInput.trim() || addingTag) &&
+                      styles.addCustomTagConfirmButtonDisabled,
+                  ]}
+                  onPress={addCustomTag}
+                  disabled={!newTagInput.trim() || addingTag}
+                >
+                  {addingTag ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Check size={16} color="white" strokeWidth={2} />
+                  )}
+                  <Text style={styles.addCustomTagConfirmText}>
+                    {addingTag ? 'Adding...' : 'Add Tag'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -565,26 +1032,84 @@ export default function MedicalRecordsScreen() {
             <View style={styles.modalContent}>
               {selectedRecord && (
                 <>
-                  <Text style={styles.modalTitle}>{selectedRecord.title}</Text>
+                  <View style={styles.previewHeader}>
+                    <Text style={styles.modalTitle}>
+                      {selectedRecord.title}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setPreviewModalVisible(false)}
+                    >
+                      <X size={24} color={Colors.text} strokeWidth={2} />
+                    </TouchableOpacity>
+                  </View>
+
                   <Text style={styles.modalSubtitle}>
                     Uploaded:{' '}
                     {selectedRecord.uploadedAt?.toDate
                       ? selectedRecord.uploadedAt.toDate().toLocaleString()
-                      : selectedRecord.uploadedAt
+                      : selectedRecord.uploadedAt?.seconds
                       ? new Date(
                           selectedRecord.uploadedAt.seconds * 1000
                         ).toLocaleString()
                       : 'N/A'}
                   </Text>
+
+                  {/* Tag Management */}
+                  <View style={styles.tagManagement}>
+                    <Text style={styles.tagManagementTitle}>Tags:</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      <View style={styles.tagManagementList}>
+                        {getAllAvailableTags().map((tag) => {
+                          const isSelected = selectedRecord.tags?.includes(
+                            tag.id
+                          );
+                          return (
+                            <TouchableOpacity
+                              key={tag.id}
+                              style={[
+                                styles.tagManagementItem,
+                                isSelected && {
+                                  backgroundColor: `${tag.color}20`,
+                                },
+                              ]}
+                              onPress={() => {
+                                if (isSelected) {
+                                  removeTagFromRecord(
+                                    selectedRecord.id,
+                                    tag.id
+                                  );
+                                } else {
+                                  addTagToRecord(selectedRecord.id, tag.id);
+                                }
+                              }}
+                            >
+                              <tag.icon
+                                size={14}
+                                color={tag.color}
+                                strokeWidth={2}
+                              />
+                              <Text
+                                style={[
+                                  styles.tagManagementText,
+                                  isSelected && { color: tag.color },
+                                ]}
+                              >
+                                {tag.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  </View>
+
                   {selectedRecord.fileType?.startsWith('image') ? (
                     <Image
                       source={{ uri: selectedRecord.fileUrl }}
-                      style={{
-                        width: 220,
-                        height: 300,
-                        borderRadius: 12,
-                        marginVertical: 16,
-                      }}
+                      style={styles.previewImage}
                       resizeMode="contain"
                     />
                   ) : selectedRecord.fileType === 'application/pdf' ? (
@@ -595,16 +1120,10 @@ export default function MedicalRecordsScreen() {
                       <Text style={styles.openPdfText}>Open PDF</Text>
                     </TouchableOpacity>
                   ) : (
-                    <Text style={{ marginVertical: 16 }}>
+                    <Text style={styles.unsupportedText}>
                       File type not supported for preview.
                     </Text>
                   )}
-                  <TouchableOpacity
-                    style={styles.closeModalButton}
-                    onPress={() => setPreviewModalVisible(false)}
-                  >
-                    <Text style={styles.closeModalText}>Close</Text>
-                  </TouchableOpacity>
                 </>
               )}
             </View>
@@ -631,7 +1150,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+
+  headerLeft: {
+    flex: 1,
   },
 
   headerTitle: {
@@ -662,6 +1185,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
+    position: 'relative',
+  },
+
+  headerButtonActive: {
+    backgroundColor: `${Colors.primary}15`,
+    borderColor: Colors.primary,
+  },
+
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  filterBadgeText: {
+    fontSize: 10,
+    color: 'white',
+    fontFamily: 'Inter-Bold',
   },
 
   uploadButton: {
@@ -671,6 +1218,54 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
+  },
+
+  selectedTagsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+
+  selectedTagsList: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  selectedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+
+  selectedTagText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
   },
 
   filtersContainer: {
@@ -821,6 +1416,33 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
 
+  recordTags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+
+  recordTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
+  },
+
+  recordTagText: {
+    fontSize: 10,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  moreTagsText: {
+    fontSize: 10,
+    color: Colors.textLight,
+    fontFamily: 'Inter-Regular',
+  },
+
   recordDetails: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -901,6 +1523,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
 
   emptySubtitle: {
@@ -948,89 +1571,338 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
-    width: '85%',
-    alignItems: 'center',
+    width: '90%',
+    maxHeight: '80%',
   },
+
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
   modalTitle: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
-    marginBottom: 20,
     color: Colors.text,
+    flex: 1,
+    marginRight: 16,
   },
-  uploadOption: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginBottom: 12,
-    width: '100%',
-    alignItems: 'center',
-  },
-  uploadOptionText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-  previewContainer: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  previewText: {
-    fontSize: 15,
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  previewImage: {
-    width: 120,
-    height: 160,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  uploadConfirmButton: {
-    backgroundColor: Colors.medical.green,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  uploadConfirmText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-  closeModalButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  closeModalText: {
-    color: Colors.error,
-    fontSize: 15,
-    fontFamily: 'Inter-SemiBold',
-  },
+
   modalSubtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginBottom: 16,
   },
+
+  tagManagement: {
+    marginBottom: 20,
+  },
+
+  tagManagementTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+
+  tagManagementList: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  tagManagementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    gap: 4,
+  },
+
+  tagManagementText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: Colors.textSecondary,
+  },
+
+  previewImage: {
+    width: '100%',
+    height: 300,
+    borderRadius: 12,
+    marginVertical: 16,
+  },
+
   openPdfButton: {
     backgroundColor: Colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 8,
-    marginTop: 8,
+    alignItems: 'center',
+    marginVertical: 16,
   },
+
   openPdfText: {
     color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
+  },
+
+  unsupportedText: {
+    textAlign: 'center',
+    marginVertical: 16,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+  },
+
+  tagModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxHeight: '70%',
+  },
+
+  tagModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  tagModalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  addCustomTagHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: `${Colors.primary}15`,
+    borderRadius: 12,
+    gap: 4,
+  },
+
+  addCustomTagHeaderText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.primary,
+  },
+
+  tagsList: {
+    maxHeight: 300,
+  },
+
+  tagOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+  },
+
+  tagOptionSelected: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+
+  tagOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+
+  tagOptionRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  tagOptionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: Colors.text,
+  },
+
+  customTagBadge: {
+    backgroundColor: `${Colors.primary}20`,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+
+  customTagBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+  },
+
+  removeTagButton: {
+    padding: 4,
+  },
+
+  tagCheckmark: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  tagCheckmarkText: {
+    color: 'white',
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+  },
+
+  tagModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+
+  clearTagsButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.textLight,
+    alignItems: 'center',
+  },
+
+  clearTagsText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  applyTagsButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+  },
+
+  applyTagsText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  customTagModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+
+  customTagModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  modalDescription: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+
+  customTagInputContainer: {
+    marginBottom: 24,
+  },
+
+  customTagInput: {
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+
+  customTagModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  cancelCustomTagButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.textLight,
+    alignItems: 'center',
+  },
+
+  cancelCustomTagText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  addCustomTagConfirmButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    gap: 6,
+  },
+
+  addCustomTagConfirmButtonDisabled: {
+    backgroundColor: Colors.textLight,
+  },
+
+  addCustomTagConfirmText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  loadingTagsContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+
+  loadingTagsText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginTop: 8,
   },
 });

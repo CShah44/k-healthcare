@@ -26,5 +26,6 @@ export const Colors = {
     orange: '#F59E0B',
     lightOrange: '#FFFBEB',
     purple: '#8B5CF6', // Purple for special cases
+    yellow: '#FBBF24',
   },
 };

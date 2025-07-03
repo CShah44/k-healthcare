@@ -165,7 +165,10 @@ export default function PatientProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => router.push('/(patient-tabs)/edit-profile')}
+          >
             <Edit size={20} color={Colors.primary} />
           </TouchableOpacity>
         </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -20,13 +21,28 @@ import {
   Scan,
   Activity,
   ChevronRight,
+  FolderOpen,
+  X,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/constants/firebase';
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  where,
+} from 'firebase/firestore';
 
 export default function HealthcareRecordsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [showSearch, setShowSearch] = useState(false);
+  const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const filters = [
     { id: 'all', label: 'All Records', icon: FileText },
@@ -36,68 +52,38 @@ export default function HealthcareRecordsScreen() {
     { id: 'imaging', label: 'Imaging', icon: Scan },
   ];
 
-  const medicalRecords = [
-    {
-      id: '1',
-      patientName: 'John Smith',
-      patientId: 'P001',
-      type: 'lab_result',
-      title: 'Complete Blood Count (CBC)',
-      date: '2024-10-20',
-      status: 'completed',
-      priority: 'normal',
-      description: 'Routine blood work - all values within normal range',
-      doctor: 'Dr. Sarah Wilson',
-    },
-    {
-      id: '2',
-      patientName: 'Sarah Johnson',
-      patientId: 'P002',
-      type: 'consultation',
-      title: 'Diabetes Follow-up',
-      date: '2024-10-19',
-      status: 'completed',
-      priority: 'high',
-      description: 'Blood sugar monitoring and medication adjustment',
-      doctor: 'Dr. Michael Chen',
-    },
-    {
-      id: '3',
-      patientName: 'Michael Brown',
-      patientId: 'P003',
-      type: 'imaging',
-      title: 'Post-Surgery X-Ray',
-      date: '2024-10-18',
-      status: 'pending_review',
-      priority: 'urgent',
-      description: 'Follow-up imaging after surgical procedure',
-      doctor: 'Dr. Jennifer Martinez',
-    },
-    {
-      id: '4',
-      patientName: 'Emma Wilson',
-      patientId: 'P004',
-      type: 'prescription',
-      title: 'Antibiotic Prescription',
-      date: '2024-10-17',
-      status: 'active',
-      priority: 'normal',
-      description: 'Amoxicillin 500mg for respiratory infection',
-      doctor: 'Dr. David Park',
-    },
-    {
-      id: '5',
-      patientName: 'David Chen',
-      patientId: 'P005',
-      type: 'lab_result',
-      title: 'Cardiac Enzyme Panel',
-      date: '2024-10-16',
-      status: 'completed',
-      priority: 'high',
-      description: 'Elevated troponin levels - requires immediate attention',
-      doctor: 'Dr. Sarah Wilson',
-    },
-  ];
+  // Real-time Firebase syncing for healthcare professionals
+  useEffect(() => {
+    if (!user) return;
+
+    setLoading(true);
+    
+    // Healthcare professionals can see records from all patients they have access to
+    // This would typically be filtered by hospital/department in a real implementation
+    const q = query(
+      collection(db, 'medical_records'), // Global medical records collection
+      where('assignedDoctor', '==', user.uid), // Records assigned to this doctor
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const records = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setMedicalRecords(records);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Failed to fetch records:', error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -155,41 +141,62 @@ export default function HealthcareRecordsScreen() {
     }
   };
 
+  // Filter records based on search and type
   const filteredRecords = medicalRecords.filter((record) => {
-    const matchesSearch =
-      record.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.patientId.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      selectedFilter === 'all' || record.type === selectedFilter;
+    const matchesSearch = searchQuery === '' ||
+      record.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.patientId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = selectedFilter === 'all' || record.type === selectedFilter;
+    
     return matchesSearch && matchesFilter;
   });
 
   return (
     <SafeAreaView style={[GlobalStyles.container, styles.container]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Medical Records</Text>
-        <TouchableOpacity style={styles.addButton}>
-          <Plus size={20} color={Colors.surface} />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Medical Records</Text>
+          <Text style={styles.headerSubtitle}>
+            {loading ? 'Loading...' : `${filteredRecords.length} records`}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={[styles.headerButton, showSearch && styles.headerButtonActive]}
+            onPress={() => setShowSearch(!showSearch)}
+          >
+            <Search size={20} color={showSearch ? Colors.primary : Colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton}>
+            <Plus size={20} color={Colors.surface} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Search size={20} color={Colors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search records, patients..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={Colors.textLight}
-          />
+      {showSearch && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Search size={20} color={Colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search records, patients..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={Colors.textLight}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X size={18} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-        <TouchableOpacity style={styles.searchFilterButton}>
-          <Filter size={20} color={Colors.primary} />
-        </TouchableOpacity>
-      </View>
+      )}
 
       {/* Type Filters */}
       <ScrollView
@@ -201,6 +208,9 @@ export default function HealthcareRecordsScreen() {
         {filters.map((filter) => {
           const IconComponent = filter.icon;
           const isSelected = selectedFilter === filter.id;
+          const count = isSelected && selectedFilter === 'all' 
+            ? filteredRecords.length 
+            : filteredRecords.filter(r => r.type === filter.id).length;
 
           return (
             <TouchableOpacity
@@ -223,96 +233,148 @@ export default function HealthcareRecordsScreen() {
               >
                 {filter.label}
               </Text>
+              {selectedFilter === 'all' && (
+                <View style={[
+                  styles.filterCount,
+                  isSelected && styles.filterCountActive,
+                ]}>
+                  <Text style={[
+                    styles.filterCountText,
+                    isSelected && styles.filterCountTextActive,
+                  ]}>
+                    {filteredRecords.length}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Records List */}
-      <ScrollView
-        style={styles.recordsList}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.recordsContainer}>
-          {filteredRecords.map((record) => {
-            const IconComponent = getRecordIcon(record.type);
-
-            return (
-              <TouchableOpacity key={record.id} style={styles.recordCard}>
-                <View style={styles.recordHeader}>
-                  <View style={styles.recordIconContainer}>
-                    <IconComponent size={20} color={Colors.primary} />
-                  </View>
-                  <View style={styles.recordInfo}>
-                    <Text style={styles.recordTitle}>{record.title}</Text>
-                    <Text style={styles.patientName}>
-                      {record.patientName} • {record.patientId}
-                    </Text>
-                    <Text style={styles.recordDoctor}>{record.doctor}</Text>
-                  </View>
-                  <View style={styles.recordBadges}>
-                    <View
-                      style={[
-                        styles.priorityBadge,
-                        { borderColor: getPriorityColor(record.priority) },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.priorityText,
-                          { color: getPriorityColor(record.priority) },
-                        ]}
-                      >
-                        {record.priority.toUpperCase()}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        { backgroundColor: getStatusBackground(record.status) },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusText,
-                          { color: getStatusColor(record.status) },
-                        ]}
-                      >
-                        {record.status
-                          .replace('_', ' ')
-                          .charAt(0)
-                          .toUpperCase() +
-                          record.status.replace('_', ' ').slice(1)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <Text style={styles.recordDescription}>
-                  {record.description}
-                </Text>
-
-                <View style={styles.recordFooter}>
-                  <View style={styles.recordDate}>
-                    <Calendar size={14} color={Colors.textSecondary} />
-                    <Text style={styles.recordDateText}>
-                      {new Date(record.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                  <TouchableOpacity style={styles.viewButton}>
-                    <Text style={styles.viewButtonText}>View Details</Text>
-                    <ChevronRight size={14} color={Colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+      {/* Loading State */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading medical records...</Text>
         </View>
-      </ScrollView>
+      ) : (
+        /* Records List */
+        <ScrollView
+          style={styles.recordsList}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.recordsContainer}>
+            {filteredRecords.length > 0 ? (
+              filteredRecords.map((record) => {
+                const IconComponent = getRecordIcon(record.type);
+
+                return (
+                  <TouchableOpacity key={record.id} style={styles.recordCard}>
+                    <View style={styles.recordHeader}>
+                      <View style={styles.recordIconContainer}>
+                        <IconComponent size={20} color={Colors.primary} />
+                      </View>
+                      <View style={styles.recordInfo}>
+                        <Text style={styles.recordTitle}>{record.title}</Text>
+                        <Text style={styles.patientName}>
+                          {record.patientName} • {record.patientId}
+                        </Text>
+                        <Text style={styles.recordDoctor}>{record.doctor || 'Unassigned'}</Text>
+                      </View>
+                      <View style={styles.recordBadges}>
+                        {record.priority && (
+                          <View
+                            style={[
+                              styles.priorityBadge,
+                              { borderColor: getPriorityColor(record.priority) },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.priorityText,
+                                { color: getPriorityColor(record.priority) },
+                              ]}
+                            >
+                              {record.priority.toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        {record.status && (
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              { backgroundColor: getStatusBackground(record.status) },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusText,
+                                { color: getStatusColor(record.status) },
+                              ]}
+                            >
+                              {record.status
+                                .replace('_', ' ')
+                                .charAt(0)
+                                .toUpperCase() +
+                                record.status.replace('_', ' ').slice(1)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {record.description && (
+                      <Text style={styles.recordDescription}>
+                        {record.description}
+                      </Text>
+                    )}
+
+                    <View style={styles.recordFooter}>
+                      <View style={styles.recordDate}>
+                        <Calendar size={14} color={Colors.textSecondary} />
+                        <Text style={styles.recordDateText}>
+                          {record.createdAt?.toDate
+                            ? record.createdAt.toDate().toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            : record.createdAt?.seconds
+                            ? new Date(record.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            : 'N/A'}
+                        </Text>
+                      </View>
+                      <TouchableOpacity style={styles.viewButton}>
+                        <Text style={styles.viewButtonText}>View Details</Text>
+                        <ChevronRight size={14} color={Colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              /* Empty State */
+              <View style={styles.emptyState}>
+                <FolderOpen size={64} color={Colors.textLight} strokeWidth={1} />
+                <Text style={styles.emptyTitle}>
+                  {searchQuery || selectedFilter !== 'all'
+                    ? 'No matching records found'
+                    : 'No medical records yet'}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {searchQuery || selectedFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Medical records will appear here when patients upload documents or when you create new records'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -330,10 +392,42 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
 
+  headerLeft: {
+    flex: 1,
+  },
+
   headerTitle: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
+  },
+
+  headerSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
+  },
+
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
+  headerButtonActive: {
+    backgroundColor: `${Colors.primary}15`,
+    borderColor: Colors.primary,
   },
 
   addButton: {
@@ -346,14 +440,11 @@ const styles = StyleSheet.create({
   },
 
   searchContainer: {
-    flexDirection: 'row',
     paddingHorizontal: 20,
     marginBottom: 16,
-    gap: 12,
   },
 
   searchBar: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
@@ -362,23 +453,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: 12,
   },
 
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: Colors.text,
-    marginLeft: 12,
     fontFamily: 'Inter-Regular',
-  },
-
-  searchFilterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.medical.lightBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   filtersContainer: {
@@ -415,6 +497,43 @@ const styles = StyleSheet.create({
 
   filterTextActive: {
     color: Colors.surface,
+  },
+
+  filterCount: {
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+
+  filterCountActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+
+  filterCountText: {
+    fontSize: 11,
+    fontFamily: 'Inter-Bold',
+    color: Colors.text,
+  },
+
+  filterCountTextActive: {
+    color: '#ffffff',
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Medium',
+    marginTop: 16,
   },
 
   recordsList: {
@@ -542,5 +661,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
     fontFamily: 'Inter-SemiBold',
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.textSecondary,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+
+  emptySubtitle: {
+    fontSize: 14,
+    color: Colors.textLight,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

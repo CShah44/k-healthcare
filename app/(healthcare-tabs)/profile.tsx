@@ -36,9 +36,9 @@ export default function HealthcareProfileScreen() {
   const profileData = [
     { icon: Mail, label: 'Email', value: user?.email || 'Not provided' },
     { icon: Phone, label: 'Phone', value: user?.phoneNumber || 'Not provided' },
-    { icon: Award, label: 'License Number', value: 'MD-12345-2024' },
-    { icon: Building, label: 'Department', value: 'Cardiology' },
-    { icon: MapPin, label: 'Hospital', value: 'City General Hospital' },
+    { icon: Award, label: 'License Number', value: user?.licenseNumber || 'Not provided' },
+    { icon: Building, label: 'Department', value: user?.department || 'Not provided' },
+    { icon: MapPin, label: 'Hospital', value: user?.hospital || 'Not provided' },
   ];
 
   const professionalStats = [
@@ -90,7 +90,10 @@ export default function HealthcareProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => router.push('/(healthcare-tabs)/edit-profile')}
+          >
             <Edit size={20} color={Colors.primary} />
           </TouchableOpacity>
         </View>
@@ -112,9 +115,9 @@ export default function HealthcareProfileScreen() {
             Dr. {user?.firstName} {user?.lastName}
           </Text>
           <Text style={styles.userRole}>
-            {user?.role === 'doctor' ? 'Doctor' : 'Lab Assistant'} • Cardiology
+            {user?.role === 'doctor' ? 'Doctor' : 'Lab Assistant'} • {user?.department || 'General'}
           </Text>
-          <Text style={styles.hospital}>City General Hospital</Text>
+          <Text style={styles.hospital}>{user?.hospital || 'Healthcare Institution'}</Text>
         </View>
 
         {/* Professional Stats */}

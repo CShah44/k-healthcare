@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
 
   userName: {
     fontSize: 28,
-    color: Colors.teal,
+    color: Colors.secondary,
     fontFamily: 'Inter-Bold',
     marginTop: 4,
     letterSpacing: -0.5,
