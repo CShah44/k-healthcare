@@ -40,6 +40,8 @@ import {
   Bone,
   Activity,
   Check,
+  Edit3,
+  Trash2,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,6 +56,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { router } from 'expo-router';
@@ -135,6 +138,14 @@ export default function MedicalRecordsScreen() {
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [loadingTags, setLoadingTags] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
+
+  // Edit and Delete states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const { user } = useAuth();
 
   // Animation values
@@ -189,7 +200,7 @@ export default function MedicalRecordsScreen() {
     if (!user) return;
 
     setLoadingTags(true);
-    
+
     const unsubscribeUserTags = onSnapshot(
       doc(db, 'userTags', user.uid),
       (docSnapshot) => {
@@ -212,12 +223,16 @@ export default function MedicalRecordsScreen() {
 
   const saveUserCustomTags = async (tags: string[]) => {
     if (!user) return;
-    
+
     try {
-      await setDoc(doc(db, 'userTags', user.uid), {
-        customTags: tags,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'userTags', user.uid),
+        {
+          customTags: tags,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     } catch (error) {
       console.error('Error saving custom tags:', error);
       throw error;
@@ -267,7 +282,6 @@ export default function MedicalRecordsScreen() {
     )
   );
 
-  
   const filters = [
     { id: 'all', label: 'All', count: filteredRecords.length },
     {
@@ -366,27 +380,30 @@ export default function MedicalRecordsScreen() {
 
     try {
       setAddingTag(true);
-      
+
       // Add to custom tags and select it
       const newCustomTags = [...customTags, trimmedTag];
       setCustomTags(newCustomTags);
       setSelectedTags((prev) => [...prev, trimmedTag]);
-      
+
       // Save to database
       await saveUserCustomTags(newCustomTags);
-      
+
       setNewTagInput('');
       setShowCustomTagModal(false);
-      
+
       // Show success feedback
-      Alert.alert('Success', `Tag "${trimmedTag}" has been added and is now available for filtering!`);
+      Alert.alert(
+        'Success',
+        `Tag "${trimmedTag}" has been added and is now available for filtering!`
+      );
     } catch (error) {
       console.error('Error adding custom tag:', error);
       Alert.alert('Error', 'Failed to save custom tag. Please try again.');
-      
+
       // Revert local changes on error
-      setCustomTags((prev) => prev.filter(tag => tag !== trimmedTag));
-      setSelectedTags((prev) => prev.filter(tag => tag !== trimmedTag));
+      setCustomTags((prev) => prev.filter((tag) => tag !== trimmedTag));
+      setSelectedTags((prev) => prev.filter((tag) => tag !== trimmedTag));
     } finally {
       setAddingTag(false);
     }
@@ -397,13 +414,13 @@ export default function MedicalRecordsScreen() {
       const newCustomTags = customTags.filter((id) => id !== tagId);
       setCustomTags(newCustomTags);
       setSelectedTags((prev) => prev.filter((id) => id !== tagId));
-      
+
       // Save to database
       await saveUserCustomTags(newCustomTags);
     } catch (error) {
       console.error('Error removing custom tag:', error);
       Alert.alert('Error', 'Failed to remove custom tag. Please try again.');
-      
+
       // Revert local changes on error
       setCustomTags((prev) => [...prev, tagId]);
     }
@@ -451,6 +468,102 @@ export default function MedicalRecordsScreen() {
       console.error('Error removing tag:', error);
       Alert.alert('Error', 'Failed to remove tag from record');
     }
+  };
+
+  // Edit and Delete functions
+  const canEditRecord = (record: any): boolean => {
+    // Users can edit/delete their own records
+    // Also allow editing of self-uploaded records
+    return record.type === 'uploaded' || record.source !== 'lab_uploaded';
+  };
+
+  const handleEditRecord = (record: any) => {
+    if (!canEditRecord(record)) {
+      Alert.alert(
+        'Permission Denied',
+        'You can only edit your own uploaded records.'
+      );
+      return;
+    }
+
+    setSelectedRecord(record);
+    setEditTitle(record.title || '');
+    setEditTags(record.tags || []);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateRecord = async () => {
+    if (!selectedRecord || !editTitle.trim()) {
+      Alert.alert('Error', 'Please enter a valid title');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+
+      await updateDoc(
+        doc(db, 'patients', user!.uid, 'records', selectedRecord.id),
+        {
+          title: editTitle.trim(),
+          tags: editTags,
+          updatedAt: new Date(),
+        }
+      );
+
+      setShowEditModal(false);
+      setSelectedRecord(null);
+      Alert.alert('Success', 'Record updated successfully');
+    } catch (error) {
+      console.error('Error updating record:', error);
+      Alert.alert('Error', 'Failed to update record');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // TODO fix this
+  const handleDeleteRecord = (record: any) => {
+    if (!canEditRecord(record)) {
+      Alert.alert(
+        'Permission Denied',
+        'You can only delete your own uploaded records.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Delete Record',
+      'Are you sure you want to delete this record? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteDoc(
+                doc(db, 'patients', user!.uid, 'records', record.id)
+              );
+              Alert.alert('Success', 'Record deleted successfully');
+            } catch (error) {
+              console.error('Error deleting record:', error);
+              Alert.alert('Error', 'Failed to delete record');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleEditTag = (tagId: string) => {
+    setEditTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
   };
 
   return (
@@ -641,6 +754,7 @@ export default function MedicalRecordsScreen() {
                   record.type,
                   record.source
                 );
+                const canEdit = canEditRecord(record);
 
                 return (
                   <Animated.View
@@ -777,6 +891,30 @@ export default function MedicalRecordsScreen() {
                                 strokeWidth={2}
                               />
                             </TouchableOpacity>
+                            {canEdit && (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.actionButton}
+                                  onPress={() => handleEditRecord(record)}
+                                >
+                                  <Edit3
+                                    size={16}
+                                    color={Colors.medical.blue}
+                                    strokeWidth={2}
+                                  />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.actionButton}
+                                  onPress={() => handleDeleteRecord(record)}
+                                >
+                                  <Trash2
+                                    size={16}
+                                    color={Colors.medical.red}
+                                    strokeWidth={2}
+                                  />
+                                </TouchableOpacity>
+                              </>
+                            )}
                           </View>
                         </View>
 
@@ -885,55 +1023,60 @@ export default function MedicalRecordsScreen() {
                 {loadingTags ? (
                   <View style={styles.loadingTagsContainer}>
                     <ActivityIndicator size="small" color={Colors.primary} />
-                    <Text style={styles.loadingTagsText}>Loading your tags...</Text>
+                    <Text style={styles.loadingTagsText}>
+                      Loading your tags...
+                    </Text>
                   </View>
                 ) : (
                   getAllAvailableTags().map((tag) => (
                     <TouchableOpacity
-                    key={tag.id}
-                    style={[
-                      styles.tagOption,
-                      selectedTags.includes(tag.id) && styles.tagOptionSelected,
-                    ]}
-                    onPress={() => toggleTag(tag.id)}
-                  >
-                    <View style={styles.tagOptionLeft}>
-                      <tag.icon size={18} color={tag.color} strokeWidth={2} />
-                      <Text style={styles.tagOptionText}>{tag.label}</Text>
-                      {tag.isCustom && (
-                        <View style={styles.customTagBadge}>
-                          <Text style={styles.customTagBadgeText}>Custom</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.tagOptionRight}>
-                      {selectedTags.includes(tag.id) && (
-                        <View
-                          style={[
-                            styles.tagCheckmark,
-                            { backgroundColor: tag.color },
-                          ]}
-                        >
-                          <Text style={styles.tagCheckmarkText}>✓</Text>
-                        </View>
-                      )}
-                      {tag.isCustom && (
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            removeCustomTag(tag.id);
-                          }}
-                          style={styles.removeTagButton}
-                        >
-                          <X
-                            size={14}
-                            color={Colors.textLight}
-                            strokeWidth={2}
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </TouchableOpacity>
+                      key={tag.id}
+                      style={[
+                        styles.tagOption,
+                        selectedTags.includes(tag.id) &&
+                          styles.tagOptionSelected,
+                      ]}
+                      onPress={() => toggleTag(tag.id)}
+                    >
+                      <View style={styles.tagOptionLeft}>
+                        <tag.icon size={18} color={tag.color} strokeWidth={2} />
+                        <Text style={styles.tagOptionText}>{tag.label}</Text>
+                        {tag.isCustom && (
+                          <View style={styles.customTagBadge}>
+                            <Text style={styles.customTagBadgeText}>
+                              Custom
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.tagOptionRight}>
+                        {selectedTags.includes(tag.id) && (
+                          <View
+                            style={[
+                              styles.tagCheckmark,
+                              { backgroundColor: tag.color },
+                            ]}
+                          >
+                            <Text style={styles.tagCheckmarkText}>✓</Text>
+                          </View>
+                        )}
+                        {tag.isCustom && (
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              removeCustomTag(tag.id);
+                            }}
+                            style={styles.removeTagButton}
+                          >
+                            <X
+                              size={14}
+                              color={Colors.textLight}
+                              strokeWidth={2}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   ))
                 )}
               </ScrollView>
@@ -1126,6 +1269,100 @@ export default function MedicalRecordsScreen() {
                   )}
                 </>
               )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Modal */}
+        <Modal
+          visible={showEditModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContent}>
+              <View style={styles.editModalHeader}>
+                <Text style={styles.modalTitle}>Edit Record</Text>
+                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                  <X size={24} color={Colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.editForm}>
+                <Text style={styles.inputLabel}>Title</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  placeholder="Enter record title"
+                  placeholderTextColor={Colors.textLight}
+                />
+
+                <Text style={styles.inputLabel}>Tags</Text>
+                <View style={styles.tagGrid}>
+                  {PREDEFINED_TAGS.map((tag) => (
+                    <TouchableOpacity
+                      key={tag.id}
+                      style={[
+                        styles.tagOption,
+                        editTags.includes(tag.id) && [
+                          styles.tagOptionSelected,
+                          {
+                            backgroundColor: `${tag.color}20`,
+                            borderColor: tag.color,
+                          },
+                        ],
+                      ]}
+                      onPress={() => toggleEditTag(tag.id)}
+                    >
+                      <tag.icon
+                        size={16}
+                        color={
+                          editTags.includes(tag.id)
+                            ? tag.color
+                            : Colors.textSecondary
+                        }
+                        strokeWidth={2}
+                      />
+                      <Text
+                        style={[
+                          styles.tagOptionText,
+                          editTags.includes(tag.id) && { color: tag.color },
+                        ]}
+                      >
+                        {tag.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.editModalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.updateButton,
+                    updating && styles.updateButtonDisabled,
+                  ]}
+                  onPress={handleUpdateRecord}
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Check size={16} color="white" strokeWidth={2} />
+                  )}
+                  <Text style={styles.updateButtonText}>
+                    {updating ? 'Updating...' : 'Update'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -1904,5 +2141,94 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginTop: 8,
+  },
+
+  // Edit Modal Styles
+  editModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+  },
+
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  editForm: {
+    marginBottom: 24,
+  },
+
+  inputLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+
+  textInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
+  },
+
+  tagGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  editModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.textLight,
+    alignItems: 'center',
+  },
+
+  cancelButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  updateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    gap: 6,
+  },
+
+  updateButtonDisabled: {
+    backgroundColor: Colors.textLight,
+  },
+
+  updateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });

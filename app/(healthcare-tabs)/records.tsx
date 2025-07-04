@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Alert,
+  Modal,
+  Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -23,6 +27,14 @@ import {
   ChevronRight,
   FolderOpen,
   X,
+  Edit3,
+  Trash2,
+  Eye,
+  Check,
+  Heart,
+  Brain,
+  Bone,
+  Tag,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
@@ -34,6 +46,9 @@ import {
   orderBy,
   onSnapshot,
   where,
+  updateDoc,
+  doc,
+  deleteDoc,
 } from 'firebase/firestore';
 
 export default function HealthcareRecordsScreen() {
@@ -42,6 +57,15 @@ export default function HealthcareRecordsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [editPriority, setEditPriority] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { user } = useAuth();
 
   const filters = [
@@ -57,7 +81,7 @@ export default function HealthcareRecordsScreen() {
     if (!user) return;
 
     setLoading(true);
-    
+
     // Healthcare professionals can see records from all patients they have access to
     // This would typically be filtered by hospital/department in a real implementation
     const q = query(
@@ -141,16 +165,102 @@ export default function HealthcareRecordsScreen() {
     }
   };
 
+  // Check if user can edit record (only assigned doctor can edit)
+  const canEditRecord = (record: any): boolean => {
+    return record.assignedDoctor === user?.uid;
+  };
+
+  const handleEditRecord = (record: any) => {
+    if (!canEditRecord(record)) {
+      Alert.alert(
+        'Permission Denied',
+        'You can only edit records assigned to you.'
+      );
+      return;
+    }
+
+    setSelectedRecord(record);
+    setEditTitle(record.title || '');
+    setEditDescription(record.description || '');
+    setEditStatus(record.status || '');
+    setEditPriority(record.priority || '');
+    setShowEditModal(true);
+  };
+
+  const handleUpdateRecord = async () => {
+    if (!selectedRecord || !editTitle.trim()) {
+      Alert.alert('Error', 'Please enter a valid title');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+
+      await updateDoc(doc(db, 'medical_records', selectedRecord.id), {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        status: editStatus,
+        priority: editPriority,
+        updatedAt: new Date(),
+      });
+
+      setShowEditModal(false);
+      setSelectedRecord(null);
+      Alert.alert('Success', 'Record updated successfully');
+    } catch (error) {
+      console.error('Error updating record:', error);
+      Alert.alert('Error', 'Failed to update record');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteRecord = (record: any) => {
+    if (!canEditRecord(record)) {
+      Alert.alert(
+        'Permission Denied',
+        'You can only delete records assigned to you.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Delete Record',
+      'Are you sure you want to delete this record? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteDoc(doc(db, 'medical_records', record.id));
+              Alert.alert('Success', 'Record deleted successfully');
+            } catch (error) {
+              console.error('Error deleting record:', error);
+              Alert.alert('Error', 'Failed to delete record');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Filter records based on search and type
   const filteredRecords = medicalRecords.filter((record) => {
-    const matchesSearch = searchQuery === '' ||
+    const matchesSearch =
+      searchQuery === '' ||
       record.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.patientId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = selectedFilter === 'all' || record.type === selectedFilter;
-    
+
+    const matchesFilter =
+      selectedFilter === 'all' || record.type === selectedFilter;
+
     return matchesSearch && matchesFilter;
   });
 
@@ -164,11 +274,17 @@ export default function HealthcareRecordsScreen() {
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={[styles.headerButton, showSearch && styles.headerButtonActive]}
+          <TouchableOpacity
+            style={[
+              styles.headerButton,
+              showSearch && styles.headerButtonActive,
+            ]}
             onPress={() => setShowSearch(!showSearch)}
           >
-            <Search size={20} color={showSearch ? Colors.primary : Colors.text} />
+            <Search
+              size={20}
+              color={showSearch ? Colors.primary : Colors.text}
+            />
           </TouchableOpacity>
           <TouchableOpacity style={styles.addButton}>
             <Plus size={20} color={Colors.surface} />
@@ -208,9 +324,10 @@ export default function HealthcareRecordsScreen() {
         {filters.map((filter) => {
           const IconComponent = filter.icon;
           const isSelected = selectedFilter === filter.id;
-          const count = isSelected && selectedFilter === 'all' 
-            ? filteredRecords.length 
-            : filteredRecords.filter(r => r.type === filter.id).length;
+          const count =
+            isSelected && selectedFilter === 'all'
+              ? filteredRecords.length
+              : filteredRecords.filter((r) => r.type === filter.id).length;
 
           return (
             <TouchableOpacity
@@ -234,14 +351,18 @@ export default function HealthcareRecordsScreen() {
                 {filter.label}
               </Text>
               {selectedFilter === 'all' && (
-                <View style={[
-                  styles.filterCount,
-                  isSelected && styles.filterCountActive,
-                ]}>
-                  <Text style={[
-                    styles.filterCountText,
-                    isSelected && styles.filterCountTextActive,
-                  ]}>
+                <View
+                  style={[
+                    styles.filterCount,
+                    isSelected && styles.filterCountActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterCountText,
+                      isSelected && styles.filterCountTextActive,
+                    ]}
+                  >
                     {filteredRecords.length}
                   </Text>
                 </View>
@@ -267,9 +388,17 @@ export default function HealthcareRecordsScreen() {
             {filteredRecords.length > 0 ? (
               filteredRecords.map((record) => {
                 const IconComponent = getRecordIcon(record.type);
+                const canEdit = canEditRecord(record);
 
                 return (
-                  <TouchableOpacity key={record.id} style={styles.recordCard}>
+                  <TouchableOpacity
+                    key={record.id}
+                    style={styles.recordCard}
+                    onPress={() => {
+                      setSelectedRecord(record);
+                      setShowPreviewModal(true);
+                    }}
+                  >
                     <View style={styles.recordHeader}>
                       <View style={styles.recordIconContainer}>
                         <IconComponent size={20} color={Colors.primary} />
@@ -279,14 +408,18 @@ export default function HealthcareRecordsScreen() {
                         <Text style={styles.patientName}>
                           {record.patientName} • {record.patientId}
                         </Text>
-                        <Text style={styles.recordDoctor}>{record.doctor || 'Unassigned'}</Text>
+                        <Text style={styles.recordDoctor}>
+                          {record.doctor || 'Unassigned'}
+                        </Text>
                       </View>
                       <View style={styles.recordBadges}>
                         {record.priority && (
                           <View
                             style={[
                               styles.priorityBadge,
-                              { borderColor: getPriorityColor(record.priority) },
+                              {
+                                borderColor: getPriorityColor(record.priority),
+                              },
                             ]}
                           >
                             <Text
@@ -303,7 +436,11 @@ export default function HealthcareRecordsScreen() {
                           <View
                             style={[
                               styles.statusBadge,
-                              { backgroundColor: getStatusBackground(record.status) },
+                              {
+                                backgroundColor: getStatusBackground(
+                                  record.status
+                                ),
+                              },
                             ]}
                           >
                             <Text
@@ -334,13 +471,17 @@ export default function HealthcareRecordsScreen() {
                         <Calendar size={14} color={Colors.textSecondary} />
                         <Text style={styles.recordDateText}>
                           {record.createdAt?.toDate
-                            ? record.createdAt.toDate().toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })
+                            ? record.createdAt
+                                .toDate()
+                                .toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })
                             : record.createdAt?.seconds
-                            ? new Date(record.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                            ? new Date(
+                                record.createdAt.seconds * 1000
+                              ).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric',
@@ -348,10 +489,34 @@ export default function HealthcareRecordsScreen() {
                             : 'N/A'}
                         </Text>
                       </View>
-                      <TouchableOpacity style={styles.viewButton}>
-                        <Text style={styles.viewButtonText}>View Details</Text>
-                        <ChevronRight size={14} color={Colors.primary} />
-                      </TouchableOpacity>
+                      <View style={styles.recordActions}>
+                        <TouchableOpacity style={styles.viewButton}>
+                          <Eye size={14} color={Colors.primary} />
+                          <Text style={styles.viewButtonText}>View</Text>
+                        </TouchableOpacity>
+                        {canEdit && (
+                          <>
+                            <TouchableOpacity
+                              style={styles.editButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleEditRecord(record);
+                              }}
+                            >
+                              <Edit3 size={14} color={Colors.medical.blue} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.deleteButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRecord(record);
+                              }}
+                            >
+                              <Trash2 size={14} color={Colors.medical.red} />
+                            </TouchableOpacity>
+                          </>
+                        )}
+                      </View>
                     </View>
                   </TouchableOpacity>
                 );
@@ -359,7 +524,11 @@ export default function HealthcareRecordsScreen() {
             ) : (
               /* Empty State */
               <View style={styles.emptyState}>
-                <FolderOpen size={64} color={Colors.textLight} strokeWidth={1} />
+                <FolderOpen
+                  size={64}
+                  color={Colors.textLight}
+                  strokeWidth={1}
+                />
                 <Text style={styles.emptyTitle}>
                   {searchQuery || selectedFilter !== 'all'
                     ? 'No matching records found'
@@ -375,6 +544,186 @@ export default function HealthcareRecordsScreen() {
           </View>
         </ScrollView>
       )}
+
+      {/* Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selectedRecord && (
+              <>
+                <View style={styles.previewHeader}>
+                  <Text style={styles.modalTitle}>{selectedRecord.title}</Text>
+                  <TouchableOpacity onPress={() => setShowPreviewModal(false)}>
+                    <X size={24} color={Colors.text} strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalSubtitle}>
+                  Patient: {selectedRecord.patientName} •{' '}
+                  {selectedRecord.patientId}
+                </Text>
+
+                {selectedRecord.description && (
+                  <Text style={styles.recordDescriptionModal}>
+                    {selectedRecord.description}
+                  </Text>
+                )}
+
+                <View style={styles.recordMetaModal}>
+                  <Text style={styles.recordMetaText}>
+                    Created:{' '}
+                    {selectedRecord.createdAt?.toDate
+                      ? selectedRecord.createdAt.toDate().toLocaleString()
+                      : selectedRecord.createdAt?.seconds
+                      ? new Date(
+                          selectedRecord.createdAt.seconds * 1000
+                        ).toLocaleString()
+                      : 'N/A'}
+                  </Text>
+                  {selectedRecord.status && (
+                    <Text style={styles.recordMetaText}>
+                      Status:{' '}
+                      {selectedRecord.status
+                        .replace('_', ' ')
+                        .charAt(0)
+                        .toUpperCase() +
+                        selectedRecord.status.replace('_', ' ').slice(1)}
+                    </Text>
+                  )}
+                  {selectedRecord.priority && (
+                    <Text style={styles.recordMetaText}>
+                      Priority:{' '}
+                      {selectedRecord.priority.charAt(0).toUpperCase() +
+                        selectedRecord.priority.slice(1)}
+                    </Text>
+                  )}
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.editModalContent}>
+            <View style={styles.editModalHeader}>
+              <Text style={styles.modalTitle}>Edit Record</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <X size={24} color={Colors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.editForm}>
+              <Text style={styles.inputLabel}>Title</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="Enter record title"
+                placeholderTextColor={Colors.textLight}
+              />
+
+              <Text style={styles.inputLabel}>Description</Text>
+              <TextInput
+                style={[styles.textInput, styles.textAreaInput]}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                placeholder="Enter record description"
+                placeholderTextColor={Colors.textLight}
+                multiline
+                numberOfLines={4}
+              />
+
+              <Text style={styles.inputLabel}>Status</Text>
+              <View style={styles.optionsContainer}>
+                {['pending_review', 'active', 'completed', 'urgent'].map(
+                  (status) => (
+                    <TouchableOpacity
+                      key={status}
+                      style={[
+                        styles.optionButton,
+                        editStatus === status && styles.optionButtonSelected,
+                      ]}
+                      onPress={() => setEditStatus(status)}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          editStatus === status && styles.optionTextSelected,
+                        ]}
+                      >
+                        {status.replace('_', ' ').charAt(0).toUpperCase() +
+                          status.replace('_', ' ').slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+
+              <Text style={styles.inputLabel}>Priority</Text>
+              <View style={styles.optionsContainer}>
+                {['normal', 'high', 'urgent'].map((priority) => (
+                  <TouchableOpacity
+                    key={priority}
+                    style={[
+                      styles.optionButton,
+                      editPriority === priority && styles.optionButtonSelected,
+                    ]}
+                    onPress={() => setEditPriority(priority)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        editPriority === priority && styles.optionTextSelected,
+                      ]}
+                    >
+                      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={styles.editModalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowEditModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.updateButton,
+                  updating && styles.updateButtonDisabled,
+                ]}
+                onPress={handleUpdateRecord}
+                disabled={updating}
+              >
+                {updating ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Check size={16} color="white" strokeWidth={2} />
+                )}
+                <Text style={styles.updateButtonText}>
+                  {updating ? 'Updating...' : 'Update'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -651,6 +1000,12 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
+  recordActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -661,6 +1016,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
     fontFamily: 'Inter-SemiBold',
+  },
+
+  editButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: `${Colors.medical.blue}15`,
+  },
+
+  deleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: `${Colors.medical.red}15`,
   },
 
   emptyState: {
@@ -684,5 +1051,181 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+  },
+
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: Colors.text,
+    flex: 1,
+    marginRight: 16,
+  },
+
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginBottom: 16,
+  },
+
+  recordDescriptionModal: {
+    fontSize: 14,
+    color: Colors.text,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+
+  recordMetaModal: {
+    backgroundColor: Colors.surface,
+    padding: 12,
+    borderRadius: 8,
+    gap: 4,
+  },
+
+  recordMetaText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+  },
+
+  editModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+  },
+
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  editForm: {
+    maxHeight: 400,
+    marginBottom: 24,
+  },
+
+  inputLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+
+  textInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
+  },
+
+  textAreaInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  optionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+
+  optionButtonSelected: {
+    backgroundColor: `${Colors.primary}20`,
+    borderColor: Colors.primary,
+  },
+
+  optionText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: Colors.textSecondary,
+  },
+
+  optionTextSelected: {
+    color: Colors.primary,
+  },
+
+  editModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.textLight,
+    alignItems: 'center',
+  },
+
+  cancelButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  updateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    gap: 6,
+  },
+
+  updateButtonDisabled: {
+    backgroundColor: Colors.textLight,
+  },
+
+  updateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });
