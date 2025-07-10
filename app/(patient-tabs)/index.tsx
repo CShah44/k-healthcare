@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -25,15 +26,23 @@ import {
   Plus,
   Bell,
   Users, // Add this import
+  Pill,
+  FileImage,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { RecordsService, MedicalRecord } from '@/services/recordsService';
 
 const { width } = Dimensions.get('window');
 
 export default function PatientHomeScreen() {
-  const { userData: user } = useAuth();
+  const { userData: user, user: firebaseuser } = useAuth();
+
+  // State for records
+  const [recentRecords, setRecentRecords] = useState<MedicalRecord[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [recordsError, setRecordsError] = useState<string | null>(null);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -61,41 +70,96 @@ export default function PatientHomeScreen() {
     }, 400);
   }, []);
 
-  const recentRecords = [
-    {
-      id: '1',
-      title: 'Blood Test Results - CBC',
-      type: 'Lab Report',
-      date: 'Oct 15, 2024',
-      status: 'Normal',
-      isNew: true,
-      color: Colors.medical.green,
-    },
-    {
-      id: '2',
-      title: 'Chest X-Ray Report',
-      type: 'Imaging',
-      date: 'Oct 12, 2024',
-      status: 'Reviewed',
-      isNew: false,
-      color: Colors.primary,
-    },
-    {
-      id: '3',
-      title: 'Blood Pressure Medication',
-      type: 'Prescription',
-      date: 'Oct 10, 2024',
-      status: 'Active',
-      isNew: false,
-      color: Colors.medical.orange,
-    },
-  ];
+  // Fetch recent records
+  useEffect(() => {
+    if (!firebaseuser?.uid) return;
+
+    const fetchRecentRecords = async () => {
+      try {
+        setLoadingRecords(true);
+        setRecordsError(null);
+        const records = await RecordsService.getRecentRecords(
+          firebaseuser.uid,
+          5
+        );
+        setRecentRecords(records);
+      } catch (error) {
+        console.error('Error fetching recent records:', error);
+        setRecordsError('Failed to load recent records');
+      } finally {
+        setLoadingRecords(false);
+      }
+    };
+
+    fetchRecentRecords();
+  }, [firebaseuser?.uid]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  };
+
+  // Helper function to get record icon and color
+  const getRecordIcon = (type: string, source?: string) => {
+    if (source === 'lab_uploaded') {
+      return { icon: TestTube2, color: Colors.medical.green };
+    }
+
+    switch (type) {
+      case 'prescriptions':
+        return { icon: Pill, color: Colors.medical.orange };
+      case 'uploaded':
+        return { icon: FileImage, color: Colors.primary };
+      case 'lab_reports':
+        return { icon: TestTube2, color: Colors.medical.green };
+      case 'imaging':
+        return { icon: FileText, color: Colors.medical.blue };
+      default:
+        return { icon: FileText, color: Colors.textSecondary };
+    }
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (status?: string) => {
+    if (!status) return Colors.textSecondary;
+
+    switch (status.toLowerCase()) {
+      case 'normal':
+      case 'reviewed':
+        return Colors.medical.green;
+      case 'high':
+      case 'critical':
+        return Colors.medical.red;
+      case 'active':
+        return Colors.medical.blue;
+      case 'archived':
+        return Colors.textLight;
+      default:
+        return Colors.textSecondary;
+    }
+  };
+
+  // Helper function to format date
+  const formatDate = (uploadedAt: any) => {
+    if (!uploadedAt) return 'N/A';
+
+    let date: Date;
+    if (uploadedAt.toDate) {
+      date = uploadedAt.toDate();
+    } else if (uploadedAt.seconds) {
+      date = new Date(uploadedAt.seconds * 1000);
+    } else if (uploadedAt instanceof Date) {
+      date = uploadedAt;
+    } else {
+      return 'N/A';
+    }
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   // Animated styles
@@ -254,49 +318,84 @@ export default function PatientHomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {recentRecords.slice(0, 3).map((record) => (
-              <TouchableOpacity
-                key={record.id}
-                style={styles.recordCard}
-                activeOpacity={0.7}
-              >
-                <View style={styles.recordContent}>
-                  {record.isNew && <View style={styles.newBadge} />}
-                  <View style={styles.recordLeft}>
-                    <View
-                      style={[
-                        styles.recordIcon,
-                        { backgroundColor: `${record.color}15` },
-                      ]}
-                    >
-                      <FileText
-                        size={18}
-                        color={record.color}
-                        strokeWidth={2}
-                      />
-                    </View>
-                    <View style={styles.recordInfo}>
-                      <Text style={styles.recordTitle}>{record.title}</Text>
-                      <Text style={styles.recordMeta}>
-                        {record.type} • {record.date}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    style={[
-                      styles.recordStatus,
-                      { backgroundColor: `${record.color}15` },
-                    ]}
+            {loadingRecords ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.loadingText}>Loading records...</Text>
+              </View>
+            ) : recordsError ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{recordsError}</Text>
+              </View>
+            ) : recentRecords.length > 0 ? (
+              recentRecords.slice(0, 3).map((record) => {
+                const { icon: IconComponent, color } = getRecordIcon(
+                  record.type,
+                  record.source
+                );
+                const statusColor = getStatusColor(record.status);
+                const formattedDate = formatDate(record.uploadedAt);
+
+                return (
+                  <TouchableOpacity
+                    key={record.id}
+                    style={styles.recordCard}
+                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[styles.recordStatusText, { color: record.color }]}
-                    >
-                      {record.status}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                    <View style={styles.recordContent}>
+                      {record.isNew && <View style={styles.newBadge} />}
+                      <View style={styles.recordLeft}>
+                        <View
+                          style={[
+                            styles.recordIcon,
+                            { backgroundColor: `${color}15` },
+                          ]}
+                        >
+                          <IconComponent
+                            size={18}
+                            color={color}
+                            strokeWidth={2}
+                          />
+                        </View>
+                        <View style={styles.recordInfo}>
+                          <Text style={styles.recordTitle}>{record.title}</Text>
+                          <Text style={styles.recordMeta}>
+                            {record.source === 'lab_uploaded'
+                              ? record.lab
+                              : record.doctor || 'Self-uploaded'}{' '}
+                            • {formattedDate}
+                          </Text>
+                        </View>
+                      </View>
+                      {record.status && (
+                        <View
+                          style={[
+                            styles.recordStatus,
+                            { backgroundColor: `${statusColor}15` },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.recordStatusText,
+                              { color: statusColor },
+                            ]}
+                          >
+                            {record.status}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View style={styles.emptyRecordsContainer}>
+                <Text style={styles.emptyRecordsText}>No records found</Text>
+                <Text style={styles.emptyRecordsSubtext}>
+                  Upload your first medical record to get started
+                </Text>
+              </View>
+            )}
           </Animated.View>
 
           <View style={styles.bottomSpacing} />
@@ -585,5 +684,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
+  },
+
+  // Loading and error states
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+
+  loadingText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    marginTop: 8,
+  },
+
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+
+  errorText: {
+    fontSize: 14,
+    color: Colors.error,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+  },
+
+  emptyRecordsContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+
+  emptyRecordsText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+
+  emptyRecordsSubtext: {
+    fontSize: 14,
+    color: Colors.textLight,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
   },
 });

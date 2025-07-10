@@ -52,6 +52,39 @@ import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, updateDoc } f
 import { useAuth } from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
+import CryptoJS from 'crypto-js';
+const getUserEncryptionKey = (uid: string): string => {
+  return CryptoJS.SHA256(uid + '_svastheya_secret').toString(); // user-specific encryption key
+};
+
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function decryptEncryptedPDF(base64Encrypted: string, uid: string): Uint8Array {
+  const key = getUserEncryptionKey(uid);
+  const decrypted = CryptoJS.AES.decrypt(base64Encrypted, key);
+  const typedArray = new Uint8Array(decrypted.sigBytes);
+  for (let i = 0; i < decrypted.sigBytes; i++) {
+    typedArray[i] =
+      (decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+  }
+  return typedArray;
+}
 
 const { SUPABASE_URL, SUPABASE_ANON_KEY } = Constants.expoConfig?.extra ?? {};
 const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
@@ -361,9 +394,21 @@ export default function UploadRecordScreen() {
     ];
   };
 
+  // Helper to convert base64 to Uint8Array
+  function base64ToUint8Array(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+
   const handleUpload = async () => {
     if (!user) {
       Alert.alert('Error', 'User not found. Please log in again.');
+      setUploading(false);
       return;
     }
     if (!selectedFile && !selectedImage) {
@@ -380,22 +425,53 @@ export default function UploadRecordScreen() {
       let fileUri = '';
       let fileName = '';
       let fileType = '';
+      let uploadBlob: Blob | undefined;
       if (selectedFile) {
         fileUri = selectedFile.uri;
         fileName = selectedFile.name;
         fileType = selectedFile.mimeType || 'application/pdf';
+      
+        const response = await fetch(fileUri);
+        const arrayBuffer = await response.arrayBuffer();
+      
+        // Encrypt PDFs and images
+        if (fileType === 'application/pdf' || fileType.startsWith('image/')) {
+          const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
+          const encryptionKey = getUserEncryptionKey(user.uid);
+      
+          const encrypted = CryptoJS.AES.encrypt(wordArray, encryptionKey).toString();
+          const encryptedBytes = base64ToUint8Array(encrypted);
+      
+          uploadBlob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
+        } else {
+          uploadBlob = await response.blob();
+        }
       } else if (selectedImage) {
         fileUri = selectedImage.uri;
         fileName = selectedImage.fileName || `photo_${Date.now()}.jpg`;
         fileType = selectedImage.type || 'image/jpeg';
+        
+        const response = await fetch(fileUri);
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Encrypt images
+        const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
+        const encryptionKey = getUserEncryptionKey(user.uid);
+    
+        const encrypted = CryptoJS.AES.encrypt(wordArray, encryptionKey).toString();
+        const encryptedBytes = base64ToUint8Array(encrypted);
+    
+        uploadBlob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
+      }
+
+      if (!uploadBlob) {
+        throw new Error('Failed to prepare file for upload.');
       }
 
       // Upload to Supabase Storage
-      const response = await fetch(fileUri);
-      const blob = await response.blob();
       const { data, error } = await supabase.storage
         .from(BUCKET)
-        .upload(`uploads/${user.uid}/${Date.now()}_${fileName}`, blob, {
+        .upload(`uploads/${user.uid}/${Date.now()}_${fileName}`, uploadBlob, {
           upsert: false,
           contentType: fileType,
         });
@@ -437,6 +513,11 @@ export default function UploadRecordScreen() {
         status: 'active',
         tags: selectedTags,
         doctor: 'Self-uploaded',
+        encryption: {
+          method: 'AES',
+          keyHash: getUserEncryptionKey(user.uid),
+          enabled: fileType === 'application/pdf' || fileType.startsWith('image/'),
+        },
       });
 
       setUploading(false);
@@ -459,7 +540,38 @@ export default function UploadRecordScreen() {
       Alert.alert('Error', 'Failed to upload record. Please try again.');
     }
   };
-
+  const previewEncryptedPDF = async (storagePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .download(storagePath);
+  
+      if (error || !data) {
+        Alert.alert('Error', 'Failed to download encrypted file.');
+        return;
+      }
+  
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result?.toString().split(',')[1];
+        if (!base64) return;
+  
+        const decryptedBytes = decryptEncryptedPDF(base64, user?.uid ?? '');
+        const decryptedBlob = new Blob([decryptedBytes], { type: 'application/pdf' });
+  
+        const objectUrl = URL.createObjectURL(decryptedBlob);
+        router.push({
+          pathname: '/pdf-viewer',
+          params: { url: objectUrl },
+        });
+      };
+      reader.readAsDataURL(data);
+    } catch (e) {
+      console.error('Decrypt/preview error:', e);
+      Alert.alert('Error', 'Could not preview file.');
+    }
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient

@@ -524,4 +524,128 @@ export class FamilyService {
       throw new Error('Failed to fetch medical records');
     }
   }
+
+  // Check if user can edit/delete a family member's record
+  static async canEditMemberRecord(
+    familyId: string,
+    requesterId: string,
+    recordOwnerId: string
+  ): Promise<boolean> {
+    try {
+      // Get family data
+      const familyDoc = await getDoc(doc(db, 'families', familyId));
+      if (!familyDoc.exists()) {
+        return false;
+      }
+
+      const family = familyDoc.data() as Family;
+
+      // Family creator can edit any member's records
+      if (family.createdBy === requesterId) {
+        return true;
+      }
+
+      // Users can edit their own records
+      return requesterId === recordOwnerId;
+    } catch (error) {
+      console.error('Error checking edit permissions:', error);
+      return false;
+    }
+  }
+
+  // Get family member info by user ID
+  static async getFamilyMemberInfo(
+    memberId: string,
+    requesterId: string
+  ): Promise<any | null> {
+    try {
+      // Get requester's data to verify family membership
+      const requesterDoc = await getDoc(doc(db, 'users', requesterId));
+      if (!requesterDoc.exists()) {
+        throw new Error('Requester not found');
+      }
+
+      const requesterData = requesterDoc.data();
+      if (!requesterData.familyId) {
+        throw new Error('Requester is not part of any family');
+      }
+
+      // Get member's data
+      const memberDoc = await getDoc(doc(db, 'users', memberId));
+      if (!memberDoc.exists()) {
+        throw new Error('Member not found');
+      }
+
+      const memberData = memberDoc.data();
+
+      // Verify they're in the same family
+      if (memberData.familyId !== requesterData.familyId) {
+        throw new Error('Not authorized to view this member\'s information');
+      }
+
+      return {
+        id: memberDoc.id,
+        ...memberData,
+      };
+    } catch (error) {
+      console.error('Error getting family member info:', error);
+      throw error;
+    }
+  }
+
+  // Update a family member's record (with permission check)
+  static async updateMemberRecord(
+    familyId: string,
+    memberId: string,
+    recordId: string,
+    requesterId: string,
+    updateData: {
+      title?: string;
+      tags?: string[];
+      [key: string]: any;
+    }
+  ): Promise<void> {
+    try {
+      // Check permissions
+      const canEdit = await this.canEditMemberRecord(familyId, requesterId, memberId);
+      if (!canEdit) {
+        throw new Error('You do not have permission to edit this record');
+      }
+
+      // Update the record
+      await updateDoc(
+        doc(db, 'patients', memberId, 'records', recordId),
+        {
+          ...updateData,
+          updatedAt: serverTimestamp(),
+          updatedBy: requesterId,
+        }
+      );
+    } catch (error) {
+      console.error('Error updating member record:', error);
+      throw error;
+    }
+  }
+
+  // Delete a family member's record (with permission check)
+  static async deleteMemberRecord(
+    familyId: string,
+    memberId: string,
+    recordId: string,
+    requesterId: string
+  ): Promise<void> {
+    try {
+      // Check permissions
+      const canEdit = await this.canEditMemberRecord(familyId, requesterId, memberId);
+      if (!canEdit) {
+        throw new Error('You do not have permission to delete this record');
+      }
+
+      // Delete the record
+      await deleteDoc(doc(db, 'patients', memberId, 'records', recordId));
+    } catch (error) {
+      console.error('Error deleting member record:', error);
+      throw error;
+    }
+  }
 }

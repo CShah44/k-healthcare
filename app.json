@@ -8,8 +8,13 @@
     "scheme": "khealthcare",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "android": {
+      "googleServicesFile": "./google-services.json",
+      "package": "com.khealthcare.app"
+    },
     "ios": {
-      "supportsTablet": true
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.khealthcare.app"
     },
     "web": {
       "bundler": "metro",

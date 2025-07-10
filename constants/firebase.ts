@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -22,7 +22,8 @@ const firebaseConfig = {
   appId: FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// Prevent re-initialization
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 const auth = getAuth(app);
 const db = getFirestore(app);

@@ -8,10 +8,10 @@ import {
   Dimensions,
   Modal,
   Image,
-  Alert,
   ActivityIndicator,
   Linking,
   TextInput,
+  Platform,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -40,11 +40,15 @@ import {
   Bone,
   Activity,
   Check,
+  Edit3,
+  Trash2,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
+
+
 import {
   collection,
   query,
@@ -54,11 +58,23 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { router } from 'expo-router';
+import CryptoJS from 'crypto-js';
+import * as FileSystem from 'expo-file-system';
+import { WebView } from 'react-native-webview';
+import Constants from 'expo-constants';
+import { createClient } from '@supabase/supabase-js';
+import { useCustomAlert } from '@/components/CustomAlert';
 
 const { width } = Dimensions.get('window');
+
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = Constants.expoConfig?.extra ?? {};
+const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
+
+const BUCKET = 'svastheya';
 
 // Predefined tags for medical records
 const PREDEFINED_TAGS = [
@@ -120,6 +136,63 @@ const PREDEFINED_TAGS = [
   },
 ];
 
+// Helper to convert base64 to Uint8Array
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Helper to convert Uint8Array to base64
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Helper to get user encryption key (same as upload)
+function getUserEncryptionKey(uid: string): string {
+  return CryptoJS.SHA256(uid + '_svastheya_secret').toString();
+}
+
+// Helper to decrypt AES-encrypted files (PDFs and images)
+async function decryptFileFromUrl(url: string, record: any, user: any): Promise<string> {
+  // Download encrypted file
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+
+  // Convert encrypted binary to base64
+  const encryptedBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
+
+  // Get encryption key
+  const key = getUserEncryptionKey(user.uid);
+
+  // Decrypt
+  const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
+  const decryptedBytes = decrypted.words.reduce((arr: number[], word: number) => {
+    arr.push((word >> 24) & 0xff, (word >> 16) & 0xff, (word >> 8) & 0xff, word & 0xff);
+    return arr;
+  }, []);
+  const decryptedUint8 = new Uint8Array(decryptedBytes).slice(0, decrypted.sigBytes);
+
+  if (Platform.OS === 'web') {
+    // Create a Blob and object URL for browser viewing
+    const blob = new Blob([decryptedUint8], { type: record.fileType });
+    const blobUrl = URL.createObjectURL(blob);
+    return blobUrl;
+  } else {
+    // Convert to base64 data URI for WebView (mobile)
+    return `data:${record.fileType};base64,${uint8ArrayToBase64(decryptedUint8)}`;
+  }
+}
+
+
 export default function MedicalRecordsScreen() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -135,7 +208,20 @@ export default function MedicalRecordsScreen() {
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [loadingTags, setLoadingTags] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
+
+  // Edit and Delete states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Add state for PDF preview
+  const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+
   const { user } = useAuth();
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -189,7 +275,7 @@ export default function MedicalRecordsScreen() {
     if (!user) return;
 
     setLoadingTags(true);
-    
+
     const unsubscribeUserTags = onSnapshot(
       doc(db, 'userTags', user.uid),
       (docSnapshot) => {
@@ -212,12 +298,16 @@ export default function MedicalRecordsScreen() {
 
   const saveUserCustomTags = async (tags: string[]) => {
     if (!user) return;
-    
+
     try {
-      await setDoc(doc(db, 'userTags', user.uid), {
-        customTags: tags,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'userTags', user.uid),
+        {
+          customTags: tags,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     } catch (error) {
       console.error('Error saving custom tags:', error);
       throw error;
@@ -267,7 +357,6 @@ export default function MedicalRecordsScreen() {
     )
   );
 
-  
   const filters = [
     { id: 'all', label: 'All', count: filteredRecords.length },
     {
@@ -350,7 +439,7 @@ export default function MedicalRecordsScreen() {
   const addCustomTag = async () => {
     const trimmedTag = newTagInput.trim().toLowerCase();
     if (!trimmedTag) {
-      Alert.alert('Error', 'Please enter a tag name');
+      showAlert('Error', 'Please enter a tag name');
       return;
     }
 
@@ -360,33 +449,36 @@ export default function MedicalRecordsScreen() {
       ...customTags,
     ];
     if (allExistingTags.includes(trimmedTag)) {
-      Alert.alert('Error', 'This tag already exists');
+      showAlert('Error', 'This tag already exists');
       return;
     }
 
     try {
       setAddingTag(true);
-      
+
       // Add to custom tags and select it
       const newCustomTags = [...customTags, trimmedTag];
       setCustomTags(newCustomTags);
       setSelectedTags((prev) => [...prev, trimmedTag]);
-      
+
       // Save to database
       await saveUserCustomTags(newCustomTags);
-      
+
       setNewTagInput('');
       setShowCustomTagModal(false);
-      
+
       // Show success feedback
-      Alert.alert('Success', `Tag "${trimmedTag}" has been added and is now available for filtering!`);
+      showAlert(
+        'Success',
+        `Tag "${trimmedTag}" has been added and is now available for filtering!`
+      );
     } catch (error) {
       console.error('Error adding custom tag:', error);
-      Alert.alert('Error', 'Failed to save custom tag. Please try again.');
-      
+      showAlert('Error', 'Failed to save custom tag. Please try again.');
+
       // Revert local changes on error
-      setCustomTags((prev) => prev.filter(tag => tag !== trimmedTag));
-      setSelectedTags((prev) => prev.filter(tag => tag !== trimmedTag));
+      setCustomTags((prev) => prev.filter((tag) => tag !== trimmedTag));
+      setSelectedTags((prev) => prev.filter((tag) => tag !== trimmedTag));
     } finally {
       setAddingTag(false);
     }
@@ -397,13 +489,13 @@ export default function MedicalRecordsScreen() {
       const newCustomTags = customTags.filter((id) => id !== tagId);
       setCustomTags(newCustomTags);
       setSelectedTags((prev) => prev.filter((id) => id !== tagId));
-      
+
       // Save to database
       await saveUserCustomTags(newCustomTags);
     } catch (error) {
       console.error('Error removing custom tag:', error);
-      Alert.alert('Error', 'Failed to remove custom tag. Please try again.');
-      
+      showAlert('Error', 'Failed to remove custom tag. Please try again.');
+
       // Revert local changes on error
       setCustomTags((prev) => [...prev, tagId]);
     }
@@ -432,7 +524,7 @@ export default function MedicalRecordsScreen() {
       });
     } catch (error) {
       console.error('Error adding tag:', error);
-      Alert.alert('Error', 'Failed to add tag to record');
+      showAlert('Error', 'Failed to add tag to record');
     }
   };
 
@@ -449,8 +541,147 @@ export default function MedicalRecordsScreen() {
       });
     } catch (error) {
       console.error('Error removing tag:', error);
-      Alert.alert('Error', 'Failed to remove tag from record');
+      showAlert('Error', 'Failed to remove tag from record');
     }
+  };
+
+  // Edit and Delete functions
+  const canEditRecord = (record: any): boolean => {
+    // Users can edit/delete their own records
+    // Also allow editing of self-uploaded records
+    return record.type === 'uploaded' || record.source !== 'lab_uploaded';
+  };
+
+  const handleEditRecord = (record: any) => {
+    if (!canEditRecord(record)) {
+      showAlert(
+        'Permission Denied',
+        'You can only edit your own uploaded records.'
+      );
+      return;
+    }
+
+    setSelectedRecord(record);
+    setEditTitle(record.title || '');
+    setEditTags(record.tags || []);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateRecord = async () => {
+    if (!selectedRecord || !editTitle.trim()) {
+      showAlert('Error', 'Please enter a valid title');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+
+      await updateDoc(
+        doc(db, 'patients', user!.uid, 'records', selectedRecord.id),
+        {
+          title: editTitle.trim(),
+          tags: editTags,
+          updatedAt: new Date(),
+        }
+      );
+
+      setShowEditModal(false);
+      setSelectedRecord(null);
+      showAlert('Success', 'Record updated successfully');
+    } catch (error) {
+      console.error('Error updating record:', error);
+      showAlert('Error', 'Failed to update record');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteRecord = (record: any) => {
+    console.log('🗑️ Delete clicked for record:', record);
+    
+    if (!canEditRecord(record)) {
+      showAlert(
+        'Permission Denied',
+        'You can only delete your own uploaded records.'
+      );
+      return;
+    }
+  
+    showAlert(
+      'Delete Record',
+      'Are you sure you want to delete this record? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              
+              // Extract file path from Supabase URL
+              const fileUrl = record.fileUrl;
+              if (fileUrl && fileUrl.includes('supabase.co')) {
+                try {
+                  // Parse the Supabase URL to extract bucket and file path
+                  // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
+                  const url = new URL(fileUrl);
+                  const pathParts = url.pathname.split('/');
+                  
+                  // Find the bucket name (after 'public')
+                  const publicIndex = pathParts.findIndex(part => part === 'public');
+                  if (publicIndex !== -1 && publicIndex + 1 < pathParts.length) {
+                    const bucket = pathParts[publicIndex + 1]; // Should be 'svastheya'
+                    const filePath = pathParts.slice(publicIndex + 2).join('/'); // Everything after bucket name
+                    
+                    console.log('🗑️ Deleting from Supabase:', { bucket, filePath });
+                    
+                    // Delete from Supabase Storage
+                    const { error: storageError } = await supabase
+                      .storage
+                      .from(bucket)
+                      .remove([filePath]);
+                      
+                    if (storageError) {
+                      console.error('Error deleting from storage:', storageError);
+                      // Continue with Firestore deletion even if storage deletion fails
+                    } else {
+                      console.log('✅ Successfully deleted from Supabase storage');
+                    }
+                  } else {
+                    console.error('Could not parse Supabase URL structure:', fileUrl);
+                  }
+                } catch (urlError) {
+                  console.error('Error parsing Supabase URL:', urlError);
+                  // Continue with Firestore deletion even if URL parsing fails
+                }
+              }
+              
+              // Delete from Firestore
+              await deleteDoc(
+                doc(db, 'patients', user!.uid, 'records', record.id)
+              );
+              
+              showAlert('Success', 'Record deleted successfully');
+            } catch (error) {
+              console.error('Error deleting record:', error);
+              showAlert('Error', 'Failed to delete record');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+  
+
+  const toggleEditTag = (tagId: string) => {
+    setEditTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
   };
 
   return (
@@ -641,6 +872,7 @@ export default function MedicalRecordsScreen() {
                   record.type,
                   record.source
                 );
+                const canEdit = canEditRecord(record);
 
                 return (
                   <Animated.View
@@ -777,6 +1009,30 @@ export default function MedicalRecordsScreen() {
                                 strokeWidth={2}
                               />
                             </TouchableOpacity>
+                            {canEdit && (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.actionButton}
+                                  onPress={() => handleEditRecord(record)}
+                                >
+                                  <Edit3
+                                    size={16}
+                                    color={Colors.medical.blue}
+                                    strokeWidth={2}
+                                  />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.actionButton}
+                                  onPress={() => handleDeleteRecord(record)}
+                                >
+                                  <Trash2
+                                    size={16}
+                                    color={Colors.medical.red}
+                                    strokeWidth={2}
+                                  />
+                                </TouchableOpacity>
+                              </>
+                            )}
                           </View>
                         </View>
 
@@ -885,55 +1141,60 @@ export default function MedicalRecordsScreen() {
                 {loadingTags ? (
                   <View style={styles.loadingTagsContainer}>
                     <ActivityIndicator size="small" color={Colors.primary} />
-                    <Text style={styles.loadingTagsText}>Loading your tags...</Text>
+                    <Text style={styles.loadingTagsText}>
+                      Loading your tags...
+                    </Text>
                   </View>
                 ) : (
                   getAllAvailableTags().map((tag) => (
                     <TouchableOpacity
-                    key={tag.id}
-                    style={[
-                      styles.tagOption,
-                      selectedTags.includes(tag.id) && styles.tagOptionSelected,
-                    ]}
-                    onPress={() => toggleTag(tag.id)}
-                  >
-                    <View style={styles.tagOptionLeft}>
-                      <tag.icon size={18} color={tag.color} strokeWidth={2} />
-                      <Text style={styles.tagOptionText}>{tag.label}</Text>
-                      {tag.isCustom && (
-                        <View style={styles.customTagBadge}>
-                          <Text style={styles.customTagBadgeText}>Custom</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.tagOptionRight}>
-                      {selectedTags.includes(tag.id) && (
-                        <View
-                          style={[
-                            styles.tagCheckmark,
-                            { backgroundColor: tag.color },
-                          ]}
-                        >
-                          <Text style={styles.tagCheckmarkText}>✓</Text>
-                        </View>
-                      )}
-                      {tag.isCustom && (
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            removeCustomTag(tag.id);
-                          }}
-                          style={styles.removeTagButton}
-                        >
-                          <X
-                            size={14}
-                            color={Colors.textLight}
-                            strokeWidth={2}
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </TouchableOpacity>
+                      key={tag.id}
+                      style={[
+                        styles.tagOption,
+                        selectedTags.includes(tag.id) &&
+                          styles.tagOptionSelected,
+                      ]}
+                      onPress={() => toggleTag(tag.id)}
+                    >
+                      <View style={styles.tagOptionLeft}>
+                        <tag.icon size={18} color={tag.color} strokeWidth={2} />
+                        <Text style={styles.tagOptionText}>{tag.label}</Text>
+                        {tag.isCustom && (
+                          <View style={styles.customTagBadge}>
+                            <Text style={styles.customTagBadgeText}>
+                              Custom
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.tagOptionRight}>
+                        {selectedTags.includes(tag.id) && (
+                          <View
+                            style={[
+                              styles.tagCheckmark,
+                              { backgroundColor: tag.color },
+                            ]}
+                          >
+                            <Text style={styles.tagCheckmarkText}>✓</Text>
+                          </View>
+                        )}
+                        {tag.isCustom && (
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              removeCustomTag(tag.id);
+                            }}
+                            style={styles.removeTagButton}
+                          >
+                            <X
+                              size={14}
+                              color={Colors.textLight}
+                              strokeWidth={2}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   ))
                 )}
               </ScrollView>
@@ -1107,15 +1368,36 @@ export default function MedicalRecordsScreen() {
                   </View>
 
                   {selectedRecord.fileType?.startsWith('image') ? (
-                    <Image
-                      source={{ uri: selectedRecord.fileUrl }}
-                      style={styles.previewImage}
-                      resizeMode="contain"
-                    />
+                    <TouchableOpacity
+                      style={styles.openPdfButton}
+                      onPress={async () => {
+                        setPdfPreviewUri(null);
+                        setShowPdfPreview(true);
+                        try {
+                          const decryptedUri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, user);
+                          setPdfPreviewUri(decryptedUri);
+                        } catch (e) {
+                          showAlert('Error', 'Failed to decrypt and open image.');
+                          setShowPdfPreview(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.openPdfText}>View Image</Text>
+                    </TouchableOpacity>
                   ) : selectedRecord.fileType === 'application/pdf' ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
-                      onPress={() => Linking.openURL(selectedRecord.fileUrl)}
+                      onPress={async () => {
+                        setPdfPreviewUri(null);
+                        setShowPdfPreview(true);
+                        try {
+                          const decryptedUri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, user);
+                          setPdfPreviewUri(decryptedUri);
+                        } catch (e) {
+                          showAlert('Error', 'Failed to decrypt and open PDF.');
+                          setShowPdfPreview(false);
+                        }
+                      }}
                     >
                       <Text style={styles.openPdfText}>Open PDF</Text>
                     </TouchableOpacity>
@@ -1129,6 +1411,155 @@ export default function MedicalRecordsScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* PDF Preview Modal */}
+        <Modal
+  visible={showPdfPreview}
+  animationType="slide"
+  transparent={false}
+  onRequestClose={() => setShowPdfPreview(false)}
+>
+  <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+    <TouchableOpacity
+      style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
+      onPress={() => setShowPdfPreview(false)}
+    >
+      <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
+    </TouchableOpacity>
+
+    {pdfPreviewUri ? (
+      Platform.OS === 'web' ? (
+        <View style={{ flex: 1, marginTop: 60 }}>
+          {selectedRecord?.fileType?.startsWith('image') ? (
+            <img
+              src={pdfPreviewUri}
+              style={{ flex: 1, width: '100%', height: '100%', objectFit: 'contain' }}
+              alt="Image Preview"
+            />
+          ) : (
+            <iframe
+              src={pdfPreviewUri}
+              style={{ flex: 1, width: '100%', height: '100%' }}
+              title="PDF Preview"
+            />
+          )}
+        </View>
+      ) : (
+        <WebView
+          source={{ uri: pdfPreviewUri }}
+          style={{ flex: 1, marginTop: 60 }}
+          useWebKit
+          originWhitelist={['*']}
+          javaScriptEnabled
+          scalesPageToFit
+        />
+      )
+    ) : (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={{ color: '#fff', marginTop: 16 }}>Decrypting file...</Text>
+      </View>
+    )}
+  </SafeAreaView>
+</Modal>
+
+
+
+        {/* Edit Modal */}
+        <Modal
+          visible={showEditModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContent}>
+              <View style={styles.editModalHeader}>
+                <Text style={styles.modalTitle}>Edit Record</Text>
+                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                  <X size={24} color={Colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.editForm}>
+                <Text style={styles.inputLabel}>Title</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  placeholder="Enter record title"
+                  placeholderTextColor={Colors.textLight}
+                />
+
+                <Text style={styles.inputLabel}>Tags</Text>
+                <View style={styles.tagGrid}>
+                  {PREDEFINED_TAGS.map((tag) => (
+                    <TouchableOpacity
+                      key={tag.id}
+                      style={[
+                        styles.tagOption,
+                        editTags.includes(tag.id) && [
+                          styles.tagOptionSelected,
+                          {
+                            backgroundColor: `${tag.color}20`,
+                            borderColor: tag.color,
+                          },
+                        ],
+                      ]}
+                      onPress={() => toggleEditTag(tag.id)}
+                    >
+                      <tag.icon
+                        size={16}
+                        color={
+                          editTags.includes(tag.id)
+                            ? tag.color
+                            : Colors.textSecondary
+                        }
+                        strokeWidth={2}
+                      />
+                      <Text
+                        style={[
+                          styles.tagOptionText,
+                          editTags.includes(tag.id) && { color: tag.color },
+                        ]}
+                      >
+                        {tag.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.editModalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.updateButton,
+                    updating && styles.updateButtonDisabled,
+                  ]}
+                  onPress={handleUpdateRecord}
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Check size={16} color="white" strokeWidth={2} />
+                  )}
+                  <Text style={styles.updateButtonText}>
+                    {updating ? 'Updating...' : 'Update'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <AlertComponent />
       </LinearGradient>
     </SafeAreaView>
   );
@@ -1904,5 +2335,94 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: 'Inter-Regular',
     marginTop: 8,
+  },
+
+  // Edit Modal Styles
+  editModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+  },
+
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  editForm: {
+    marginBottom: 24,
+  },
+
+  inputLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+
+  textInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: Colors.text,
+  },
+
+  tagGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  editModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.textLight,
+    alignItems: 'center',
+  },
+
+  cancelButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  updateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    gap: 6,
+  },
+
+  updateButtonDisabled: {
+    backgroundColor: Colors.textLight,
+  },
+
+  updateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });
