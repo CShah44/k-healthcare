@@ -30,7 +30,7 @@ yarn-error.*
 # local env files
 .env*.local
 .env
-.plist
+*.plist
 google-services.json
 
 # typescript
