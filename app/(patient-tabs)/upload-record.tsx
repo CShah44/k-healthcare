@@ -29,6 +29,7 @@ import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   Plus,
   FileText,
@@ -53,19 +54,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
-const getUserEncryptionKey = (uid: string): string => {
-  return CryptoJS.SHA256(uid + '_svastheya_secret').toString(); // user-specific encryption key
-};
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
+import { createUploadRecordStyles } from './styles/upload-record';
+import {
+  PREDEFINED_TAGS,
+  getUserEncryptionKey,
+  base64ToUint8Array,
+  uploadFile,
+  addCustomTag,
+  toggleTag,
+} from './services/uploadHelpers';
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -92,67 +89,9 @@ const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
 const BUCKET = 'svastheya';
 const { width: screenWidth } = Dimensions.get('window');
 
-// Predefined tags for medical records
-const PREDEFINED_TAGS = [
-  {
-    id: 'cardiology',
-    label: 'Cardiology',
-    icon: Heart,
-    color: Colors.medical.red,
-    isCustom: false,
-  },
-  {
-    id: 'neurology',
-    label: 'Neurology',
-    icon: Brain,
-    color: Colors.medical.blue,
-    isCustom: false,
-  },
-  {
-    id: 'orthopedics',
-    label: 'Orthopedics',
-    icon: Bone,
-    color: Colors.medical.orange,
-    isCustom: false,
-  },
-  {
-    id: 'general',
-    label: 'General',
-    icon: Activity,
-    color: Colors.medical.green,
-    isCustom: false,
-  },
-  {
-    id: 'lab_reports',
-    label: 'Lab Reports',
-    icon: TestTube2,
-    color: Colors.medical.purple,
-    isCustom: false,
-  },
-  {
-    id: 'prescriptions',
-    label: 'Prescriptions',
-    icon: Pill,
-    color: Colors.medical.yellow,
-    isCustom: false,
-  },
-  {
-    id: 'imaging',
-    label: 'Imaging',
-    icon: FileText,
-    color: Colors.primary,
-    isCustom: false,
-  },
-  {
-    id: 'emergency',
-    label: 'Emergency',
-    icon: Activity,
-    color: Colors.error,
-    isCustom: false,
-  },
-];
-
 export default function UploadRecordScreen() {
+  const { colors } = useTheme();
+  const styles = createUploadRecordStyles(colors);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
@@ -584,7 +523,7 @@ export default function UploadRecordScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+            <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Upload Record</Text>
@@ -752,7 +691,7 @@ export default function UploadRecordScreen() {
                           value={recordTitle}
                           onChangeText={setRecordTitle}
                           placeholder="Enter a descriptive title for your record"
-                          placeholderTextColor={Colors.textLight}
+                          placeholderTextColor={colors.textSecondary}
                         />
                       </View>
 
@@ -802,7 +741,7 @@ export default function UploadRecordScreen() {
                                 color={
                                   selectedTags.includes(tag.id)
                                     ? tag.color
-                                    : Colors.textSecondary
+                                    : colors.textSecondary
                                 }
                                 strokeWidth={2}
                               />
@@ -826,7 +765,7 @@ export default function UploadRecordScreen() {
                                 >
                                   <X
                                     size={12}
-                                    color={Colors.textLight}
+                                    color={colors.textSecondary}
                                     strokeWidth={2}
                                   />
                                 </TouchableOpacity>
@@ -954,7 +893,7 @@ export default function UploadRecordScreen() {
               <View style={styles.customTagModalHeader}>
                 <Text style={styles.modalTitle}>Add Custom Tag</Text>
                 <TouchableOpacity onPress={() => setShowCustomTagModal(false)}>
-                  <X size={24} color={Colors.text} strokeWidth={2} />
+                  <X size={24} color={colors.text} strokeWidth={2} />
                 </TouchableOpacity>
               </View>
 
@@ -968,7 +907,7 @@ export default function UploadRecordScreen() {
                   value={newTagInput}
                   onChangeText={setNewTagInput}
                   placeholder="Enter tag name (e.g., Dermatology, Dental)"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={colors.textSecondary}
                   autoFocus
                   maxLength={20}
                 />
@@ -1010,513 +949,3 @@ export default function UploadRecordScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  headerContent: {
-    flex: 1,
-  },
-
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-
-  headerSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginTop: 2,
-  },
-
-  scrollContainer: {
-    flex: 1,
-  },
-
-  scrollContent: {
-    paddingBottom: 40,
-  },
-
-  content: {
-    paddingHorizontal: 20,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 200,
-  },
-
-  loadingText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Medium',
-    marginTop: 16,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-
-  uploadOptionsContainer: {
-    marginBottom: 24,
-  },
-
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-
-  uploadOption: {
-    width: (screenWidth - 56) / 3,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-
-  uploadOptionGradient: {
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    minHeight: 100,
-    justifyContent: 'center',
-  },
-
-  iconContainer: {
-    marginBottom: 8,
-  },
-
-  uploadOptionText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-
-  uploadOptionSubtext: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 11,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-  },
-
-  pdfOption: {},
-  cameraOption: {},
-  galleryOption: {},
-
-  previewContainer: {
-    marginBottom: 24,
-  },
-
-  previewCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-
-  filePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  fileIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-
-  fileInfo: {
-    flex: 1,
-  },
-
-  imagePreview: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  imageInfo: {
-    alignItems: 'center',
-    marginTop: 12,
-  },
-
-  previewTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-
-  previewText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 18,
-  },
-
-  fileSizeText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Medium',
-    marginTop: 4,
-  },
-
-  previewImage: {
-    width: 120,
-    height: 160,
-    borderRadius: 12,
-  },
-
-  titleSection: {
-    marginBottom: 20,
-  },
-
-  titleLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-
-  titleInput: {
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-
-  tagSection: {
-    marginBottom: 20,
-  },
-
-  tagHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-
-  tagLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-
-  tagDescription: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  addCustomTagButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: `${Colors.primary}15`,
-    borderRadius: 16,
-    gap: 4,
-  },
-
-  addCustomTagText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.primary,
-  },
-
-  removeCustomTagButton: {
-    marginLeft: 4,
-    padding: 2,
-  },
-
-  tagGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-
-  tagOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    gap: 6,
-  },
-
-  tagOptionSelected: {
-    borderWidth: 2,
-  },
-
-  tagOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: Colors.textSecondary,
-  },
-
-  selectedTagsSection: {
-    marginBottom: 20,
-  },
-
-  selectedTagsLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-
-  selectedTagsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-
-  selectedTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-
-  selectedTagText: {
-    fontSize: 11,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  uploadConfirmButton: {
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  confirmButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-  },
-
-  uploadConfirmText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontFamily: 'Inter-Bold',
-  },
-
-  cancelButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-  },
-
-  tipsContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
-  },
-
-  tipsTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-
-  tipsList: {
-    gap: 8,
-  },
-
-  tipItem: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 18,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  customTagModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-  },
-
-  customTagModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-  },
-
-  modalDescription: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-
-  customTagInputContainer: {
-    marginBottom: 24,
-  },
-
-  customTagInput: {
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-
-  customTagModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  cancelCustomTagButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.textLight,
-    alignItems: 'center',
-  },
-
-  cancelCustomTagText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  addCustomTagConfirmButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: Colors.primary,
-    gap: 6,
-  },
-
-  addCustomTagConfirmButtonDisabled: {
-    backgroundColor: Colors.textLight,
-  },
-
-  addCustomTagConfirmText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-});

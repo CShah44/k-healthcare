@@ -1,167 +1,242 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  withSequence,
+} from 'react-native-reanimated';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   Heart,
   Users,
-  Sparkles,
+  ArrowRight,
   Shield,
-  CheckCircle,
+  Sparkles,
 } from 'lucide-react-native';
-import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
-import { Button } from '@/components/ui/Button';
-import { TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/Colors';
+import { Logo } from '@/components/ui/Logo';
+import { AnimatedCard } from '@/components/ui/AnimatedCard';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const { width, height } = Dimensions.get('window');
 
 export default function RoleSelectionScreen() {
-  const { role } = useLocalSearchParams<{ role: string }>();
+  const { colors } = useTheme();
 
-  const isPatient = role === 'patient';
-  const title = isPatient ? 'Patient Portal' : 'Healthcare Professional Portal';
-  const subtitle = isPatient
-    ? 'Access your medical records and manage your health journey with ease'
-    : 'Manage patient care and medical records with precision and efficiency';
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(30);
+  const card1Scale = useSharedValue(0);
+  const card2Scale = useSharedValue(0);
+  const footerOpacity = useSharedValue(0);
 
-  const features = isPatient
-    ? [
-        'View medical history & records',
-        'Book & manage appointments',
-        'Track health metrics',
-        'Secure messaging with doctors',
-        'Prescription management',
-        'Lab results & reports',
-      ]
-    : [
-        'Patient record management',
-        'Digital prescription system',
-        'Lab result integration',
-        'Appointment scheduling',
-        'Secure patient communication',
-        'Analytics & reporting',
-      ];
+  useEffect(() => {
+    // Staggered animations
+    headerOpacity.value = withTiming(1, { duration: 800 });
+    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
 
-  const handleLogin = () => {
-    if (isPatient) {
-      router.push('/auth/patient-login');
-    } else {
-      router.push('/auth/healthcare-login');
-    }
+    card1Scale.value = withDelay(300, withSpring(1, { damping: 12, stiffness: 100 }));
+    card2Scale.value = withDelay(500, withSpring(1, { damping: 12, stiffness: 100 }));
+
+    footerOpacity.value = withDelay(800, withTiming(1, { duration: 600 }));
+  }, []);
+
+  const handleRoleSelection = (role: 'patient' | 'healthcare') => {
+    router.push(`/auth/${role}-login`);
   };
 
-  const handleSignup = () => {
-    if (isPatient) {
-      router.push('/auth/patient-signup');
-    } else {
-      router.push('/auth/healthcare-signup');
-    }
-  };
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const card1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: card1Scale.value }],
+  }));
+
+  const card2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: card2Scale.value }],
+  }));
+
+  const footerStyle = useAnimatedStyle(() => ({
+    opacity: footerOpacity.value,
+  }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#f8fafc', '#e2e8f0', '#f1f5f9']}
+        colors={[colors.background, colors.surface]}
         style={styles.backgroundGradient}
       >
-        {/* Decorative Elements */}
-        <View style={styles.decorativeCircle1} />
-        <View style={styles.decorativeCircle2} />
-
-        {/* Header */}
+        {/* Header with Theme Toggle */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
-          </TouchableOpacity>
+          <Animated.View style={[styles.headerContent, headerStyle]}>
+            <Logo size={60} animated={true} />
+            <Text style={[styles.appName, { color: colors.text }]}>Svastheya</Text>
+            <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+              Your Health, Our Priority
+            </Text>
+          </Animated.View>
+          <ThemeToggle style={styles.themeToggle} />
         </View>
 
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          bounces={true}
         >
-          {/* Content */}
-          <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <View style={styles.iconWrapper}>
+          {/* Welcome Section */}
+          <Animated.View style={[styles.welcomeSection, headerStyle]}>
+            <Text style={[styles.welcomeTitle, { color: colors.text }]}>
+              Welcome to Better Health
+            </Text>
+            <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
+              Choose your role to begin your personalized healthcare journey
+            </Text>
+          </Animated.View>
+
+          {/* Role Selection Cards */}
+          <View style={styles.roleContainer}>
+            <Animated.View style={card1Style}>
+              <AnimatedCard
+                onPress={() => handleRoleSelection('patient')}
+                style={styles.roleCard}
+                delay={0}
+              >
                 <LinearGradient
-                  colors={[Colors.primary, '#60a5fa']}
-                  style={styles.iconGradient}
+                  colors={['rgba(0, 148, 133, 0.05)', 'rgba(0, 148, 133, 0.02)']}
+                  style={styles.roleCardGradient}
                 >
-                  {isPatient ? (
-                    <Heart size={44} color="#ffffff" strokeWidth={2} />
-                  ) : (
-                    <Users size={44} color="#ffffff" strokeWidth={2} />
-                  )}
-                </LinearGradient>
-                <Sparkles size={20} color="#fbbf24" style={styles.sparkle} />
-              </View>
-            </View>
-
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.subtitle}>{subtitle}</Text>
-            </View>
-
-            {/* Features Section */}
-            <View style={styles.featuresContainer}>
-              <Text style={styles.featuresTitle}>What you can do:</Text>
-              <View style={styles.featuresList}>
-                {features.map((feature, index) => (
-                  <View key={index} style={styles.featureItem}>
-                    <CheckCircle
-                      size={16}
-                      color={Colors.primary}
-                      strokeWidth={2}
-                    />
-                    <Text style={styles.featureText}>{feature}</Text>
+                  <View style={styles.roleHeader}>
+                    <View style={styles.roleIconContainer}>
+                      <LinearGradient
+                        colors={['#009485', '#004d40']}
+                        style={styles.roleIconGradient}
+                      >
+                        <Heart size={32} color="#FFFFFF" strokeWidth={2} />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.roleArrow}>
+                      <ArrowRight size={20} color={Colors.primary} strokeWidth={2} />
+                    </View>
                   </View>
-                ))}
-              </View>
-            </View>
 
-            {/* Buttons */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={handleLogin} activeOpacity={0.8}>
-                <LinearGradient
-                  colors={[Colors.primary, '#1e40af']}
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Log In</Text>
+                  <View style={styles.roleContent}>
+                    <Text style={[styles.roleTitle, { color: colors.text }]}>
+                      I'm a Patient
+                    </Text>
+                    <Text style={[styles.roleDescription, { color: colors.textSecondary }]}>
+                      Access medical records, track health metrics, and manage your complete health journey
+                    </Text>
+
+                    <View style={styles.roleFeatures}>
+                      <View style={styles.featureItem}>
+                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
+                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                          Medical Records
+                        </Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
+                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                          Health Tracking
+                        </Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
+                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                          Family Tree
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
                 </LinearGradient>
-              </TouchableOpacity>
+              </AnimatedCard>
+            </Animated.View>
 
-              <TouchableOpacity onPress={handleSignup} activeOpacity={0.9}>
-                <View style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>Create Account</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+            <Animated.View style={card2Style}>
+              <AnimatedCard
+                onPress={() => handleRoleSelection('healthcare')}
+                style={styles.roleCard}
+                delay={200}
+              >
+                <LinearGradient
+                  colors={['rgba(0, 148, 133, 0.05)', 'rgba(0, 148, 133, 0.02)']}
+                  style={styles.roleCardGradient}
+                >
+                  <View style={styles.roleHeader}>
+                    <View style={styles.roleIconContainer}>
+                      <LinearGradient
+                        colors={['#80cbc4', '#009485']}
+                        style={styles.roleIconGradient}
+                      >
+                        <Users size={32} color="#FFFFFF" strokeWidth={2} />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.roleArrow}>
+                      <ArrowRight size={20} color={Colors.primary} strokeWidth={2} />
+                    </View>
+                  </View>
 
-            {/* Security Badge */}
-            <View style={styles.securityContainer}>
-              <View style={styles.securityBadge}>
-                <Shield size={16} color={Colors.primary} strokeWidth={2} />
-                <Text style={styles.securityText}>End-to-End Encrypted</Text>
-              </View>
-            </View>
+                  <View style={styles.roleContent}>
+                    <Text style={[styles.roleTitle, { color: colors.text }]}>
+                      I'm a Healthcare Professional
+                    </Text>
+                    <Text style={[styles.roleDescription, { color: colors.textSecondary }]}>
+                      Manage patient records, lab results, and provide exceptional healthcare services
+                    </Text>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                By continuing, you agree to our{' '}
-                <Text style={styles.footerLink}>Terms of Service</Text> and{' '}
-                <Text style={styles.footerLink}>Privacy Policy</Text>
+                    <View style={styles.roleFeatures}>
+                      <View style={styles.featureItem}>
+                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
+                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                          Patient Management
+                        </Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
+                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                          Lab Results
+                        </Text>
+                      </View>
+                      <View style={styles.featureItem}>
+                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
+                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                          Digital Prescriptions
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </AnimatedCard>
+            </Animated.View>
+          </View>
+
+          {/* Footer */}
+          <Animated.View style={[styles.footer, footerStyle]}>
+            <View style={[styles.securityBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Shield size={18} color={Colors.primary} strokeWidth={2} />
+              <Text style={[styles.securityText, { color: Colors.primary }]}>
+                HIPAA Compliant & Secure
               </Text>
             </View>
-          </View>
+            <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
+              Trusted by healthcare professionals and patients worldwide
+            </Text>
+          </Animated.View>
         </ScrollView>
       </LinearGradient>
     </SafeAreaView>
@@ -171,138 +246,153 @@ export default function RoleSelectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
-
   backgroundGradient: {
     flex: 1,
   },
-
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  headerContent: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  themeToggle: {
+    marginTop: 10,
+  },
+  appName: {
+    fontFamily: 'IvyMode-Regular',
+    fontSize: 28,
+    marginTop: 8,
+    letterSpacing: 1,
+  },
+  tagline: {
+    fontFamily: 'Satoshi-Variable',
+    fontSize: 14,
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
   scrollView: {
     flex: 1,
   },
-
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 40,
   },
-
-  decorativeCircle1: {
-    position: 'absolute',
-    top: -120,
-    right: -120,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-  },
-
-  decorativeCircle2: {
-    position: 'absolute',
-    bottom: -80,
-    left: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(251, 191, 36, 0.06)',
-  },
-
-  header: {
+  welcomeSection: {
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  welcomeTitle: {
+    fontFamily: 'IvyMode-Regular',
+    fontSize: 24,
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  welcomeSubtitle: {
+    fontFamily: 'Satoshi-Variable',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 10,
+  },
+  roleContainer: {
+    paddingHorizontal: 20,
+    gap: 24,
+    marginBottom: 40,
+  },
+  roleCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  roleCardGradient: {
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 148, 133, 0.1)',
+  },
+  roleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
+  roleIconContainer: {
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
+  roleIconGradient: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  iconContainer: {
-    marginBottom: 30,
-  },
-
-  iconWrapper: {
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-
-  iconGradient: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  roleArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 148, 133, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 148, 133, 0.2)',
   },
-
-  sparkle: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
+  roleContent: {
+    flex: 1,
   },
-
-  titleContainer: {
+  roleTitle: {
+    fontFamily: 'IvyMode-Regular',
+    fontSize: 20,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  roleDescription: {
+    fontFamily: 'Satoshi-Variable',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  roleFeatures: {
+    gap: 8,
+  },
+  featureItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
   },
-
-  title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 16,
-    letterSpacing: -0.5,
-    lineHeight: 34,
-    paddingHorizontal: 10,
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 12,
   },
-
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    fontFamily: 'Inter-Regular',
+  featureText: {
+    fontFamily: 'Satoshi-Variable',
+    fontSize: 13,
+  },
+  footer: {
+    alignItems: 'center',
     paddingHorizontal: 20,
   },
-
-  featuresContainer: {
-    width: '100%',
-    backgroundColor: 'rgb(255, 255, 255)',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 40,
+  securityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -311,134 +401,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 6,
+    marginBottom: 16,
   },
-
-  featuresTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-
-  featuresList: {
-    gap: 12,
-  },
-
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-
-  featureText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginLeft: 12,
-    flex: 1,
-  },
-
-  buttonContainer: {
-    width: '100%',
-    gap: 16,
-    marginBottom: 30,
-  },
-
-  primaryButton: {
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  primaryButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
-
-  secondaryButton: {
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgb(255, 255, 255)',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  secondaryButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    backgroundColor: 'rgb(255, 255, 255)',
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
-
-  securityContainer: {
-    marginBottom: 20,
-  },
-
-  securityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.15)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
   securityText: {
-    fontSize: 12,
-    color: Colors.primary,
-    marginLeft: 8,
-    fontFamily: 'Inter-SemiBold',
-    letterSpacing: 0.3,
+    fontFamily: 'Satoshi-Variable',
+    fontSize: 13,
+    marginLeft: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
-
-  footer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-
-  footerText: {
+  footerNote: {
+    fontFamily: 'Satoshi-Variable',
     fontSize: 12,
-    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
-    fontFamily: 'Inter-Regular',
-  },
-
-  footerLink: {
-    color: Colors.primary,
-    fontFamily: 'Inter-Medium',
+    opacity: 0.8,
   },
 });

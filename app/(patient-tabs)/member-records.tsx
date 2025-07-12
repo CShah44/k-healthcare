@@ -43,6 +43,7 @@ import {
   Users,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { FamilyService } from '@/services/familyService';
@@ -57,6 +58,17 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
+import { createMemberRecordsStyles } from './styles/member-records';
+import {
+  canEditRecord,
+  updateMemberRecord,
+  deleteMemberRecord,
+  toggleEditTag,
+  openFile,
+  filterMemberRecords,
+  getPermissionText,
+  getPermissionColor,
+} from './services/memberRecordHelpers';
 
 // Predefined tags for medical records
 const PREDEFINED_TAGS = [
@@ -113,7 +125,7 @@ const PREDEFINED_TAGS = [
     id: 'emergency',
     label: 'Emergency',
     icon: Activity,
-    color: Colors.error,
+    color: Colors.medical.red,
     isCustom: false,
   },
 ];
@@ -121,6 +133,8 @@ const PREDEFINED_TAGS = [
 export default function MemberRecordsScreen() {
   const { memberId } = useLocalSearchParams<{ memberId: string }>();
   const { user, userData } = useAuth();
+  const { colors } = useTheme();
+  const styles = createMemberRecordsStyles(colors);
 
   const [memberData, setMemberData] = useState<any>(null);
   const [familyData, setFamilyData] = useState<any>(null);
@@ -234,7 +248,7 @@ export default function MemberRecordsScreen() {
       case 'lab_reports':
         return { icon: TestTube2, color: Colors.medical.green };
       default:
-        return { icon: FileText, color: Colors.textSecondary };
+        return { icon: FileText, color: colors.textSecondary };
     }
   };
 
@@ -251,18 +265,9 @@ export default function MemberRecordsScreen() {
     );
   };
 
-  const canEditRecord = (record: any): boolean => {
-    if (!familyData || !userData) return false;
-
-    // Family creator can edit/delete any record
-    if (familyData.createdBy === user?.uid) return true;
-
-    // Users can edit/delete their own records
-    return memberId === user?.uid;
-  };
-
+  // Restore missing handler functions that use the extracted services
   const handleEditRecord = (record: any) => {
-    if (!canEditRecord(record)) {
+    if (!canEditRecord(record, userData, memberId!)) {
       Alert.alert(
         'Permission Denied',
         'You can only edit your own records or if you are the family creator.'
@@ -277,23 +282,11 @@ export default function MemberRecordsScreen() {
   };
 
   const handleUpdateRecord = async () => {
-    if (!selectedRecord || !editTitle.trim()) {
-      Alert.alert('Error', 'Please enter a valid title');
-      return;
-    }
-
+    if (!selectedRecord || !memberId) return;
+    
     try {
       setUpdating(true);
-
-      await updateDoc(
-        doc(db, 'patients', memberId!, 'records', selectedRecord.id),
-        {
-          title: editTitle.trim(),
-          tags: editTags,
-          updatedAt: new Date(),
-        }
-      );
-
+      await updateMemberRecord(memberId, selectedRecord.id, editTitle, editTags);
       setShowEditModal(false);
       setSelectedRecord(null);
       Alert.alert('Success', 'Record updated successfully');
@@ -305,9 +298,8 @@ export default function MemberRecordsScreen() {
     }
   };
 
-  // TODO FIX THIS
   const handleDeleteRecord = (record: any) => {
-    if (!canEditRecord(record)) {
+    if (!canEditRecord(record, userData, memberId!)) {
       Alert.alert(
         'Permission Denied',
         'You can only delete your own records or if you are the family creator.'
@@ -326,10 +318,10 @@ export default function MemberRecordsScreen() {
           onPress: async () => {
             try {
               setDeleting(true);
-              await deleteDoc(
-                doc(db, 'patients', memberId!, 'records', record.id)
-              );
-              Alert.alert('Success', 'Record deleted successfully');
+              if (memberId) {
+                await deleteMemberRecord(memberId, record.id);
+                Alert.alert('Success', 'Record deleted successfully');
+              }
             } catch (error) {
               console.error('Error deleting record:', error);
               Alert.alert('Error', 'Failed to delete record');
@@ -342,13 +334,20 @@ export default function MemberRecordsScreen() {
     );
   };
 
-  const toggleEditTag = (tagId: string) => {
-    setEditTags((prev) =>
+  const handleToggleEditTag = (tagId: string) => {
+    setEditTags((prev: string[]) =>
       prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
+        ? prev.filter((id: string) => id !== tagId)
         : [...prev, tagId]
     );
   };
+
+  // Use records directly since there's no search/filter functionality in this component
+  const filteredRecords = records;
+
+  // Update permission text and color to use extracted services
+  const permissionText = getPermissionText(userData, memberId!);
+  const permissionColor = getPermissionColor(userData, memberId!);
 
   if (loading) {
     return (
@@ -373,7 +372,7 @@ export default function MemberRecordsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+            <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>
@@ -412,7 +411,7 @@ export default function MemberRecordsScreen() {
                 record.type,
                 record.source
               );
-              const canEdit = canEditRecord(record);
+              const canEdit = canEditRecord(record, userData, memberId!);
 
               return (
                 <Animated.View
@@ -556,7 +555,7 @@ export default function MemberRecordsScreen() {
             })
           ) : (
             <View style={styles.emptyState}>
-              <FileText size={64} color={Colors.textLight} strokeWidth={1} />
+              <FileText size={64} color={colors.textSecondary} strokeWidth={1} />
               <Text style={styles.emptyTitle}>No Records Found</Text>
               <Text style={styles.emptySubtitle}>
                 {memberData?.firstName} hasn't uploaded any medical records yet.
@@ -583,7 +582,7 @@ export default function MemberRecordsScreen() {
                     <TouchableOpacity
                       onPress={() => setShowPreviewModal(false)}
                     >
-                      <X size={24} color={Colors.text} strokeWidth={2} />
+                        <X size={24} color={colors.text} strokeWidth={2} />
                     </TouchableOpacity>
                   </View>
 
@@ -634,7 +633,7 @@ export default function MemberRecordsScreen() {
               <View style={styles.editModalHeader}>
                 <Text style={styles.modalTitle}>Edit Record</Text>
                 <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                  <X size={24} color={Colors.text} strokeWidth={2} />
+                  <X size={24} color={colors.text} strokeWidth={2} />
                 </TouchableOpacity>
               </View>
 
@@ -645,7 +644,7 @@ export default function MemberRecordsScreen() {
                   value={editTitle}
                   onChangeText={setEditTitle}
                   placeholder="Enter record title"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={colors.textSecondary}
                 />
 
                 <Text style={styles.inputLabel}>Tags</Text>
@@ -663,14 +662,14 @@ export default function MemberRecordsScreen() {
                           },
                         ],
                       ]}
-                      onPress={() => toggleEditTag(tag.id)}
+                      onPress={() => handleToggleEditTag(tag.id)}
                     >
                       <tag.icon
                         size={16}
                         color={
                           editTags.includes(tag.id)
                             ? tag.color
-                            : Colors.textSecondary
+                            : colors.textSecondary
                         }
                         strokeWidth={2}
                       />
@@ -719,426 +718,3 @@ export default function MemberRecordsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-
-  loadingText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  headerContent: {
-    flex: 1,
-  },
-
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-
-  headerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  headerSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  permissionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(251, 146, 60, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-
-  permissionText: {
-    fontSize: 11,
-    color: Colors.medical.orange,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  ownRecordsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-
-  ownRecordsText: {
-    fontSize: 11,
-    color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  recordsList: {
-    flex: 1,
-  },
-
-  recordsContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-
-  recordCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-
-  recordCardContent: {
-    padding: 16,
-  },
-
-  recordMain: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-
-  recordLeft: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-
-  recordIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  recordInfo: {
-    flex: 1,
-  },
-
-  recordTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-
-  recordMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-
-  recordSource: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Medium',
-  },
-
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: Colors.textLight,
-    marginHorizontal: 8,
-  },
-
-  recordDate: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  recordTags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-
-  recordTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 4,
-  },
-
-  recordTagText: {
-    fontSize: 10,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  moreTagsText: {
-    fontSize: 10,
-    color: Colors.textLight,
-    fontFamily: 'Inter-Regular',
-  },
-
-  recordActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textLight,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '80%',
-  },
-
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    flex: 1,
-    marginRight: 16,
-  },
-
-  modalSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 16,
-  },
-
-  previewImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    marginVertical: 16,
-  },
-
-  openPdfButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-
-  openPdfText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  unsupportedText: {
-    textAlign: 'center',
-    marginVertical: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  editModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '80%',
-  },
-
-  editModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  editForm: {
-    marginBottom: 24,
-  },
-
-  inputLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-
-  textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-  },
-
-  tagGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-
-  tagOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    gap: 6,
-  },
-
-  tagOptionSelected: {
-    borderWidth: 2,
-  },
-
-  tagOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: Colors.textSecondary,
-  },
-
-  editModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.textLight,
-    alignItems: 'center',
-  },
-
-  cancelButtonText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  updateButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: Colors.primary,
-    gap: 6,
-  },
-
-  updateButtonDisabled: {
-    backgroundColor: Colors.textLight,
-  },
-
-  updateButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-});

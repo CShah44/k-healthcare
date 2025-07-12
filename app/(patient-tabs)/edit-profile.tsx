@@ -23,9 +23,13 @@ import {
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { createEditProfileStyles } from './styles/edit-profile';
 
 export default function EditPatientProfileScreen() {
   const { userData: user, updateUserProfile, isLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = createEditProfileStyles(colors);
   
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -145,7 +149,7 @@ export default function EditPatientProfileScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={24} color={Colors.text} />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
           <TouchableOpacity
@@ -154,9 +158,9 @@ export default function EditPatientProfileScreen() {
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color={Colors.surface} />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
-              <Save size={20} color={Colors.surface} />
+              <Save size={20} color={colors.surface} />
             )}
           </TouchableOpacity>
         </View>
@@ -182,7 +186,7 @@ export default function EditPatientProfileScreen() {
                 value={formData[field.field as keyof typeof formData]}
                 onChangeText={(value) => handleInputChange(field.field, value)}
                 placeholder={field.placeholder}
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType={field.keyboardType || 'default'}
                 multiline={field.multiline}
                 numberOfLines={field.multiline ? 3 : 1}
@@ -228,10 +232,10 @@ export default function EditPatientProfileScreen() {
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color={Colors.surface} />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
               <>
-                <Save size={20} color={Colors.surface} />
+                <Save size={20} color={colors.surface} />
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}
@@ -241,146 +245,3 @@ export default function EditPatientProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.background,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-  },
-
-  saveButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonDisabled: {
-    backgroundColor: Colors.textLight,
-  },
-
-  form: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 20,
-  },
-
-  inputGroup: {
-    marginBottom: 20,
-  },
-
-  inputLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  labelText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginLeft: 8,
-  },
-
-  required: {
-    color: Colors.error,
-  },
-
-  input: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-
-  multilineInput: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-
-  genderContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-
-  genderOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-
-  genderOptionSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-
-  genderOptionText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-  },
-
-  genderOptionTextSelected: {
-    color: Colors.surface,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  buttonContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-
-  saveButtonLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    gap: 8,
-  },
-
-  saveButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.surface,
-  },
-});

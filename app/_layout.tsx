@@ -1,51 +1,50 @@
-import { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import {
-  useFonts,
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
-import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import { useEffect } from 'react';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/contexts/AuthContext';
-import React from 'react';
 
+// Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  useFrameworkReady();
-
-  const [fontsLoaded, fontError] = useFonts({
-    'Inter-Regular': Inter_400Regular,
-    'Inter-Medium': Inter_500Medium,
-    'Inter-SemiBold': Inter_600SemiBold,
-    'Inter-Bold': Inter_700Bold,
-    DMSerif: DMSerifDisplay_400Regular,
+  const [loaded, error] = useFonts({
+    'IvyMode-Regular': require('../assets/Fonts/ivy-mode-regular.ttf'),
+    'Satoshi-Variable': require('../assets/Fonts/Satoshi-Variable.ttf'),
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [loaded]);
 
-  if (!fontsLoaded && !fontError) {
+  if (!loaded) {
     return null;
   }
 
   return (
     <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }}>
+      <ThemeProvider>
+        <StatusBar style="auto" />
+        <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         <Stack.Screen name="index" />
-        <Stack.Screen name="auth" />
-        <Stack.Screen name="(patient-tabs)" />
         <Stack.Screen name="(healthcare-tabs)" />
+        <Stack.Screen name="(patient-tabs)" />
+        <Stack.Screen name="auth" />
       </Stack>
-      <StatusBar style="dark" />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
+

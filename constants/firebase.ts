@@ -13,6 +13,15 @@ const {
   FIREBASE_APP_ID,
 } = Constants.expoConfig?.extra || {};
 
+// Validate required Firebase config
+if (!FIREBASE_API_KEY || !FIREBASE_AUTH_DOMAIN || !FIREBASE_PROJECT_ID) {
+  console.error('Firebase configuration is missing required fields:', {
+    apiKey: FIREBASE_API_KEY ? 'present' : 'missing',
+    authDomain: FIREBASE_AUTH_DOMAIN ? 'present' : 'missing',
+    projectId: FIREBASE_PROJECT_ID ? 'present' : 'missing',
+  });
+}
+
 const firebaseConfig = {
   apiKey: FIREBASE_API_KEY,
   authDomain: FIREBASE_AUTH_DOMAIN,
@@ -21,6 +30,12 @@ const firebaseConfig = {
   messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
   appId: FIREBASE_APP_ID,
 };
+
+console.log('Firebase Config:', {
+  apiKey: FIREBASE_API_KEY ? `${FIREBASE_API_KEY.substring(0, 10)}...` : 'missing',
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  projectId: FIREBASE_PROJECT_ID,
+});
 
 // Prevent re-initialization
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];

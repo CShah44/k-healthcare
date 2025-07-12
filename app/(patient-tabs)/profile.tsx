@@ -1,114 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
-  User,
-  Settings,
-  Phone,
-  Mail,
-  Calendar,
-  Heart,
-  Shield,
-  FileText,
-  Bell,
-  CircleHelp as HelpCircle,
-  LogOut,
-  ChevronRight,
-  CreditCard as Edit,
-  Users,
+  Edit,
   ArrowLeftRight,
+  Users,
+  ChevronRight,
+  LogOut,
+  Settings,
+  Bell,
+  Shield,
+  HelpCircle,
+  Info,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDoc, doc } from 'firebase/firestore';
-import { db } from '@/constants/firebase';
+import { useTheme } from '@/contexts/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { createProfileStyles } from './styles/profile';
 
-export default function PatientProfileScreen() {
-  const { 
-    userData: user, 
-    logout, 
-    switchToAccount, 
-    getAccessibleAccounts, 
-    removeParentLink,
-    isSwitchedAccount,
-    originalUserId
-  } = useAuth();
-  const [accessibleAccounts, setAccessibleAccounts] = useState<any[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(false);
+export default function ProfileScreen() {
+  const { user, userData, logout } = useAuth();
+  const { colors } = useTheme();
+  const styles = createProfileStyles(colors);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch accessible accounts when component mounts
-  useEffect(() => {
-    const fetchAccessibleAccounts = async () => {
-      setLoadingAccounts(true);
-      try {
-        const accounts = await getAccessibleAccounts();
-        setAccessibleAccounts(accounts);
-        console.log('Accessible accounts fetched:', accounts);
-      } catch (error) {
-        console.error('Error fetching accessible accounts:', error);
-      } finally {
-        setLoadingAccounts(false);
-      }
-    };
-
-    fetchAccessibleAccounts();
-  }, [user?.linkedAccounts, user?.parentAccountId]);
-
-  const handleSwitchAccount = async (accountId: string) => {
-    try {
-      await switchToAccount(accountId);
-      Alert.alert('Success', 'Switched to account successfully!');
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  // Calculate age from date of birth
-  const calculateAge = (dateOfBirth: string): number => {
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
-    return age;
-  };
-
-  // Check if user is 16+ and can remove parent link
-  const canRemoveParentLink = (): boolean => {
-    if (!user?.isChildAccount || !user?.dateOfBirth) return false;
-    return calculateAge(user.dateOfBirth) >= 16;
-  };
-
-  const handleRemoveParentLink = () => {
+  const handleSignOut = () => {
     Alert.alert(
-      'Remove Parent Link',
-      'Are you sure you want to remove the link with your parent account? This will make your account independent and your parent will no longer be able to access it.',
+      'Sign Out',
+      'Are you sure you want to sign out?',
       [
-        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove Link',
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
+            setLoading(true);
             try {
-              await removeParentLink();
-              Alert.alert('Success', 'Parent link removed successfully! Your account is now independent.');
-            } catch (error: any) {
-              Alert.alert('Error', error.message);
+              await logout();
+              router.replace('/auth/role-selection');
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            } finally {
+              setLoading(false);
             }
           },
         },
@@ -116,572 +63,209 @@ export default function PatientProfileScreen() {
     );
   };
 
-  const profileData = [
-    { icon: Mail, label: 'Email', value: user?.email || 'Not provided' },
-    { icon: Phone, label: 'Phone', value: user?.phoneNumber || 'Not provided' },
+  const profileMenuItems = [
     {
-      icon: Calendar,
-      label: 'Date of Birth',
-      value: user?.dateOfBirth || 'Not provided',
+      id: 'edit',
+      title: 'Edit Profile',
+      subtitle: 'Update your personal information',
+      icon: Edit,
+      onPress: () => router.push('/(patient-tabs)/edit-profile'),
+      color: Colors.primary,
     },
-    { icon: Heart, label: 'Blood Type', value: 'O+' },
+    {
+      id: 'family',
+      title: 'Family Members',
+      subtitle: 'Manage family connections',
+      icon: Users,
+      onPress: () => router.push('/(patient-tabs)/family-tree'),
+      color: Colors.medical.orange,
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      subtitle: 'App preferences and notifications',
+      icon: Settings,
+      onPress: () => router.push('/settings'),
+      color: Colors.primary,
+    },
+    {
+      id: 'notifications',
+      title: 'Notifications',
+      subtitle: 'Manage notification preferences',
+      icon: Bell,
+      onPress: () => router.push('/notifications'),
+      color: Colors.primary,
+    },
+    {
+      id: 'privacy',
+      title: 'Privacy & Security',
+      subtitle: 'Data protection and security',
+      icon: Shield,
+      onPress: () => router.push('/privacy'),
+      color: Colors.primary,
+    },
+    {
+      id: 'help',
+      title: 'Help & Support',
+      subtitle: 'Get help and contact support',
+      icon: HelpCircle,
+      onPress: () => router.push('/help'),
+      color: Colors.primary,
+    },
+    {
+      id: 'about',
+      title: 'About',
+      subtitle: 'App version and information',
+      icon: Info,
+      onPress: () => router.push('/about'),
+      color: Colors.primary,
+    },
   ];
 
-  const menuSections = [
+  const inactiveItems = [
     {
-      title: 'Health Information',
-      items: [
-        { icon: Heart, label: 'Emergency Contacts', action: () => {} },
-        { icon: FileText, label: 'Medical Conditions', action: () => {} },
-        { icon: Shield, label: 'Allergies', action: () => {} },
-      ],
-    },
-    {
-      title: 'App Settings',
-      items: [
-        { icon: Bell, label: 'Notifications', action: () => {} },
-        { icon: Settings, label: 'Account Settings', action: () => {} },
-        { icon: Shield, label: 'Privacy & Security', action: () => {} },
-      ],
-    },
-    {
-      title: 'Support',
-      items: [
-        { icon: HelpCircle, label: 'Help & Support', action: () => {} },
-        { icon: FileText, label: 'Terms of Service', action: () => {} },
-        { icon: Shield, label: 'Privacy Policy', action: () => {} },
-      ],
+      id: 'sync',
+      title: 'Sync Health Data',
+      subtitle: 'Connect with health apps',
+      icon: ArrowLeftRight,
+      onPress: () => router.push('/sync-data'),
+      color: Colors.primary,
     },
   ];
-
-  const handleLogout = () => {
-    logout();
-    router.replace('/');
-  };
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity 
-            style={styles.editButton}
-            onPress={() => router.push('/(patient-tabs)/edit-profile')}
-          >
-            <Edit size={20} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={{
-                uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-              }}
-              style={styles.profileImage}
-            />
-            <TouchableOpacity style={styles.editImageButton}>
-              <Edit size={12} color={Colors.surface} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <LinearGradient
+        colors={[colors.background, colors.surface]}
+        style={styles.backgroundGradient}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
+            <TouchableOpacity
+              style={[styles.editButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push('/(patient-tabs)/edit-profile')}
+            >
+              <Edit size={20} color={Colors.primary} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>
-            {user?.firstName} {user?.lastName}
-          </Text>
-          <Text style={styles.userRole}>
-            {user?.isChildAccount ? 'Child Account' : 'Patient'}
-          </Text>
-          {user?.isChildAccount && (
-            <Text style={styles.childAccountNote}>
-              Managed by parent account
-            </Text>
-          )}
-          {isSwitchedAccount && (
-            <View style={styles.switchedAccountIndicator}>
-              <Text style={styles.switchedAccountText}>
-                👤 Switched Account
-              </Text>
+
+          {/* Profile Card */}
+          <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.profileHeader}>
+              <Image
+                source={{
+                  uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+                }}
+                style={styles.profileImage}
+              />
+              <View style={styles.profileInfo}>
+                <Text style={[styles.profileName, { color: colors.text }]}>
+                  {userData?.firstName} {userData?.lastName}
+                </Text>
+                <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
+                  {user?.email}
+                </Text>
+                <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>
+                  {userData?.phoneNumber || 'No phone number'}
+                </Text>
+              </View>
               <TouchableOpacity
-                style={styles.switchBackButton}
-                onPress={() => handleSwitchAccount(originalUserId || '')}
-                activeOpacity={0.7}
+                style={[styles.editIcon, { backgroundColor: colors.surface }]}
+                onPress={() => router.push('/(patient-tabs)/edit-profile')}
               >
-                <Text style={styles.switchBackButtonText}>Switch Back</Text>
+                <Edit size={12} color={colors.text} />
               </TouchableOpacity>
             </View>
-          )}
-        </View>
 
-        {/* Accessible Accounts Section */}
-        {accessibleAccounts.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account Switching</Text>
-            <View style={styles.linkedAccountsCard}>
-              <Text style={styles.linkedAccountsDescription}>
-                {user?.isChildAccount 
-                  ? "Switch back to your parent's account"
-                  : "Switch between your account and your children's accounts"
-                }
-              </Text>
-              {loadingAccounts ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
-              ) : (
-                accessibleAccounts.map((account) => (
-                  <TouchableOpacity
-                    key={account.id}
-                    style={styles.linkedAccountItem}
-                    onPress={() => handleSwitchAccount(account.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.linkedAccountInfo}>
-                      <View style={[
-                        styles.linkedAccountAvatar,
-                        account.type === 'parent' && styles.parentAccountAvatar
-                      ]}>
-                        <Text style={styles.linkedAccountInitials}>
-                          {account.firstName[0]}
-                          {account.lastName[0]}
-                        </Text>
-                      </View>
-                      <View style={styles.linkedAccountDetails}>
-                        <Text style={styles.linkedAccountName}>
-                          {account.firstName} {account.lastName}
-                        </Text>
-                        <Text style={[
-                          styles.linkedAccountType,
-                          account.type === 'parent' && styles.parentAccountType
-                        ]}>
-                          {account.type === 'parent' ? 'Parent Account' : 'Child Account'}
-                        </Text>
-                      </View>
-                    </View>
-                    <ArrowLeftRight size={16} color={Colors.primary} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Profile Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          {profileData.map((item, index) => (
-            <View key={index} style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <item.icon size={18} color={Colors.primary} />
+            {/* Quick Stats */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.text }]}>12</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Records</Text>
               </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>{item.label}</Text>
-                <Text style={styles.infoValue}>{item.value}</Text>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.text }]}>3</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Appointments</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.text }]}>5</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Family</Text>
               </View>
             </View>
-          ))}
-        </View>
-
-        {/* Menu Sections */}
-        {menuSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.menuCard}>
-              {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={itemIndex}
-                  style={[
-                    styles.menuItem,
-                    itemIndex < section.items.length - 1 &&
-                      styles.menuItemBorder,
-                  ]}
-                  onPress={item.action}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View style={styles.menuIcon}>
-                      <item.icon size={18} color={Colors.textSecondary} />
-                    </View>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
-                  </View>
-                  <ChevronRight size={18} color={Colors.textLight} />
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
-        ))}
 
-        {/* Remove Parent Link Section (for 16+ child accounts) */}
-        {canRemoveParentLink() && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account Independence</Text>
-            <TouchableOpacity
-              style={styles.removeParentLinkButton}
-              onPress={handleRemoveParentLink}
-              activeOpacity={0.7}
-            >
-              <Users size={18} color={Colors.medical.orange} />
-              <View style={styles.removeParentLinkContent}>
-                <Text style={styles.removeParentLinkTitle}>
-                  Remove Parent Link
-                </Text>
-                <Text style={styles.removeParentLinkDescription}>
-                  You're 16+ and can make your account independent
-                </Text>
-              </View>
-              <ChevronRight size={18} color={Colors.medical.orange} />
-            </TouchableOpacity>
+          {/* Menu Items */}
+          <View style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Account</Text>
+            {profileMenuItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={item.onPress}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
+                  <item.icon size={18} color={item.color} />
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
+                  <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
 
-        {/* Logout Button */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut size={18} color={Colors.error} />
-            <Text style={styles.logoutText}>Sign Out</Text>
+          {/* Inactive Items */}
+          <View style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Coming Soon</Text>
+            {inactiveItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}
+                onPress={item.onPress}
+                disabled={true}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
+                  <item.icon size={18} color={item.color} />
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={[styles.menuTitle, { color: colors.textSecondary }]}>{item.title}</Text>
+                  <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Sign Out Button */}
+          <TouchableOpacity
+            style={[styles.signOutButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleSignOut}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={Colors.medical.red} />
+            ) : (
+              <>
+                <LogOut size={18} color={Colors.medical.red} />
+                <Text style={[styles.signOutText, { color: Colors.medical.red }]}>Sign Out</Text>
+              </>
+            )}
           </TouchableOpacity>
-        </View>
-
-        {/* App Version */}
-        <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>K Healthcare v1.0.0</Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.background,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-  },
-
-  editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.medical.lightBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  profileCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-
-  profileImageContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-
-  editImageButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  userName: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-
-  userRole: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  childAccountNote: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontFamily: 'Inter-Medium',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-
-  switchedAccountIndicator: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-    alignItems: 'center',
-  },
-
-  switchedAccountText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontFamily: 'Inter-Medium',
-    marginBottom: 8,
-  },
-
-  switchBackButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-
-  switchBackButtonText: {
-    fontSize: 12,
-    color: 'white',
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-
-  // Linked Accounts Styles
-  linkedAccountsCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-  },
-
-  linkedAccountsDescription: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-
-  linkedAccountItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
-  },
-
-  linkedAccountInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  linkedAccountAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  linkedAccountInitials: {
-    fontSize: 14,
-    color: 'white',
-    fontFamily: 'Inter-Bold',
-  },
-
-  linkedAccountDetails: {
-    flex: 1,
-  },
-
-  linkedAccountName: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-
-  linkedAccountType: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  parentAccountAvatar: {
-    backgroundColor: Colors.medical.orange,
-  },
-
-  parentAccountType: {
-    color: Colors.medical.orange,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-  },
-
-  infoIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: Colors.medical.lightBlue,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  infoContent: {
-    flex: 1,
-  },
-
-  infoLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 2,
-  },
-
-  infoValue: {
-    fontSize: 14,
-    color: Colors.text,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  menuCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-
-  menuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  menuIcon: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  menuLabel: {
-    fontSize: 16,
-    color: Colors.text,
-    fontFamily: 'Inter-Regular',
-  },
-
-  // Remove Parent Link Styles
-  removeParentLinkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 146, 60, 0.2)',
-    gap: 12,
-  },
-
-  removeParentLinkContent: {
-    flex: 1,
-  },
-
-  removeParentLinkTitle: {
-    fontSize: 16,
-    color: Colors.medical.orange,
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 2,
-  },
-
-  removeParentLinkDescription: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.error,
-    gap: 8,
-  },
-
-  logoutText: {
-    fontSize: 16,
-    color: Colors.error,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  versionContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-
-  versionText: {
-    fontSize: 12,
-    color: Colors.textLight,
-    fontFamily: 'Inter-Regular',
-  },
-});

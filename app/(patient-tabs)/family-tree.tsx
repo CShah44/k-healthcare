@@ -32,6 +32,7 @@ import {
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { FamilyService } from '@/services/familyService';
 import {
   Family,
@@ -44,9 +45,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { onSnapshot, doc, collection, query, where } from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 import { useCustomAlert } from '@/components/CustomAlert';
+import { createFamilyTreeStyles } from './styles/family-tree';
+import {
+  createFamily,
+  inviteMember,
+  createChildAccount,
+  acceptInvitation,
+  declineInvitation,
+  removeMember,
+  getMemberInitials,
+  getRelationColor,
+  validateChildForm,
+} from './services/familyHelpers';
 
 export default function FamilyTreeScreen() {
   const { user, userData, refreshUserData, createChildAccount } = useAuth();
+  const { colors } = useTheme();
+  const styles = createFamilyTreeStyles(colors);
+  // Use Colors directly for icon colors to avoid TypeScript issues
+  const iconColors = {
+    text: Colors.light.text,
+    textSecondary: Colors.light.textSecondary,
+  };
   const [family, setFamily] = useState<Family | null>(null);
   const [invitations, setInvitations] = useState<FamilyInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -570,7 +590,7 @@ export default function FamilyTreeScreen() {
           {!family && (
             <View style={styles.noFamilyContainer}>
               <View style={styles.noFamilyIcon}>
-                <Users size={48} color={Colors.textLight} strokeWidth={1.5} />
+                <Users size={48} color={colors.textSecondary} strokeWidth={1.5} />
               </View>
               <Text style={styles.noFamilyTitle}>No Family Yet</Text>
               <Text style={styles.noFamilyDescription}>
@@ -668,7 +688,7 @@ export default function FamilyTreeScreen() {
                         }}
                         activeOpacity={0.7}
                       >
-                        <ChevronRight size={16} color={Colors.textSecondary} />
+                        <ChevronRight size={16} color={colors.textSecondary} />
                       </TouchableOpacity>
                       {/* Only show kick button if current user is family owner and it's not themselves */}
                       {member.userId !== user?.uid &&
@@ -722,7 +742,7 @@ export default function FamilyTreeScreen() {
                 onPress={() => setShowCreateFamily(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color={Colors.text} />
+                <X size={24} color={iconColors.text} />
               </TouchableOpacity>
             </View>
             <View style={styles.modalContent}>
@@ -732,7 +752,7 @@ export default function FamilyTreeScreen() {
                 value={familyName}
                 onChangeText={setFamilyName}
                 placeholder="Enter family name (e.g., Smith Family)"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
               />
               <TouchableOpacity
                 style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
@@ -766,7 +786,7 @@ export default function FamilyTreeScreen() {
                 onPress={() => setShowInviteMember(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color={Colors.text} />
+                <X size={24} color={iconColors.text} />
               </TouchableOpacity>
             </View>
             <View style={styles.modalContent}>
@@ -784,7 +804,7 @@ export default function FamilyTreeScreen() {
                 value={memberIdentifier}
                 onChangeText={setMemberIdentifier}
                 placeholder="Enter email, phone, or user ID"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -851,7 +871,7 @@ export default function FamilyTreeScreen() {
                 onPress={() => setShowInvitations(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color={Colors.text} />
+                <X size={24} color={iconColors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalContent}>
@@ -909,7 +929,7 @@ export default function FamilyTreeScreen() {
                 onPress={() => setShowCreateChild(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color={Colors.text} />
+                <X size={24} color={iconColors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalContent}>
@@ -928,7 +948,7 @@ export default function FamilyTreeScreen() {
                   updateChildFormData('firstName', value)
                 }
                 placeholder="Enter first name"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
               />
 
               <Text style={styles.inputLabel}>Middle Name</Text>
@@ -939,7 +959,7 @@ export default function FamilyTreeScreen() {
                   updateChildFormData('middleName', value)
                 }
                 placeholder="Enter middle name (optional)"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
               />
 
               <Text style={styles.inputLabel}>Last Name *</Text>
@@ -948,7 +968,7 @@ export default function FamilyTreeScreen() {
                 value={childFormData.lastName}
                 onChangeText={(value) => updateChildFormData('lastName', value)}
                 placeholder="Enter last name"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
               />
 
               <Text style={styles.inputLabel}>Email Address *</Text>
@@ -957,7 +977,7 @@ export default function FamilyTreeScreen() {
                 value={childFormData.email}
                 onChangeText={(value) => updateChildFormData('email', value)}
                 placeholder="Enter email address"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -968,7 +988,7 @@ export default function FamilyTreeScreen() {
                 value={childFormData.password}
                 onChangeText={(value) => updateChildFormData('password', value)}
                 placeholder="Enter password (min 6 characters)"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
               />
 
@@ -981,7 +1001,7 @@ export default function FamilyTreeScreen() {
                   updateChildFormData('dateOfBirth', formatted);
                 }}
                 placeholder="MM/DD/YYYY"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="numeric"
                 maxLength={10}
               />
@@ -995,7 +1015,7 @@ export default function FamilyTreeScreen() {
                   updateChildFormData('phoneNumber', formatted);
                 }}
                 placeholder="Enter phone number (optional)"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="phone-pad"
               />
 
@@ -1005,7 +1025,7 @@ export default function FamilyTreeScreen() {
                 value={childFormData.address}
                 onChangeText={(value) => updateChildFormData('address', value)}
                 placeholder="Enter address (optional)"
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textSecondary}
                 multiline
                 numberOfLines={2}
               />
@@ -1098,584 +1118,3 @@ export default function FamilyTreeScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-
-  loadingText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  scrollContent: {
-    paddingBottom: 100,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 32,
-  },
-
-  title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginTop: 4,
-  },
-
-  invitationBadge: {
-    position: 'relative',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  badgeText: {
-    fontSize: 10,
-    color: 'white',
-    fontFamily: 'Inter-Bold',
-  },
-
-  noFamilyContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    borderStyle: 'dashed',
-  },
-
-  noFamilyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-
-  noFamilyTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-
-  noFamilyDescription: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-
-  createFamilyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-
-  createFamilyButtonText: {
-    fontSize: 16,
-    color: 'white',
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    letterSpacing: -0.3,
-  },
-
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  addChildButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-
-  addChildButtonText: {
-    fontSize: 14,
-    color: Colors.medical.green,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-
-  inviteButtonText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  memberCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  memberInitials: {
-    fontSize: 16,
-    color: 'white',
-    fontFamily: 'Inter-Bold',
-  },
-
-  memberDetails: {
-    flex: 1,
-  },
-
-  memberNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-
-  memberName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-  },
-
-  youLabel: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontFamily: 'Inter-Medium',
-  },
-
-  memberMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  relationTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-
-  relationText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-  },
-
-  memberEmail: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  memberActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  viewRecordsButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  kickButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  actionButton: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    gap: 12,
-  },
-
-  actionButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
-  },
-
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-  },
-
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-
-  inputLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-
-  textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-  },
-
-  relationSelector: {
-    marginBottom: 24,
-  },
-
-  relationOption: {
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-
-  relationOptionSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-
-  relationOptionText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: Colors.text,
-  },
-
-  relationOptionTextSelected: {
-    color: 'white',
-  },
-
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    marginTop: 24,
-  },
-
-  submitButtonText: {
-    fontSize: 16,
-    color: 'white',
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  // Age Notice Card
-  ageNoticeCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-  },
-
-  ageNoticeTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-
-  ageNoticeText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
-  },
-
-  // Invitation Card Styles
-  invitationCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  invitationInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-
-  invitationTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-
-  invitationDescription: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
-  },
-
-  relationHighlight: {
-    color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  invitationActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  acceptButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.medical.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  declineButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.medical.red,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Child Modal Styles
-  childModalDescription: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.medical.green,
-  },
-
-  multilineInput: {
-    height: 64,
-    textAlignVertical: 'top',
-  },
-
-  // Dropdown Styles
-  dropdownButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  dropdownText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-  },
-
-  placeholderText: {
-    color: Colors.textLight,
-  },
-
-  dropdownArrow: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-
-  dropdownMenu: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 12,
-    marginTop: -12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  dropdownOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-
-  dropdownOptionText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-  },
-});
