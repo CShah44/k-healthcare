@@ -8,6 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -141,95 +143,89 @@ export default function EditPatientProfileScreen() {
   const genderOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color={colors.surface} />
-            ) : (
-              <Save size={20} color={colors.surface} />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          
-          {formFields.map((field, index) => (
-            <View key={index} style={styles.inputGroup}>
-              <View style={styles.inputLabel}>
-                <field.icon size={18} color={Colors.primary} />
-                <Text style={styles.labelText}>
-                  {field.label}
-                  {field.required && <Text style={styles.required}> *</Text>}
-                </Text>
-              </View>
-              <TextInput
-                style={[
-                  styles.input,
-                  field.multiline && styles.multilineInput,
-                ]}
-                value={formData[field.field as keyof typeof formData]}
-                onChangeText={(value) => handleInputChange(field.field, value)}
-                placeholder={field.placeholder}
-                placeholderTextColor={colors.textSecondary}
-                keyboardType={field.keyboardType || 'default'}
-                multiline={field.multiline}
-                numberOfLines={field.multiline ? 3 : 1}
-              />
+    <SafeAreaView style={[GlobalStyles.container, styles.container, { flex: 1 }]}>  
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
+      >
+        <View style={{ flex: 1 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+              >
+                <ArrowLeft size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Edit Profile</Text>
+              {/* Remove header save button */}
+              <View style={{ width: 40 }} />
             </View>
-          ))}
 
-          {/* Gender Selection */}
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <User size={18} color={Colors.primary} />
-              <Text style={styles.labelText}>Gender</Text>
-            </View>
-            <View style={styles.genderContainer}>
-              {genderOptions.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.genderOption,
-                    formData.gender === option && styles.genderOptionSelected,
-                  ]}
-                  onPress={() => handleInputChange('gender', option)}
-                >
-                  <Text
+            {/* Form */}
+            <View style={styles.form}>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
+              {formFields.map((field, index) => (
+                <View key={index} style={styles.inputGroup}>
+                  <View style={styles.inputLabel}>
+                    <field.icon size={18} color={Colors.primary} />
+                    <Text style={styles.labelText}>
+                      {field.label}
+                      {field.required && <Text style={styles.required}> *</Text>}
+                    </Text>
+                  </View>
+                  <TextInput
                     style={[
-                      styles.genderOptionText,
-                      formData.gender === option && styles.genderOptionTextSelected,
+                      styles.input,
+                      field.multiline && styles.multilineInput,
                     ]}
-                  >
-                    {option}
-                  </Text>
-                </TouchableOpacity>
+                    value={formData[field.field as keyof typeof formData]}
+                    onChangeText={(value) => handleInputChange(field.field, value)}
+                    placeholder={field.placeholder}
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType={field.keyboardType || 'default'}
+                    multiline={field.multiline}
+                    numberOfLines={field.multiline ? 3 : 1}
+                  />
+                </View>
               ))}
-            </View>
-          </View>
-        </View>
 
-        {/* Save Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
+              {/* Gender Selection */}
+              <View style={styles.inputGroup}>
+                <View style={styles.inputLabel}>
+                  <User size={18} color={Colors.primary} />
+                  <Text style={styles.labelText}>Gender</Text>
+                </View>
+                <View style={styles.genderContainer}>
+                  {genderOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={[
+                        styles.genderOption,
+                        formData.gender === option && styles.genderOptionSelected,
+                      ]}
+                      onPress={() => handleInputChange('gender', option)}
+                    >
+                      <Text
+                        style={[
+                          styles.genderOptionText,
+                          formData.gender === option && styles.genderOptionTextSelected,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+            <TouchableOpacity
             style={[styles.saveButtonLarge, isSaving && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={isSaving}
+            activeOpacity={0.8}
           >
             {isSaving ? (
               <ActivityIndicator size="small" color={colors.surface} />
@@ -240,8 +236,13 @@ export default function EditPatientProfileScreen() {
               </>
             )}
           </TouchableOpacity>
+          </ScrollView>
         </View>
-      </ScrollView>
+        {/* Fixed Save Button at Bottom, always visible, not absolute */}
+        <SafeAreaView style={[styles.fixedButtonContainer, { position: 'relative', width: '100%' }]}> 
+          
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

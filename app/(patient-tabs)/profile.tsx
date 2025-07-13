@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createProfileStyles } from './styles/profile';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useCustomAlert } from '@/components/CustomAlert';
 
 export default function ProfileScreen() {
   const {
@@ -43,6 +44,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [accessibleAccounts, setAccessibleAccounts] = useState<any[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   useEffect(() => {
     const fetchAccessibleAccounts = async () => {
@@ -70,28 +72,28 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          setLoading(true);
-          try {
-            await logout();
-            router.replace('/auth/role-selection');
-          } catch (error) {
-            console.error('Error signing out:', error);
-            Alert.alert('Error', 'Failed to sign out. Please try again.');
-          } finally {
-            setLoading(false);
-          }
+    showAlert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/auth/patient-login');
+            } catch (error) {
+              showAlert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const menuItems = [
@@ -254,18 +256,12 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.signOutButton}
           onPress={handleSignOut}
-          disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color={Colors.medical.red} />
-          ) : (
-            <>
-              <LogOut size={20} color={Colors.medical.red} />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </>
-          )}
+          <LogOut size={20} color={Colors.medical.red} />
+          <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

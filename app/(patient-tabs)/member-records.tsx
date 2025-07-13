@@ -11,6 +11,8 @@ import {
   TextInput,
   Image,
   Linking,
+  Platform,
+  FlexAlignType,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -69,6 +71,8 @@ import {
   getPermissionText,
   getPermissionColor,
 } from './services/memberRecordHelpers';
+import { WebView } from 'react-native-webview';
+import { previewEncryptedPDF } from './upload-record';
 
 // Predefined tags for medical records
 const PREDEFINED_TAGS = [
@@ -130,11 +134,90 @@ const PREDEFINED_TAGS = [
   },
 ];
 
+// Helper to extract storage path from Supabase public URL
+function getStoragePathFromUrl(url: string) {
+  // Example: https://xyz.supabase.co/storage/v1/object/public/svastheya/uploads/uid/filename.pdf
+  // Returns: uploads/uid/filename.pdf
+  const match = url.match(/svastheya\/(.+)$/);
+  return match ? match[1] : '';
+}
+
+// Helper to convert base64 to Uint8Array
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Helper to convert Uint8Array to base64
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Helper to get user encryption key (same as upload)
+function getUserEncryptionKey(uid: string): string {
+  return require('crypto-js').SHA256(uid + '_svastheya_secret').toString();
+}
+
+// Helper to decrypt AES-encrypted files (PDFs and images)
+async function decryptFileFromUrl(url: string, record: any, user: any): Promise<string> {
+  const CryptoJS = require('crypto-js');
+  // Download encrypted file
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+
+  // Convert encrypted binary to base64
+  const encryptedBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
+
+  // Get encryption key
+  const key = getUserEncryptionKey(user.uid);
+
+  // Decrypt
+  const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
+  const decryptedBytes = decrypted.words.reduce((arr: number[], word: number) => {
+    arr.push((word >> 24) & 0xff, (word >> 16) & 0xff, (word >> 8) & 0xff, word & 0xff);
+    return arr;
+  }, []);
+  const decryptedUint8 = new Uint8Array(decryptedBytes).slice(0, decrypted.sigBytes);
+
+  if (Platform.OS === 'web') {
+    // Create a Blob and object URL for browser viewing
+    const blob = new Blob([decryptedUint8], { type: record.fileType });
+    const blobUrl = URL.createObjectURL(blob);
+    return blobUrl;
+  } else {
+    // Convert to base64 data URI for WebView (mobile)
+    return `data:${record.fileType};base64,${uint8ArrayToBase64(decryptedUint8)}`;
+  }
+}
+
 export default function MemberRecordsScreen() {
   const { memberId } = useLocalSearchParams<{ memberId: string }>();
   const { user, userData } = useAuth();
   const { colors } = useTheme();
-  const styles = createMemberRecordsStyles(colors);
+  const styles = {
+    ...createMemberRecordsStyles(colors),
+    tagsRow: {
+      flexDirection: 'row' as 'row',
+      alignItems: 'center' as FlexAlignType,
+      gap: 6,
+      marginTop: 8,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      alignSelf: 'flex-start' as 'flex-start',
+    },
+  };
 
   const [memberData, setMemberData] = useState<any>(null);
   const [familyData, setFamilyData] = useState<any>(null);
@@ -147,6 +230,11 @@ export default function MemberRecordsScreen() {
   const [editTags, setEditTags] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  // Add state for previewing
+  const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -235,17 +323,16 @@ export default function MemberRecordsScreen() {
     transform: [{ translateY: headerTranslateY.value }],
   }));
 
-  const getRecordIcon = (type: string, source: string) => {
-    if (source === 'lab_uploaded') {
-      return { icon: TestTube2, color: Colors.medical.green };
-    }
-
+  // Replace getRecordIcon with logic from records.tsx
+  const getRecordIcon = (type: string, source?: string) => {
     switch (type) {
-      case 'prescriptions':
+      case 'lab_result':
+        return { icon: TestTube2, color: Colors.medical.green };
+      case 'prescription':
         return { icon: Pill, color: Colors.medical.orange };
-      case 'uploaded':
+      case 'image':
         return { icon: FileImage, color: Colors.primary };
-      case 'lab_reports':
+      case 'test_result':
         return { icon: TestTube2, color: Colors.medical.green };
       default:
         return { icon: FileText, color: colors.textSecondary };
@@ -412,14 +499,14 @@ export default function MemberRecordsScreen() {
                 record.source
               );
               const canEdit = canEditRecord(record, userData, memberId!);
-
+              const statusColor = record.status === 'normal' ? Colors.medical.green : record.status === 'abnormal' ? Colors.medical.red : record.status === 'pending' ? Colors.medical.blue : colors.textSecondary;
               return (
                 <Animated.View
                   key={record.id}
                   entering={FadeInDown.delay(index * 100).springify()}
                 >
                   <TouchableOpacity
-                    style={styles.recordCard}
+                    style={[styles.recordCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                     activeOpacity={0.7}
                     onPress={() => {
                       setSelectedRecord(record);
@@ -454,73 +541,61 @@ export default function MemberRecordsScreen() {
                               <View style={styles.metaDot} />
                               <Text style={styles.recordDate}>
                                 {record.uploadedAt?.toDate
-                                  ? record.uploadedAt
-                                      .toDate()
-                                      .toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                      })
+                                  ? record.uploadedAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                   : record.uploadedAt?.seconds
-                                  ? new Date(
-                                      record.uploadedAt.seconds * 1000
-                                    ).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
+                                  ? new Date(record.uploadedAt.seconds * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                   : 'N/A'}
                               </Text>
                             </View>
-
-                            {/* Tags */}
+                            {/* Tags Row */}
                             {record.tags && record.tags.length > 0 && (
-                              <View style={styles.recordTags}>
-                                {record.tags
-                                  .slice(0, 2)
-                                  .map((tagId: string) => {
-                                    const tagInfo = getTagInfo(tagId);
-                                    return (
-                                      <View
-                                        key={tagId}
-                                        style={[
-                                          styles.recordTag,
-                                          {
-                                            backgroundColor: `${tagInfo.color}15`,
-                                          },
-                                        ]}
-                                      >
-                                        <tagInfo.icon
-                                          size={10}
-                                          color={tagInfo.color}
-                                          strokeWidth={2}
-                                        />
-                                        <Text
-                                          style={[
-                                            styles.recordTagText,
-                                            { color: tagInfo.color },
-                                          ]}
-                                        >
-                                          {tagInfo.label}
-                                        </Text>
-                                      </View>
-                                    );
-                                  })}
-                                {record.tags.length > 2 && (
-                                  <Text style={styles.moreTagsText}>
-                                    +{record.tags.length - 2}
-                                  </Text>
+                              <View style={styles.tagsRow}>
+                                {record.tags.slice(0, 3).map((tagId: string) => {
+                                  const tagInfo = getTagInfo(tagId);
+                                  return (
+                                    <View
+                                      key={tagId}
+                                      style={[
+                                        styles.recordTag,
+                                        { backgroundColor: colors.surface },
+                                      ]}
+                                    >
+                                      <Text style={[styles.recordTagText, { color: colors.textSecondary }]}>
+                                        {tagInfo.label}
+                                      </Text>
+                                    </View>
+                                  );
+                                })}
+                                {record.tags.length > 3 && (
+                                  <Text style={[styles.moreTagsText, { color: colors.textSecondary }]}>+{record.tags.length - 3} more</Text>
                                 )}
                               </View>
                             )}
                           </View>
                         </View>
-
+                        {/* Status Badge */}
+                        {record.status && (
+                          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }] }>
+                            <Text style={[styles.statusText, { color: statusColor }]}>
+                              {record.status}
+                            </Text>
+                          </View>
+                        )}
+                        {/* Action Icons */}
                         <View style={styles.recordActions}>
-                          <TouchableOpacity style={styles.actionButton}>
-                            <Eye
-                              size={16}
-                              color={Colors.primary}
-                              strokeWidth={2}
-                            />
+                          <TouchableOpacity style={styles.actionButton} onPress={async () => {
+                            setSelectedRecord(record);
+                            setPdfPreviewUri(null);
+                            setShowPdfPreview(true);
+                            try {
+                              const decryptedUri = await decryptFileFromUrl(record.fileUrl, record, user);
+                              setPdfPreviewUri(decryptedUri);
+                            } catch (e) {
+                              Alert.alert('Error', 'Failed to decrypt and open file.');
+                              setShowPdfPreview(false);
+                            }
+                          }}>
+                            <Eye size={16} color={Colors.primary} strokeWidth={2} />
                           </TouchableOpacity>
                           {canEdit && (
                             <>
@@ -597,18 +672,22 @@ export default function MemberRecordsScreen() {
                       : 'N/A'}
                   </Text>
 
-                  {selectedRecord.fileType?.startsWith('image') ? (
-                    <Image
-                      source={{ uri: selectedRecord.fileUrl }}
-                      style={styles.previewImage}
-                      resizeMode="contain"
-                    />
-                  ) : selectedRecord.fileType === 'application/pdf' ? (
+                  {(selectedRecord.fileType?.startsWith('image') || selectedRecord.fileType === 'application/pdf') ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
-                      onPress={() => Linking.openURL(selectedRecord.fileUrl)}
+                      onPress={async () => {
+                        setPdfPreviewUri(null);
+                        setShowPdfPreview(true);
+                        try {
+                          const decryptedUri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, user);
+                          setPdfPreviewUri(decryptedUri);
+                        } catch (e) {
+                          Alert.alert('Error', 'Failed to decrypt and open file.');
+                          setShowPdfPreview(false);
+                        }
+                      }}
                     >
-                      <Text style={styles.openPdfText}>Open PDF</Text>
+                      <Text style={styles.openPdfText}>{selectedRecord.fileType?.startsWith('image') ? 'View Image' : 'Open PDF'}</Text>
                     </TouchableOpacity>
                   ) : (
                     <Text style={styles.unsupportedText}>
@@ -619,6 +698,71 @@ export default function MemberRecordsScreen() {
               )}
             </View>
           </View>
+        </Modal>
+
+        {/* PDF/Image Preview Modal */}
+        <Modal
+          visible={showPdfPreview}
+          animationType="slide"
+          transparent={false}
+          onRequestClose={() => setShowPdfPreview(false)}
+        >
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
+              onPress={() => setShowPdfPreview(false)}
+            >
+              <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
+            </TouchableOpacity>
+
+            {pdfPreviewUri ? (
+              Platform.OS === 'web' ? (
+                <View style={{ flex: 1, marginTop: 60 }}>
+                  {selectedRecord?.fileType?.startsWith('image') ? (
+                    <img
+                      src={pdfPreviewUri}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 12 }}
+                      alt="Image Preview"
+                    />
+                  ) : selectedRecord?.fileType === 'application/pdf' ? (
+                    <iframe
+                      src={pdfPreviewUri}
+                      style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                      title="PDF Preview"
+                    />
+                  ) : (
+                    <div style={{ color: '#fff', textAlign: 'center', marginTop: 40 }}>File type not supported for preview.</div>
+                  )}
+                </View>
+              ) : (
+                selectedRecord?.fileType?.startsWith('image') ? (
+                  <Image
+                    source={{ uri: pdfPreviewUri }}
+                    style={{ width: '100%', height: 300, borderRadius: 12, marginTop: 60 }}
+                    resizeMode="contain"
+                  />
+                ) : selectedRecord?.fileType === 'application/pdf' ? (
+                  <WebView
+                    source={{ uri: pdfPreviewUri }}
+                    style={{ flex: 1, marginTop: 60 }}
+                    useWebKit
+                    originWhitelist={['*']}
+                    javaScriptEnabled
+                    scalesPageToFit
+                  />
+                ) : (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', marginTop: 16 }}>File type not supported for preview.</Text>
+                  </View>
+                )
+              )
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#fff" />
+                <Text style={{ color: '#fff', marginTop: 16 }}>Decrypting file...</Text>
+              </View>
+            )}
+          </SafeAreaView>
         </Modal>
 
         {/* Edit Modal */}

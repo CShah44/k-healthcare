@@ -112,7 +112,7 @@ export default function PatientLoginScreen() {
               styles.backButton,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/auth/role-selection')}
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>

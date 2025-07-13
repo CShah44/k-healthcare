@@ -12,6 +12,7 @@ import {
   Dimensions,
   TextInput,
   Modal,
+  FlexAlignType,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -89,9 +90,65 @@ const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
 const BUCKET = 'svastheya';
 const { width: screenWidth } = Dimensions.get('window');
 
+// Helper to extract storage path from Supabase public URL
+function getStoragePathFromUrl(url: string) {
+  // Example: https://xyz.supabase.co/storage/v1/object/public/svastheya/uploads/uid/filename.pdf
+  // Returns: uploads/uid/filename.pdf
+  const match = url.match(/svastheya\/(.+)$/);
+  return match ? match[1] : '';
+}
+
+export const previewEncryptedPDF = async (storagePath: string, userUid: string) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET)
+      .download(storagePath);
+
+    if (error || !data) {
+      Alert.alert('Error', 'Failed to download encrypted file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result?.toString().split(',')[1];
+      if (!base64) return;
+
+      const decryptedBytes = decryptEncryptedPDF(base64, userUid ?? '');
+      const decryptedBlob = new Blob([decryptedBytes], { type: 'application/pdf' });
+
+      const objectUrl = URL.createObjectURL(decryptedBlob);
+      router.push({
+        pathname: '/pdf-viewer',
+        params: { url: objectUrl },
+      });
+    };
+    reader.readAsDataURL(data);
+  } catch (e) {
+    console.error('Decrypt/preview error:', e);
+    Alert.alert('Error', 'Could not preview file.');
+  }
+};
+
 export default function UploadRecordScreen() {
   const { colors } = useTheme();
-  const styles = createUploadRecordStyles(colors);
+  const styles = {
+    ...createUploadRecordStyles(colors),
+    openPdfButton: {
+      backgroundColor: Colors.primary,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      alignItems: 'center' as FlexAlignType,
+      marginTop: 8,
+    },
+    openPdfText: {
+      color: '#fff',
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: 'bold' as 'bold',
+    },
+  };
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
@@ -479,37 +536,6 @@ export default function UploadRecordScreen() {
       Alert.alert('Error', 'Failed to upload record. Please try again.');
     }
   };
-  const previewEncryptedPDF = async (storagePath: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .download(storagePath);
-  
-      if (error || !data) {
-        Alert.alert('Error', 'Failed to download encrypted file.');
-        return;
-      }
-  
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result?.toString().split(',')[1];
-        if (!base64) return;
-  
-        const decryptedBytes = decryptEncryptedPDF(base64, user?.uid ?? '');
-        const decryptedBlob = new Blob([decryptedBytes], { type: 'application/pdf' });
-  
-        const objectUrl = URL.createObjectURL(decryptedBlob);
-        router.push({
-          pathname: '/pdf-viewer',
-          params: { url: objectUrl },
-        });
-      };
-      reader.readAsDataURL(data);
-    } catch (e) {
-      console.error('Decrypt/preview error:', e);
-      Alert.alert('Error', 'Could not preview file.');
-    }
-  };
   
   return (
     <SafeAreaView style={styles.container}>
@@ -661,6 +687,28 @@ export default function UploadRecordScreen() {
                                   )} MB`
                                 : 'Size unknown'}
                             </Text>
+                            {/* Preview PDF Button */}
+                            {selectedFile && selectedFile.uri &&
+                              typeof (selectedFile as any).publicUrl === 'string' && (
+                                <TouchableOpacity
+                                  style={styles.openPdfButton}
+                                  onPress={async () => {
+                                    const publicUrl = (selectedFile as any).publicUrl;
+                                    if (!publicUrl) {
+                                      Alert.alert('Preview not available until uploaded.');
+                                      return;
+                                    }
+                                    const storagePath = getStoragePathFromUrl(publicUrl);
+                                    if (!storagePath) {
+                                      Alert.alert('Error', 'Invalid file URL.');
+                                      return;
+                                    }
+                                    await previewEncryptedPDF(storagePath, user?.uid ?? '');
+                                  }}
+                                >
+                                  <Text style={styles.openPdfText}>Preview PDF</Text>
+                                </TouchableOpacity>
+                            )}
                           </View>
                         </View>
                       )}
