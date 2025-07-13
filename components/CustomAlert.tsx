@@ -190,14 +190,14 @@ const styles = StyleSheet.create({
 
   alertTitle: {
     fontSize: 18,
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Satoshi-Variable',
     color: Colors.text,
     textAlign: 'center',
   },
 
   alertMessage: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
 
   buttonText: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
     color: 'white',
   },
 

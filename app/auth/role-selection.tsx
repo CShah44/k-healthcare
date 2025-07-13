@@ -81,15 +81,8 @@ export default function RoleSelectionScreen() {
         colors={[colors.background, colors.surface]}
         style={styles.backgroundGradient}
       >
-        {/* Header with Theme Toggle */}
-        <View style={styles.header}>
-          <Animated.View style={[styles.headerContent, headerStyle]}>
-            <Logo size={60} animated={true} />
-            <Text style={[styles.appName, { color: colors.text }]}>Svastheya</Text>
-            <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-              Your Health, Our Priority
-            </Text>
-          </Animated.View>
+        {/* Theme Toggle - Fixed Position */}
+        <View style={styles.themeToggleContainer}>
           <ThemeToggle style={styles.themeToggle} />
         </View>
 
@@ -98,6 +91,15 @@ export default function RoleSelectionScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Header with Logo - Now inside ScrollView */}
+          <Animated.View style={[styles.headerContent, headerStyle]}>
+            <Logo size={60} animated={true} />
+            <Text style={[styles.appName, { color: colors.text }]}>Svastheya</Text>
+            <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+              Your Health, Our Priority
+            </Text>
+          </Animated.View>
+
           {/* Welcome Section */}
           <Animated.View style={[styles.welcomeSection, headerStyle]}>
             <Text style={[styles.welcomeTitle, { color: colors.text }]}>
@@ -250,19 +252,20 @@ const styles = StyleSheet.create({
   backgroundGradient: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  themeToggleContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 1,
   },
   headerContent: {
     alignItems: 'center',
-    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    marginBottom: 20,
   },
   themeToggle: {
-    marginTop: 10,
+    // No additional margin needed
   },
   appName: {
     fontFamily: 'IvyMode-Regular',

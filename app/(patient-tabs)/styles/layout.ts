@@ -23,7 +23,7 @@ export const layoutStyles = {
     position: 'absolute' as const,
   } as ViewStyle,
   tabBarLabelStyle: {
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
     fontSize: 11,
     marginTop: 4,
   } as TextStyle,
@@ -32,4 +32,4 @@ export const layoutStyles = {
   } as ViewStyle,
   tabBarActiveTintColor: Colors.primary,
   tabBarInactiveTintColor: Colors.light.text,
-}; 
+};

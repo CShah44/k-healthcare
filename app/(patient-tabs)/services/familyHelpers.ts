@@ -6,7 +6,7 @@ import { Family, FamilyMember, FamilyInvitation, FamilyRelation } from '@/types/
 export async function createFamily(
   familyName: string,
   user: any,
-  createChildAccount: any
+  userData: any
 ) {
   if (!familyName.trim()) {
     throw new Error('Please enter a family name');
@@ -15,14 +15,12 @@ export async function createFamily(
   try {
     const family = await FamilyService.createFamily(
       user!.uid,
-      `${user!.firstName} ${user!.lastName}`,
-      user!.email,
+      `${userData!.firstName} ${userData!.lastName}`,
+      userData!.email,
       familyName
     );
-    Alert.alert('Success', 'Family created successfully!');
     return family;
   } catch (error: any) {
-    Alert.alert('Error', error.message);
     throw error;
   }
 }
@@ -31,7 +29,7 @@ export async function inviteMember(
   memberIdentifier: string,
   selectedRelation: FamilyRelation,
   family: Family,
-  user: any
+  userData: any
 ) {
   if (!memberIdentifier.trim()) {
     throw new Error('Please enter an email or phone number');
@@ -41,14 +39,12 @@ export async function inviteMember(
     await FamilyService.inviteFamilyMember(
       family.id,
       family.name,
-      user!.uid,
-      `${user!.firstName} ${user!.lastName}`,
+      userData!.uid,
+      `${userData!.firstName} ${userData!.lastName}`,
       memberIdentifier.trim(),
       selectedRelation
     );
-    Alert.alert('Success', 'Invitation sent successfully!');
   } catch (error: any) {
-    Alert.alert('Error', error.message);
     throw error;
   }
 }
@@ -104,60 +100,41 @@ export async function createChildAccount(
 
 // Invitation management
 export async function acceptInvitation(
-  invitation: FamilyInvitation,
+  invitationId: string,
   user: any,
-  refreshUserData: any
+  userData: any
 ) {
   try {
     await FamilyService.acceptFamilyInvitation(
-      invitation.id,
+      invitationId,
       user!.uid,
-      `${user!.firstName} ${user!.lastName}`,
-      user!.email
+      `${userData!.firstName} ${userData!.lastName}`,
+      userData!.email
     );
-    await refreshUserData();
-    Alert.alert('Success', 'Invitation accepted! You are now part of the family.');
   } catch (error: any) {
-    Alert.alert('Error', error.message);
     throw error;
   }
 }
 
-export async function declineInvitation(invitation: FamilyInvitation) {
+export async function declineInvitation(invitationId: string) {
   try {
-    await FamilyService.declineFamilyInvitation(invitation.id);
-    Alert.alert('Success', 'Invitation declined.');
+    await FamilyService.declineFamilyInvitation(invitationId);
   } catch (error: any) {
-    Alert.alert('Error', error.message);
     throw error;
   }
 }
 
 // Member management
 export async function removeMember(
-  member: FamilyMember,
-  family: Family,
-  user: any
+  familyId: string,
+  memberId: string,
+  currentUserId: string
 ) {
-  Alert.alert(
-    'Remove Member',
-    `Are you sure you want to remove ${member.firstName} ${member.lastName} from the family?`,
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await FamilyService.kickFamilyMember(family.id, member.userId, user!.uid);
-            Alert.alert('Success', 'Member removed from family.');
-          } catch (error: any) {
-            Alert.alert('Error', error.message);
-          }
-        },
-      },
-    ]
-  );
+  try {
+    await FamilyService.kickFamilyMember(familyId, memberId, currentUserId);
+  } catch (error: any) {
+    throw error;
+  }
 }
 
 // Utility functions

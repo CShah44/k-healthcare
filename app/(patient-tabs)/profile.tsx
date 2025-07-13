@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
   Edit,
-  ArrowLeftRight,
   Users,
   ChevronRight,
   LogOut,
@@ -21,251 +20,252 @@ import {
   Shield,
   HelpCircle,
   Info,
+  ArrowLeftRight,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import { createProfileStyles } from './styles/profile';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function ProfileScreen() {
-  const { user, userData, logout } = useAuth();
+  const {
+    user,
+    userData,
+    logout,
+    switchToAccount,
+    getAccessibleAccounts,
+    isSwitchedAccount,
+    originalUserId,
+  } = useAuth();
   const { colors } = useTheme();
   const styles = createProfileStyles(colors);
   const [loading, setLoading] = useState(false);
+  const [accessibleAccounts, setAccessibleAccounts] = useState<any[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await logout();
-              router.replace('/auth/role-selection');
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  useEffect(() => {
+    const fetchAccessibleAccounts = async () => {
+      setLoadingAccounts(true);
+      try {
+        const accounts = await getAccessibleAccounts();
+        setAccessibleAccounts(accounts);
+      } catch (error) {
+        console.error('Error fetching accessible accounts:', error);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+
+    fetchAccessibleAccounts();
+  }, [userData?.linkedAccounts, userData?.parentAccountId]);
+
+  const handleSwitchAccount = async (accountId: string) => {
+    try {
+      await switchToAccount(accountId);
+      Alert.alert('Success', 'Switched to account successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
   };
 
-  const profileMenuItems = [
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          setLoading(true);
+          try {
+            await logout();
+            router.replace('/auth/role-selection');
+          } catch (error) {
+            console.error('Error signing out:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const menuItems = [
     {
       id: 'edit',
       title: 'Edit Profile',
-      subtitle: 'Update your personal information',
       icon: Edit,
       onPress: () => router.push('/(patient-tabs)/edit-profile'),
-      color: Colors.primary,
     },
     {
       id: 'family',
       title: 'Family Members',
-      subtitle: 'Manage family connections',
       icon: Users,
       onPress: () => router.push('/(patient-tabs)/family-tree'),
-      color: Colors.medical.orange,
     },
     {
       id: 'settings',
       title: 'Settings',
-      subtitle: 'App preferences and notifications',
       icon: Settings,
       onPress: () => router.push('/settings'),
-      color: Colors.primary,
     },
     {
       id: 'notifications',
       title: 'Notifications',
-      subtitle: 'Manage notification preferences',
       icon: Bell,
       onPress: () => router.push('/notifications'),
-      color: Colors.primary,
     },
     {
       id: 'privacy',
       title: 'Privacy & Security',
-      subtitle: 'Data protection and security',
       icon: Shield,
       onPress: () => router.push('/privacy'),
-      color: Colors.primary,
     },
     {
       id: 'help',
       title: 'Help & Support',
-      subtitle: 'Get help and contact support',
       icon: HelpCircle,
       onPress: () => router.push('/help'),
-      color: Colors.primary,
     },
     {
       id: 'about',
       title: 'About',
-      subtitle: 'App version and information',
       icon: Info,
       onPress: () => router.push('/about'),
-      color: Colors.primary,
-    },
-  ];
-
-  const inactiveItems = [
-    {
-      id: 'sync',
-      title: 'Sync Health Data',
-      subtitle: 'Connect with health apps',
-      icon: ArrowLeftRight,
-      onPress: () => router.push('/sync-data'),
-      color: Colors.primary,
     },
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <LinearGradient
-        colors={[colors.background, colors.surface]}
-        style={styles.backgroundGradient}
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+          <ThemeToggle />
+        </View>
+
+        <View style={styles.profileSection}>
+          <Image
+            source={{
+              uri: 'https://cdn.getyourguide.com/image/format=auto,fit=crop,gravity=auto,quality=60,width=450,height=450,dpr=2/tour_img/5c4a943ab6f1618a0279e6bab5fafa4298c1e0d13760fdf7d1ddfaec2fb5e24e.jpg',
+            }}
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileName}>
+            {userData?.firstName} {userData?.lastName}
+          </Text>
+          <Text style={styles.profileEmail}>{user?.email}</Text>
+          {isSwitchedAccount && (
+            <View style={styles.switchedAccountIndicator}>
+              <Text style={styles.switchedAccountText}>
+                👤 Switched Account
+              </Text>
+              <TouchableOpacity
+                style={styles.switchBackButton}
+                onPress={() => handleSwitchAccount(originalUserId || '')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.switchBackButtonText}>Switch Back</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {accessibleAccounts.length > 0 && (
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>Account Switching</Text>
+            <View style={styles.linkedAccountsCard}>
+              <Text style={styles.linkedAccountsDescription}>
+                {userData?.isChildAccount
+                  ? "Switch back to your parent's account"
+                  : "Switch between your account and your children's accounts"}
+              </Text>
+              {loadingAccounts ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                accessibleAccounts.map((account) => (
+                  <TouchableOpacity
+                    key={account.id}
+                    style={styles.linkedAccountItem}
+                    onPress={() => handleSwitchAccount(account.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.linkedAccountInfo}>
+                      <View
+                        style={[
+                          styles.linkedAccountAvatar,
+                          account.type === 'parent' &&
+                            styles.parentAccountAvatar,
+                        ]}
+                      >
+                        <Text style={styles.linkedAccountInitials}>
+                          {account.firstName[0]}
+                          {account.lastName[0]}
+                        </Text>
+                      </View>
+                      <View style={styles.linkedAccountDetails}>
+                        <Text style={styles.linkedAccountName}>
+                          {account.firstName} {account.lastName}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.linkedAccountType,
+                            account.type === 'parent' &&
+                              styles.parentAccountType,
+                          ]}
+                        >
+                          {account.type === 'parent'
+                            ? 'Parent Account'
+                            : 'Child Account'}
+                        </Text>
+                      </View>
+                    </View>
+                    <ArrowLeftRight size={16} color={Colors.primary} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.menuSection}>
+          {menuItems.map((item) => (
             <TouchableOpacity
-              style={[styles.editButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push('/(patient-tabs)/edit-profile')}
+              key={item.id}
+              style={styles.menuItem}
+              onPress={item.onPress}
             >
-              <Edit size={20} color={Colors.primary} />
+              <View style={styles.menuItemLeft}>
+                <item.icon size={20} color={colors.textSecondary} />
+                <Text style={styles.menuItemTitle}>{item.title}</Text>
+              </View>
+              <ChevronRight size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-          </View>
+          ))}
+        </View>
 
-          {/* Profile Card */}
-          <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.profileHeader}>
-              <Image
-                source={{
-                  uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-                }}
-                style={styles.profileImage}
-              />
-              <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: colors.text }]}>
-                  {userData?.firstName} {userData?.lastName}
-                </Text>
-                <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
-                  {user?.email}
-                </Text>
-                <Text style={[styles.profilePhone, { color: colors.textSecondary }]}>
-                  {userData?.phoneNumber || 'No phone number'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.editIcon, { backgroundColor: colors.surface }]}
-                onPress={() => router.push('/(patient-tabs)/edit-profile')}
-              >
-                <Edit size={12} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Quick Stats */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>12</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Records</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>3</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Appointments</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>5</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Family</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Menu Items */}
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Account</Text>
-            {profileMenuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuItem, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={item.onPress}
-              >
-                <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
-                  <item.icon size={18} color={item.color} />
-                </View>
-                <View style={styles.menuContent}>
-                  <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
-                    {item.subtitle}
-                  </Text>
-                </View>
-                <ChevronRight size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Inactive Items */}
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Coming Soon</Text>
-            {inactiveItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuItem, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}
-                onPress={item.onPress}
-                disabled={true}
-              >
-                <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
-                  <item.icon size={18} color={item.color} />
-                </View>
-                <View style={styles.menuContent}>
-                  <Text style={[styles.menuTitle, { color: colors.textSecondary }]}>{item.title}</Text>
-                  <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
-                    {item.subtitle}
-                  </Text>
-                </View>
-                <ChevronRight size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Sign Out Button */}
-          <TouchableOpacity
-            style={[styles.signOutButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={handleSignOut}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={Colors.medical.red} />
-            ) : (
-              <>
-                <LogOut size={18} color={Colors.medical.red} />
-                <Text style={[styles.signOutText, { color: Colors.medical.red }]}>Sign Out</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      </LinearGradient>
+        <TouchableOpacity
+          style={styles.signOutButton}
+          onPress={handleSignOut}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={Colors.medical.red} />
+          ) : (
+            <>
+              <LogOut size={20} color={Colors.medical.red} />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }

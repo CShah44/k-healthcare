@@ -1,773 +1,472 @@
 import { StyleSheet } from 'react-native';
+import { Colors } from '@/constants/Colors';
 
 export const createFamilyTreeStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-
   backgroundGradient: {
     flex: 1,
   },
-
-  scrollView: {
-    flex: 1,
-  },
-
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
-
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
   },
-
-  headerLeft: {
-    flex: 1,
-  },
-
   title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
+    fontSize: 32,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
     color: colors.text,
-    letterSpacing: -0.5,
   },
-
   subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginTop: 2,
-  },
-
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#009485',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  searchButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: colors.text,
-  },
-
-  familyTreeContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-
-  treeLevel: {
-    marginBottom: 24,
-  },
-
-  levelTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-    marginBottom: 12,
-  },
-
-  membersList: {
-    gap: 12,
-  },
-
-  memberCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  memberHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-
-  memberLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  memberInfo: {
-    flex: 1,
-  },
-
-  memberName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-    marginBottom: 2,
-  },
-
-  memberRelation: {
-    fontSize: 13,
+    fontFamily: 'Satoshi-Variable',
     color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    marginTop: 4,
   },
-
-  memberActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  memberDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-
-  detailLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  detailValue: {
-    fontSize: 12,
-    color: colors.text,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  memberTags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-
-  memberTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-
-  memberTagText: {
-    fontSize: 10,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-
-  addMemberButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#009485',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-
-  addMemberText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  errorContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-  },
-
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  modalContent: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    margin: 20,
-    padding: 20,
-    width: '90%',
-  },
-
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-  },
-
-  form: {
-    marginBottom: 20,
-  },
-
-  inputGroup: {
-    marginBottom: 16,
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-
-  textInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-  },
-
-  picker: {
-    color: colors.text,
-  },
-
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-
-  cancelButtonText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  saveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#009485',
-  },
-
-  saveButtonDisabled: {
-    backgroundColor: colors.textSecondary,
-  },
-
-  saveButtonText: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  bottomSpacing: {
-    height: 100,
-  },
-
-  // Additional styles needed by the component
   invitationBadge: {
-    position: 'relative',
-    padding: 8,
+    position: 'absolute',
+    top: 24,
+    right: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-
   badge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#ef4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
+    top: -2,
+    right: -2,
+    backgroundColor: Colors.primary,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.card,
   },
-
   badgeText: {
     color: 'white',
-    fontSize: 12,
-    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
   },
-
-  noFamilyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-
-  noFamilyIcon: {
-    marginBottom: 16,
-  },
-
-  noFamilyTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-
-  noFamilyDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-
-  createFamilyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#009485',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-
-  createFamilyButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-  },
-
   section: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    marginTop: 24,
   },
-
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
     color: colors.text,
   },
-
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
   },
-
-  addChildButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-
-  addChildButtonText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-  },
-
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: `${Colors.primary}1A`,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
+    borderRadius: 12,
+    gap: 6,
   },
-
   inviteButtonText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
+    color: Colors.primary,
   },
-
+  addChildButton: {
+     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.primary}1A`,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  addChildButtonText: {
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
+    color: Colors.primary,
+  },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${Colors.primary}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
   memberInitials: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: 'white',
+    fontSize: 18,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
+    color: Colors.primary,
   },
-
+  memberInfo: {
+    flex: 1,
+  },
   memberNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-
+  memberName: {
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
+    color: colors.text,
+  },
   youLabel: {
     fontSize: 12,
+    fontFamily: 'Satoshi-Variable',
     color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
   },
-
   memberMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    marginTop: 4,
   },
-
   relationTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-
   relationText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
   },
-
   memberEmail: {
-    fontSize: 12,
+    fontSize: 13,
+    fontFamily: 'Satoshi-Variable',
     color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
   },
-
+  memberActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+  },
   viewRecordsButton: {
     padding: 8,
   },
-
   kickButton: {
     padding: 8,
   },
-
-  actionButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+  noFamilyContainer: {
+    marginHorizontal: 24,
+    marginTop: 48,
+    padding: 32,
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-
+  noFamilyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${Colors.primary}1A`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  noFamilyTitle: {
+    fontSize: 22,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  noFamilyDescription: {
+    fontSize: 15,
+    fontFamily: 'Satoshi-Variable',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  createFamilyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  createFamilyButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    color: colors.textSecondary,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
+    color: colors.text,
+  },
   closeButton: {
     padding: 4,
   },
-
+  modalContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  textInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    color: colors.text,
+    marginBottom: 16,
+  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#009485',
+    backgroundColor: Colors.primary,
     marginTop: 16,
   },
-
   submitButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     color: 'white',
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
   },
-
   ageNoticeCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 24,
   },
-
   ageNoticeTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
+    fontSize: 15,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
     color: colors.text,
     marginBottom: 4,
   },
-
   ageNoticeText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
     color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 16,
+    lineHeight: 20,
   },
-
   relationSelector: {
     marginBottom: 16,
   },
-
   relationOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     marginRight: 8,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-
   relationOptionSelected: {
-    backgroundColor: '#009485',
+    backgroundColor: `${Colors.primary}20`,
+    borderColor: Colors.primary,
   },
-
   relationOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
     color: colors.text,
   },
-
   relationOptionTextSelected: {
-    color: 'white',
+    color: Colors.primary,
   },
-
   invitationCard: {
     backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-
   invitationInfo: {
     flex: 1,
   },
-
   invitationTitle: {
     fontSize: 16,
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: 'bold',
     color: colors.text,
     marginBottom: 4,
   },
-
   invitationDescription: {
-    fontSize: 12,
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
     color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
   },
-
   relationHighlight: {
-    color: '#009485',
-    fontFamily: 'Inter-SemiBold',
+    color: Colors.primary,
+    fontWeight: 'bold',
   },
-
   invitationActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
+    marginTop: 16,
   },
-
   acceptButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#10b981',
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.medical.green,
   },
-
   declineButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ef4444',
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
   },
-
   childModalDescription: {
-    fontSize: 14,
+    fontSize: 15,
+    fontFamily: 'Satoshi-Variable',
     color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
-    marginBottom: 20,
+    lineHeight: 22,
+    marginBottom: 24,
   },
-
   multilineInput: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
   },
-
   dropdownButton: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 16,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 16,
   },
-
   dropdownText: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     color: colors.text,
   },
-
   placeholderText: {
     color: colors.textSecondary,
   },
-
   dropdownArrow: {
     fontSize: 12,
     color: colors.textSecondary,
   },
-
   dropdownMenu: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: colors.card,
     marginTop: 4,
-    maxHeight: 120,
+    maxHeight: 150,
   },
-
   dropdownOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-
   dropdownOptionText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
     color: colors.text,
   },
 });
-
-// Keep the old export for backward compatibility
-export const familyTreeStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  // ... other static styles without colors
-}); 

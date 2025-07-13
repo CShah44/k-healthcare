@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -43,6 +44,7 @@ export default function PatientSignupScreen() {
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signup, isLoading } = useAuth();
+  const { colors } = useTheme();
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
@@ -239,21 +241,21 @@ export default function PatientSignupScreen() {
     return (
       <SafeAreaView style={[GlobalStyles.container, styles.loadingContainer]}>
         <LinearGradient
-          colors={['#f8fafc', '#e2e8f0']}
+          colors={[colors.background, colors.surface]}
           style={styles.loadingGradient}
         >
           <LoadingSpinner size="large" />
-          <Text style={styles.loadingText}>Creating your account...</Text>
-          <Text style={styles.loadingSubtext}>Please wait while we set up your profile</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Creating your account...</Text>
+          <Text style={[styles.loadingSubtext, { color: colors.textSecondary }]}>Please wait while we set up your profile</Text>
         </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#f8fafc', '#e2e8f0']}
+        colors={[colors.background, colors.surface]}
         style={styles.backgroundGradient}
       >
         <KeyboardAvoidingView 
@@ -263,10 +265,10 @@ export default function PatientSignupScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
-              style={styles.backButton}
+              style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={() => router.back()}
             >
-              <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+              <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
 
@@ -277,52 +279,52 @@ export default function PatientSignupScreen() {
           >
             <View style={styles.content}>
               <View style={styles.logoContainer}>
-                <View style={styles.iconWrapper}>
+                <View style={[styles.iconWrapper, { backgroundColor: `${Colors.primary}15`, borderColor: `${Colors.primary}30` }]}>
                   <Heart size={32} color={Colors.primary} strokeWidth={2} />
                 </View>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join Svastheya today and take control of your health</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Join Svastheya today and take control of your health</Text>
               </View>
 
               <View style={styles.formContainer}>
                 {/* Name Section */}
                 <View style={styles.sectionHeader}>
                   <User size={16} color={Colors.primary} />
-                  <Text style={styles.sectionTitle}>Personal Information</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Personal Information</Text>
                 </View>
 
                 <View style={styles.nameRow}>
                   <View style={styles.nameInputContainer}>
-                    <Text style={styles.inputLabel}>First Name *</Text>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>First Name *</Text>
                     <Input
                       placeholder="First name"
                       value={formData.firstName}
                       onChangeText={(value) => updateFormData('firstName', value)}
-                      style={[styles.input, errors.firstName && styles.inputError]}
+                      style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.firstName && styles.inputError]}
                     />
                     {errors.firstName && (
                       <Text style={styles.errorText}>{errors.firstName}</Text>
                     )}
                   </View>
                   <View style={styles.nameInputContainer}>
-                    <Text style={styles.inputLabel}>Middle Name *</Text>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Middle Name *</Text>
                     <Input
                       placeholder="Middle name"
                       value={formData.middleName}
                       onChangeText={(value) => updateFormData('middleName', value)}
-                      style={[styles.input, errors.middleName && styles.inputError]}
+                      style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.middleName && styles.inputError]}
                     />
                     {errors.middleName && (
                       <Text style={styles.errorText}>{errors.middleName}</Text>
                     )}
                   </View>
                   <View style={styles.nameInputContainer}>
-                    <Text style={styles.inputLabel}>Last Name *</Text>
+                    <Text style={[styles.inputLabel, { color: colors.text }]}>Last Name *</Text>
                     <Input
                       placeholder="Last name"
                       value={formData.lastName}
                       onChangeText={(value) => updateFormData('lastName', value)}
-                      style={[styles.input, errors.lastName && styles.inputError]}
+                      style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.lastName && styles.inputError]}
                     />
                     {errors.lastName && (
                       <Text style={styles.errorText}>{errors.lastName}</Text>
@@ -332,7 +334,7 @@ export default function PatientSignupScreen() {
 
                 {/* Contact Information */}
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Email Address *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Email Address *</Text>
                   <Input
                     placeholder="Enter your email"
                     value={formData.email}
@@ -340,7 +342,7 @@ export default function PatientSignupScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    style={[styles.input, errors.email && styles.inputError]}
+                    style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.email && styles.inputError]}
                   />
                   {errors.email && (
                     <Text style={styles.errorText}>{errors.email}</Text>
@@ -348,7 +350,7 @@ export default function PatientSignupScreen() {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Phone Number *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Phone Number *</Text>
                   <Input
                     placeholder="Enter your phone number"
                     value={formData.phoneNumber}
@@ -357,7 +359,7 @@ export default function PatientSignupScreen() {
                       updateFormData('phoneNumber', formatted);
                     }}
                     keyboardType="phone-pad"
-                    style={[styles.input, errors.phoneNumber && styles.inputError]}
+                    style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.phoneNumber && styles.inputError]}
                   />
                   {errors.phoneNumber && (
                     <Text style={styles.errorText}>{errors.phoneNumber}</Text>
@@ -366,7 +368,7 @@ export default function PatientSignupScreen() {
 
                 {/* Personal Details */}
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Date of Birth *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Date of Birth *</Text>
                   <View style={styles.inputWrapper}>
                     <Input
                       placeholder="MM/DD/YYYY"
@@ -377,11 +379,11 @@ export default function PatientSignupScreen() {
                       }}
                       keyboardType="numeric"
                       maxLength={10}
-                      style={[styles.input, errors.dateOfBirth && styles.inputError]}
+                      style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.dateOfBirth && styles.inputError]}
                     />
                     <Calendar 
                       size={16} 
-                      color={Colors.textSecondary} 
+                      color={colors.textSecondary} 
                       style={styles.inputIcon}
                     />
                   </View>
@@ -391,7 +393,7 @@ export default function PatientSignupScreen() {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Address *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Address *</Text>
                   <View style={styles.inputWrapper}>
                     <Input
                       placeholder="Enter your complete address"
@@ -399,11 +401,11 @@ export default function PatientSignupScreen() {
                       onChangeText={(value) => updateFormData('address', value)}
                       multiline
                       numberOfLines={2}
-                      style={[styles.input, styles.multilineInput, errors.address && styles.inputError]}
+                      style={[styles.input, styles.multilineInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.address && styles.inputError]}
                     />
                     <MapPin 
                       size={16} 
-                      color={Colors.textSecondary} 
+                      color={colors.textSecondary} 
                       style={styles.inputIcon}
                     />
                   </View>
@@ -413,18 +415,18 @@ export default function PatientSignupScreen() {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Gender *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Gender *</Text>
                   <TouchableOpacity
-                    style={[styles.dropdownButton, errors.gender && styles.inputError]}
+                    style={[styles.dropdownButton, { backgroundColor: colors.card, borderColor: colors.border }, errors.gender && styles.inputError]}
                     onPress={() => setShowGenderDropdown(!showGenderDropdown)}
                   >
-                    <Text style={[styles.dropdownText, !formData.gender && styles.placeholderText]}>
+                    <Text style={[styles.dropdownText, { color: colors.text }, !formData.gender && { color: colors.textSecondary }]}>
                       {formData.gender ? genderOptions.find(opt => opt.value === formData.gender)?.label : 'Select gender'}
                     </Text>
-                    <Text style={styles.dropdownArrow}>{showGenderDropdown ? '▲' : '▼'}</Text>
+                    <Text style={[styles.dropdownArrow, { color: colors.textSecondary }]}>{showGenderDropdown ? '▲' : '▼'}</Text>
                   </TouchableOpacity>
                   {showGenderDropdown && (
-                    <View style={styles.dropdownMenu}>
+                    <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
                       {genderOptions.map((option) => (
                         <TouchableOpacity
                           key={option.value}
@@ -434,7 +436,7 @@ export default function PatientSignupScreen() {
                             setShowGenderDropdown(false);
                           }}
                         >
-                          <Text style={styles.dropdownOptionText}>{option.label}</Text>
+                          <Text style={[styles.dropdownOptionText, { color: colors.text }]}>{option.label}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -446,31 +448,31 @@ export default function PatientSignupScreen() {
 
                 {/* Password Section */}
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Security</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Password *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Password *</Text>
                   <View style={styles.inputWrapper}>
                     <Input
                       placeholder="Create a strong password"
                       value={formData.password}
                       onChangeText={(value) => updateFormData('password', value)}
                       secureTextEntry={!showPassword}
-                      style={[styles.input, errors.password && styles.inputError]}
+                      style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.password && styles.inputError]}
                     />
                     <TouchableOpacity
                       style={styles.eyeIcon}
                       onPress={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <EyeOff size={20} color={Colors.textSecondary} />
+                        <EyeOff size={20} color={colors.textSecondary} />
                       ) : (
-                        <Eye size={20} color={Colors.textSecondary} />
+                        <Eye size={20} color={colors.textSecondary} />
                       )}
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.passwordHint}>
+                  <Text style={[styles.passwordHint, { color: colors.textSecondary }]}>
                     Password must be at least 8 characters with uppercase, lowercase, and number
                   </Text>
                   {errors.password && (
@@ -479,23 +481,23 @@ export default function PatientSignupScreen() {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Confirm Password *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Confirm Password *</Text>
                   <View style={styles.inputWrapper}>
                     <Input
                       placeholder="Confirm your password"
                       value={formData.confirmPassword}
                       onChangeText={(value) => updateFormData('confirmPassword', value)}
                       secureTextEntry={!showConfirmPassword}
-                      style={[styles.input, errors.confirmPassword && styles.inputError]}
+                      style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }, errors.confirmPassword && styles.inputError]}
                     />
                     <TouchableOpacity
                       style={styles.eyeIcon}
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? (
-                        <EyeOff size={20} color={Colors.textSecondary} />
+                        <EyeOff size={20} color={colors.textSecondary} />
                       ) : (
-                        <Eye size={20} color={Colors.textSecondary} />
+                        <Eye size={20} color={colors.textSecondary} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -511,7 +513,7 @@ export default function PatientSignupScreen() {
                   disabled={isLoading}
                 >
                   <LinearGradient
-                    colors={[Colors.primary, '#1e40af']}
+                    colors={Colors.gradients.primary}
                     style={[styles.signUpButton, isLoading && styles.disabledButton]}
                   >
                     <Text style={styles.signUpButtonText}>
@@ -522,7 +524,7 @@ export default function PatientSignupScreen() {
               </View>
 
               <View style={styles.footer}>
-                <Text style={styles.footerText}>
+                <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                   Already have an account?{' '}
                   <Text
                     style={styles.signInLink}
@@ -542,19 +544,19 @@ export default function PatientSignupScreen() {
         animationType="slide"
         onRequestClose={() => setShowOtpModal(false)}
       >
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-          <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 12, width: '80%' }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Enter OTP</Text>
-            <Text style={{ marginBottom: 8 }}>An OTP has been sent to your email. Please enter it below to verify your email address.</Text>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Enter OTP</Text>
+            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>An OTP has been sent to your email. Please enter it below to verify your email address.</Text>
             <TextInput
               value={otp}
               onChangeText={setOtp}
               placeholder="Enter OTP"
               keyboardType="numeric"
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginBottom: 12 }}
+              style={[styles.otpInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               maxLength={6}
             />
-            {otpError ? <Text style={{ color: 'red', marginBottom: 8 }}>{otpError}</Text> : null}
+            {otpError ? <Text style={[styles.otpError, { color: Colors.light.error }]}>{otpError}</Text> : null}
             <Button title={otpLoading ? 'Verifying...' : 'Verify OTP'} onPress={handleVerifyOtp} disabled={otpLoading || otp.length !== 6} />
             <Button title="Cancel" onPress={() => setShowOtpModal(false)} style={{ marginTop: 8 }} variant="secondary" />
           </View>
@@ -567,7 +569,6 @@ export default function PatientSignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
 
   keyboardAvoidingView: {
@@ -599,11 +600,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -632,27 +631,23 @@ const styles = StyleSheet.create({
   iconWrapper: {
     width: 64,
     height: 64,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
 
   title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    fontSize: 32,
+    fontFamily: 'IvyMode-Regular',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
 
   subtitle: {
     fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -670,8 +665,8 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
     marginLeft: 8,
   },
 
@@ -691,8 +686,8 @@ const styles = StyleSheet.create({
 
   inputLabel: {
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
     marginBottom: 8,
   },
 
@@ -701,19 +696,16 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
   },
 
   inputError: {
-    borderColor: '#ef4444',
+    borderColor: Colors.light.error,
     borderWidth: 2,
   },
 
@@ -737,17 +729,16 @@ const styles = StyleSheet.create({
 
   passwordHint: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginTop: 4,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     fontStyle: 'italic',
   },
 
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
+    color: Colors.light.error,
     marginTop: 4,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
   },
 
   signUpButtonContainer: {
@@ -775,7 +766,8 @@ const styles = StyleSheet.create({
 
   signUpButtonText: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
     color: '#ffffff',
     letterSpacing: 0.5,
   },
@@ -786,35 +778,31 @@ const styles = StyleSheet.create({
 
   footerText: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
   },
 
   signInLink: {
     color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
   },
 
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
     marginTop: 16,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
   },
 
   loadingSubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
     marginTop: 8,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     opacity: 0.7,
   },
 
   // Dropdown Styles
   dropdownButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -825,23 +813,15 @@ const styles = StyleSheet.create({
 
   dropdownText: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
-  },
-
-  placeholderText: {
-    color: Colors.textLight,
+    fontFamily: 'Satoshi-Variable',
   },
 
   dropdownArrow: {
     fontSize: 12,
-    color: Colors.textSecondary,
   },
 
   dropdownMenu: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
     borderRadius: 12,
     marginTop: 4,
     shadowColor: '#000',
@@ -863,7 +843,57 @@ const styles = StyleSheet.create({
 
   dropdownOptionText: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+
+  modalContent: {
+    padding: 24,
+    borderRadius: 16,
+    width: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'IvyMode-Regular',
+    marginBottom: 8,
+  },
+
+  modalDescription: {
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    marginBottom: 16,
+  },
+
+  otpInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    textAlign: 'center',
+  },
+
+  otpError: {
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    marginBottom: 8,
+    textAlign: 'center',
   },
 });

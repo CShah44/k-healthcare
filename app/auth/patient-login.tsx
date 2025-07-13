@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
+import {
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
+} from 'firebase/auth';
 import { query, where, getDocs } from 'firebase/firestore';
 
 import {
@@ -19,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -27,15 +31,20 @@ export default function PatientLoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    identifier?: string;
+    password?: string;
+  }>({});
   const { login, isLoading, forgotPassword } = useAuth();
+  const { colors } = useTheme();
   const [showForgot, setShowForgot] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
 
   const validateForm = () => {
     const newErrors: { identifier?: string; password?: string } = {};
-    if (!identifier) newErrors.identifier = 'Username, email, or phone is required';
+    if (!identifier)
+      newErrors.identifier = 'Username, email, or phone is required';
     if (!password) newErrors.password = 'Password is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -68,57 +77,88 @@ export default function PatientLoginScreen() {
     return (
       <SafeAreaView style={[GlobalStyles.container, styles.loadingContainer]}>
         <LinearGradient
-          colors={['#f8fafc', '#e2e8f0']}
+          colors={[colors.background, colors.surface]}
           style={styles.loadingGradient}
         >
           <LoadingSpinner size="large" />
-          <Text style={styles.loadingText}>Signing you in...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Signing you in...
+          </Text>
         </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <LinearGradient
-        colors={['#f8fafc', '#e2e8f0']}
+        colors={[colors.background, colors.surface]}
         style={styles.backgroundGradient}
       >
         {/* Decorative Elements */}
-        <View style={styles.decorativeCircle} />
+        <View
+          style={[
+            styles.decorativeCircle,
+            { backgroundColor: `${Colors.primary}08` },
+          ]}
+        />
 
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[
+              styles.backButton,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+            <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
         {/* Content */}
         <View style={styles.content}>
           <View style={styles.logoContainer}>
-            <View style={styles.iconWrapper}>
+            <View
+              style={[
+                styles.iconWrapper,
+                {
+                  backgroundColor: `${Colors.primary}15`,
+                  borderColor: `${Colors.primary}30`,
+                },
+              ]}
+            >
               <Heart size={32} color={Colors.primary} strokeWidth={2} />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Welcome Back
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Log in to your Svastheya account
             </Text>
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Username / Email / Phone</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>
+                Username / Email / Phone
+              </Text>
               <View style={styles.inputWrapper}>
                 <Input
                   placeholder="Enter your username, email, or phone"
                   value={identifier}
                   onChangeText={setIdentifier}
                   autoCapitalize="none"
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
                 />
               </View>
               {errors.identifier && (
@@ -127,23 +167,32 @@ export default function PatientLoginScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Password</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>
+                Password
+              </Text>
               <View style={styles.inputWrapper}>
                 <Input
                   placeholder="Enter your password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
                 />
                 <TouchableOpacity
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color={Colors.textSecondary} />
+                    <EyeOff size={20} color={colors.textSecondary} />
                   ) : (
-                    <Eye size={20} color={Colors.textSecondary} />
+                    <Eye size={20} color={colors.textSecondary} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -152,13 +201,16 @@ export default function PatientLoginScreen() {
               )}
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowForgot(true)}>
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={() => setShowForgot(true)}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleLogin} activeOpacity={0.8}>
               <LinearGradient
-                colors={[Colors.primary, '#1e40af']}
+                colors={Colors.gradients.primary}
                 style={styles.signInButton}
               >
                 <Text style={styles.signInButtonText}>Log In</Text>
@@ -167,7 +219,7 @@ export default function PatientLoginScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
               Don't have an account?{' '}
               <Text
                 style={styles.signUpLink}
@@ -181,18 +233,42 @@ export default function PatientLoginScreen() {
       </LinearGradient>
 
       {showForgot && (
-        <View style={{ marginVertical: 16 }}>
-          <Text style={{ marginBottom: 8 }}>Enter your email to reset password:</Text>
+        <View style={[styles.forgotModal, { backgroundColor: colors.card }]}>
+          <Text style={[styles.forgotTitle, { color: colors.text }]}>
+            Reset Password
+          </Text>
+          <Text
+            style={[styles.forgotDescription, { color: colors.textSecondary }]}
+          >
+            Enter your email to reset password:
+          </Text>
           <Input
             placeholder="Email address"
             value={resetEmail}
             onChangeText={setResetEmail}
             autoCapitalize="none"
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
           />
           <Button title="Send Reset Email" onPress={handleForgotPassword} />
-          {resetMessage ? <Text style={{ color: 'green', marginTop: 8 }}>{resetMessage}</Text> : null}
-          <Button title="Close" onPress={() => setShowForgot(false)} style={{ marginTop: 8 }} />
+          {resetMessage ? (
+            <Text
+              style={[styles.resetMessage, { color: Colors.medical.green }]}
+            >
+              {resetMessage}
+            </Text>
+          ) : null}
+          <Button
+            title="Close"
+            onPress={() => setShowForgot(false)}
+            style={{ marginTop: 8 }}
+          />
         </View>
       )}
     </SafeAreaView>
@@ -202,7 +278,6 @@ export default function PatientLoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
 
   backgroundGradient: {
@@ -216,7 +291,6 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
   },
 
   loadingContainer: {
@@ -240,11 +314,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.1)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -269,27 +341,24 @@ const styles = StyleSheet.create({
   iconWrapper: {
     width: 64,
     height: 64,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
 
   title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    fontSize: 32,
+    fontFamily: 'IvyMode-Regular',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
 
   subtitle: {
     fontSize: 16,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
+    textAlign: 'center',
   },
 
   formContainer: {
@@ -302,9 +371,9 @@ const styles = StyleSheet.create({
 
   inputLabel: {
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
     marginBottom: 8,
+    fontWeight: '500',
   },
 
   inputWrapper: {
@@ -312,15 +381,12 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
   },
 
   eyeIcon: {
@@ -332,9 +398,9 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
+    color: Colors.light.error,
     marginTop: 4,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
   },
 
   forgotPassword: {
@@ -345,7 +411,8 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 14,
     color: Colors.primary,
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
   },
 
   signInButton: {
@@ -365,7 +432,8 @@ const styles = StyleSheet.create({
 
   signInButtonText: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
     color: '#ffffff',
     letterSpacing: 0.5,
   },
@@ -376,19 +444,54 @@ const styles = StyleSheet.create({
 
   footerText: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
   },
 
   signUpLink: {
     color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
   },
 
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
     marginTop: 16,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
+  },
+
+  forgotModal: {
+    position: 'absolute',
+    top: '30%',
+    left: 20,
+    right: 20,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  forgotTitle: {
+    fontSize: 20,
+    fontFamily: 'IvyMode-Regular',
+    marginBottom: 8,
+  },
+
+  forgotDescription: {
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    marginBottom: 16,
+  },
+
+  resetMessage: {
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

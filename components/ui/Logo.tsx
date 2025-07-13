@@ -60,7 +60,7 @@ export const Logo: React.FC<LogoProps> = ({
   return (
     <Animated.View style={[styles.container, animatedStyle, style]}>
       <Image
-        source={require('@/assets/images/Logo-Main.png')}
+        source={require('@/assets/images/Logo-Transparent.png')}
         style={[styles.logo, { width: size, height: size }]}
         contentFit="contain"
       />

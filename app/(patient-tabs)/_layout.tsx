@@ -21,7 +21,7 @@ export default function PatientTabsLayout() {
           borderTopColor: colors.border,
           shadowColor: colors.shadow,
         },
-        tabBarLabelStyle: layoutStyles.tabBarLabelStyle,
+        tabBarLabelStyle: { ...layoutStyles.tabBarLabelStyle, fontFamily: 'Satoshi-Variable' },
         tabBarIconStyle: layoutStyles.tabBarIconStyle,
       }}
     >

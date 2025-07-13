@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -18,12 +17,9 @@ import {
   Plus,
   UserPlus,
   Mail,
-  Phone,
-  Calendar,
   ChevronRight,
   X,
   Check,
-  UserMinus,
   AlertCircle,
   Heart,
   Crown,
@@ -41,7 +37,6 @@ import {
   FamilyRelation,
   FAMILY_RELATIONS,
 } from '@/types/family';
-import { LinearGradient } from 'expo-linear-gradient';
 import { onSnapshot, doc, collection, query, where } from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 import { useCustomAlert } from '@/components/CustomAlert';
@@ -59,14 +54,15 @@ import {
 } from './services/familyHelpers';
 
 export default function FamilyTreeScreen() {
-  const { user, userData, refreshUserData, createChildAccount } = useAuth();
+  const {
+    user,
+    userData,
+    refreshUserData,
+    createChildAccount: createChildAccountAuth,
+  } = useAuth();
   const { colors } = useTheme();
   const styles = createFamilyTreeStyles(colors);
-  // Use Colors directly for icon colors to avoid TypeScript issues
-  const iconColors = {
-    text: Colors.light.text,
-    textSecondary: Colors.light.textSecondary,
-  };
+
   const [family, setFamily] = useState<Family | null>(null);
   const [invitations, setInvitations] = useState<FamilyInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +104,6 @@ export default function FamilyTreeScreen() {
     { label: 'Other', value: 'other' },
   ];
 
-  // Real-time listeners
   useEffect(() => {
     if (!user || !userData) return;
 
@@ -119,53 +114,36 @@ export default function FamilyTreeScreen() {
       try {
         setLoading(true);
 
-        // Listen to family changes if user has a family
         if (userData.familyId) {
-          console.log('Setting up family listener for:', userData.familyId);
           familyUnsubscribe = onSnapshot(
             doc(db, 'families', userData.familyId),
             (doc) => {
               if (doc.exists()) {
                 const familyData = { id: doc.id, ...doc.data() } as Family;
-                console.log('Family data updated:', familyData);
                 setFamily(familyData);
               } else {
-                console.log('Family document no longer exists');
                 setFamily(null);
               }
-            },
-            (error) => {
-              console.error('Error listening to family changes:', error);
             }
           );
         } else {
           setFamily(null);
         }
 
-        // Listen to invitation changes
-        console.log('Setting up invitations listener for user:', user.uid);
         const invitationsQuery = query(
           collection(db, 'family_invitations'),
           where('invitedUserId', '==', user.uid),
           where('status', '==', 'pending')
         );
 
-        invitationsUnsubscribe = onSnapshot(
-          invitationsQuery,
-          (snapshot) => {
-            const userInvitations = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            })) as FamilyInvitation[];
-            console.log('Invitations updated:', userInvitations);
-            setInvitations(userInvitations);
-          },
-          (error) => {
-            console.error('Error listening to invitation changes:', error);
-          }
-        );
+        invitationsUnsubscribe = onSnapshot(invitationsQuery, (snapshot) => {
+          const userInvitations = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as FamilyInvitation[];
+          setInvitations(userInvitations);
+        });
       } catch (error) {
-        console.error('Error setting up listeners:', error);
         Alert.alert('Error', 'Failed to load family data');
       } finally {
         setLoading(false);
@@ -174,16 +152,9 @@ export default function FamilyTreeScreen() {
 
     setupListeners();
 
-    // Cleanup listeners on unmount
     return () => {
-      if (familyUnsubscribe) {
-        console.log('Cleaning up family listener');
-        familyUnsubscribe();
-      }
-      if (invitationsUnsubscribe) {
-        console.log('Cleaning up invitations listener');
-        invitationsUnsubscribe();
-      }
+      if (familyUnsubscribe) familyUnsubscribe();
+      if (invitationsUnsubscribe) invitationsUnsubscribe();
     };
   }, [user, userData?.familyId]);
 
@@ -191,60 +162,6 @@ export default function FamilyTreeScreen() {
     setRefreshing(true);
     await refreshUserData();
     setRefreshing(false);
-  };
-
-  // Helper function to calculate age from date of birth
-  const calculateAge = (dateOfBirth: string): number => {
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-
-    return age;
-  };
-
-  // Update child form data
-  const updateChildFormData = (field: string, value: string) => {
-    setChildFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // Format date of birth for child form
-  const formatChildDateOfBirth = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-
-    if (cleaned.length >= 5) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(
-        4,
-        8
-      )}`;
-    } else if (cleaned.length >= 3) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    } else {
-      return cleaned;
-    }
-  };
-
-  // Format phone number for child form
-  const formatChildPhoneNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-
-    if (cleaned.length >= 6) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-        6,
-        10
-      )}`;
-    } else if (cleaned.length >= 3) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-    } else {
-      return cleaned;
-    }
   };
 
   const handleCreateFamily = async () => {
@@ -257,12 +174,7 @@ export default function FamilyTreeScreen() {
 
     try {
       setSubmitting(true);
-      const familyId = await FamilyService.createFamily(
-        user.uid,
-        `${userData.firstName} ${userData.lastName}`,
-        userData.email,
-        familyName.trim()
-      );
+      await createFamily(familyName.trim(), user, userData);
 
       await refreshUserData();
       setShowCreateFamily(false);
@@ -286,13 +198,11 @@ export default function FamilyTreeScreen() {
 
     try {
       setSubmitting(true);
-      await FamilyService.inviteFamilyMember(
-        family.id,
-        family.name,
-        user!.uid,
-        `${userData.firstName} ${userData.lastName}`,
+      await inviteMember(
         memberIdentifier.trim(),
-        selectedRelation
+        selectedRelation,
+        family,
+        userData
       );
 
       setShowInviteMember(false);
@@ -308,48 +218,9 @@ export default function FamilyTreeScreen() {
   };
 
   const handleCreateChildAccount = async () => {
-    // Validate form
-    if (!childFormData.firstName.trim() || !childFormData.lastName.trim()) {
-      Alert.alert('Error', 'Please enter first and last name');
-      return;
-    }
-
-    if (!childFormData.email.trim()) {
-      Alert.alert('Error', 'Please enter email address');
-      return;
-    }
-
-    if (!childFormData.password.trim()) {
-      Alert.alert('Error', 'Please enter password');
-      return;
-    }
-
-    if (childFormData.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
-      return;
-    }
-
-    if (!childFormData.dateOfBirth.trim()) {
-      Alert.alert('Error', 'Please enter date of birth');
-      return;
-    }
-
-    // Check if the child is actually under 16
-    const age = calculateAge(childFormData.dateOfBirth);
-    if (age >= 16) {
-      Alert.alert(
-        'Age Restriction',
-        'Child accounts are only for children under 16 years old. Children 16 and older must create their own accounts and can be invited to join the family.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setShowCreateChild(false);
-              setShowInviteMember(true);
-            },
-          },
-        ]
-      );
+    const validationError = validateChildForm(childFormData);
+    if (validationError) {
+      Alert.alert('Error', validationError);
       return;
     }
 
@@ -357,40 +228,15 @@ export default function FamilyTreeScreen() {
 
     try {
       setSubmitting(true);
-
-      // Create child account through Firebase authentication
-      const childUserId = await createChildAccount(
-        {
-          firstName: childFormData.firstName,
-          middleName: childFormData.middleName,
-          lastName: childFormData.lastName,
-          email: childFormData.email,
-          password: childFormData.password,
-          phoneNumber: childFormData.phoneNumber,
-          dateOfBirth: childFormData.dateOfBirth,
-          address: childFormData.address,
-          gender: childFormData.gender,
-          role: 'patient',
-          familyId: family.id,
-        },
-        user!.uid
-      );
-
-      // Add child to family
-      await FamilyService.addChildToFamily(
-        family.id,
-        childUserId,
-        {
-          firstName: childFormData.firstName,
-          lastName: childFormData.lastName,
-          email: childFormData.email,
-        },
+      await createChildAccount(
+        childFormData,
         childRelation,
-        user!.uid
+        family,
+        user,
+        createChildAccountAuth
       );
 
       setShowCreateChild(false);
-      // Reset form
       setChildFormData({
         firstName: '',
         middleName: '',
@@ -417,12 +263,7 @@ export default function FamilyTreeScreen() {
 
     try {
       setSubmitting(true);
-      await FamilyService.acceptFamilyInvitation(
-        invitationId,
-        user.uid,
-        `${userData.firstName} ${userData.lastName}`,
-        userData.email
-      );
+      await acceptInvitation(invitationId, user, userData);
 
       await refreshUserData();
       Alert.alert('Success', 'You have joined the family!');
@@ -437,7 +278,7 @@ export default function FamilyTreeScreen() {
   const handleDeclineInvitation = async (invitationId: string) => {
     try {
       setSubmitting(true);
-      await FamilyService.declineFamilyInvitation(invitationId);
+      await declineInvitation(invitationId);
       Alert.alert('Success', 'Invitation declined');
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -464,11 +305,7 @@ export default function FamilyTreeScreen() {
           onPress: async () => {
             try {
               setSubmitting(true);
-              await FamilyService.kickFamilyMember(
-                family.id,
-                member.userId,
-                user!.uid
-              );
+              await removeMember(family.id, member.userId, user!.uid);
               showAlert('Success', 'Family member removed successfully');
             } catch (error: any) {
               showAlert('Error', error.message);
@@ -524,21 +361,6 @@ export default function FamilyTreeScreen() {
     }
   };
 
-  const getRelationColor = (relation: FamilyRelation) => {
-    switch (relation) {
-      case 'spouse':
-        return Colors.medical.red;
-      case 'parent':
-        return Colors.medical.orange;
-      case 'child':
-        return Colors.medical.blue;
-      case 'sibling':
-        return Colors.medical.green;
-      default:
-        return Colors.primary;
-    }
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -552,569 +374,508 @@ export default function FamilyTreeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#f8fafc', '#e2e8f0']}
-        style={styles.backgroundGradient}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Family Tree</Text>
-              <Text style={styles.subtitle}>
-                {family
-                  ? `${family.name} Family`
-                  : 'Manage your family connections'}
-              </Text>
-            </View>
-            {invitations.length > 0 && (
-              <TouchableOpacity
-                style={styles.invitationBadge}
-                onPress={() => setShowInvitations(true)}
-              >
-                <Mail size={20} color={Colors.primary} />
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{invitations.length}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Family Tree</Text>
+            <Text style={styles.subtitle}>
+              {family
+                ? `${family.name} Family`
+                : 'Manage your family connections'}
+            </Text>
           </View>
-
-          {/* No Family State */}
-          {!family && (
-            <View style={styles.noFamilyContainer}>
-              <View style={styles.noFamilyIcon}>
-                <Users size={48} color={colors.textSecondary} strokeWidth={1.5} />
+          {invitations.length > 0 && (
+            <TouchableOpacity
+              style={styles.invitationBadge}
+              onPress={() => setShowInvitations(true)}
+            >
+              <Mail size={20} color={Colors.primary} />
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{invitations.length}</Text>
               </View>
-              <Text style={styles.noFamilyTitle}>No Family Yet</Text>
-              <Text style={styles.noFamilyDescription}>
-                Create a family to connect with your loved ones and share
-                medical information securely.
-              </Text>
-              <TouchableOpacity
-                style={styles.createFamilyButton}
-                onPress={() => setShowCreateFamily(true)}
-                activeOpacity={0.8}
-              >
-                <Plus size={20} color="white" strokeWidth={2} />
-                <Text style={styles.createFamilyButtonText}>Create Family</Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
+        </View>
 
-          {/* Family Members */}
-          {family && (
-            <>
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Family Members</Text>
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      style={styles.addChildButton}
-                      onPress={() => setShowCreateChild(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Baby size={16} color={Colors.primary} strokeWidth={2} />
-                      <Text style={styles.addChildButtonText}>Add Child</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.inviteButton}
-                      onPress={() => setShowInviteMember(true)}
-                      activeOpacity={0.7}
-                    >
-                      <UserPlus
-                        size={16}
-                        color={Colors.primary}
-                        strokeWidth={2}
-                      />
-                      <Text style={styles.inviteButtonText}>Invite</Text>
-                    </TouchableOpacity>
-                  </View>
+        {!family && (
+          <View style={styles.noFamilyContainer}>
+            <View style={styles.noFamilyIcon}>
+              <Users size={48} color={Colors.primary} strokeWidth={1.5} />
+            </View>
+            <Text style={styles.noFamilyTitle}>No Family Yet</Text>
+            <Text style={styles.noFamilyDescription}>
+              Create a family to connect with your loved ones and share medical
+              information securely.
+            </Text>
+            <TouchableOpacity
+              style={styles.createFamilyButton}
+              onPress={() => setShowCreateFamily(true)}
+              activeOpacity={0.8}
+            >
+              <Plus size={20} color="white" strokeWidth={2} />
+              <Text style={styles.createFamilyButtonText}>Create Family</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {family && (
+          <>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Family Members</Text>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.addChildButton}
+                    onPress={() => setShowCreateChild(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Baby size={16} color={Colors.primary} strokeWidth={2} />
+                    <Text style={styles.addChildButtonText}>Add Child</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.inviteButton}
+                    onPress={() => setShowInviteMember(true)}
+                    activeOpacity={0.7}
+                  >
+                    <UserPlus
+                      size={16}
+                      color={Colors.primary}
+                      strokeWidth={2}
+                    />
+                    <Text style={styles.inviteButtonText}>Invite</Text>
+                  </TouchableOpacity>
                 </View>
+              </View>
 
-                {family.members.map((member) => (
-                  <View key={member.userId} style={styles.memberCard}>
-                    <View style={styles.memberInfo}>
-                      <View style={styles.memberAvatar}>
-                        <Text style={styles.memberInitials}>
-                          {member.firstName[0]}
-                          {member.lastName[0]}
+              {family.members.map((member) => (
+                <TouchableOpacity
+                  key={member.userId}
+                  style={styles.memberCard}
+                  onPress={() =>
+                    router.push(
+                      `/(patient-tabs)/member-records?memberId=${member.userId}`
+                    )
+                  }
+                >
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberInitials}>
+                      {getMemberInitials(member)}
+                    </Text>
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <View style={styles.memberNameRow}>
+                      <Text style={styles.memberName}>
+                        {member.firstName} {member.lastName}
+                      </Text>
+                      {member.userId === family.createdBy && (
+                        <Crown size={14} color={Colors.medical.orange} />
+                      )}
+                      {member.userId === user?.uid && (
+                        <Text style={styles.youLabel}>(You)</Text>
+                      )}
+                    </View>
+                    <View style={styles.memberMeta}>
+                      <View style={styles.relationTag}>
+                        {getRelationIcon(member.relation)}
+                        <Text
+                          style={[
+                            styles.relationText,
+                            { color: getRelationColor(member.relation) },
+                          ]}
+                        >
+                          {FAMILY_RELATIONS.find(
+                            (r) => r.value === member.relation
+                          )?.label || member.relation}
                         </Text>
                       </View>
-                      <View style={styles.memberDetails}>
-                        <View style={styles.memberNameRow}>
-                          <Text style={styles.memberName}>
-                            {member.firstName} {member.lastName}
-                          </Text>
-                          {member.userId === family.createdBy && (
-                            <Crown size={14} color={Colors.medical.orange} />
-                          )}
-                          {member.userId === user?.uid && (
-                            <Text style={styles.youLabel}>(You)</Text>
-                          )}
-                        </View>
-                        <View style={styles.memberMeta}>
-                          <View style={styles.relationTag}>
-                            {getRelationIcon(member.relation)}
-                            <Text
-                              style={[
-                                styles.relationText,
-                                { color: getRelationColor(member.relation) },
-                              ]}
-                            >
-                              {FAMILY_RELATIONS.find(
-                                (r) => r.value === member.relation
-                              )?.label || member.relation}
-                            </Text>
-                          </View>
-                          <Text style={styles.memberEmail}>{member.email}</Text>
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.memberActions}>
-                      <TouchableOpacity
-                        style={styles.viewRecordsButton}
-                        onPress={() => {
-                          // Navigate to member's records
-                          router.push(
-                            `/(patient-tabs)/member-records?memberId=${member.userId}`
-                          );
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <ChevronRight size={16} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                      {/* Only show kick button if current user is family owner and it's not themselves */}
-                      {member.userId !== user?.uid &&
-                        family.createdBy === user?.uid && (
-                          <TouchableOpacity
-                            style={styles.kickButton}
-                            onPress={() => handleKickMember(member)}
-                            activeOpacity={0.7}
-                          >
-                            <UserX size={16} color={Colors.medical.red} />
-                          </TouchableOpacity>
-                        )}
                     </View>
                   </View>
-                ))}
-              </View>
+                  <View style={styles.memberActions}>
+                    <TouchableOpacity
+                      style={styles.viewRecordsButton}
+                      onPress={() => {
+                        router.push(
+                          `/(patient-tabs)/member-records?memberId=${member.userId}`
+                        );
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <ChevronRight size={20} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                    {member.userId !== user?.uid &&
+                      family.createdBy === user?.uid && (
+                        <TouchableOpacity
+                          style={styles.kickButton}
+                          onPress={() => handleKickMember(member)}
+                          activeOpacity={0.7}
+                        >
+                          <UserX size={16} color={Colors.medical.red} />
+                        </TouchableOpacity>
+                      )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-              {/* Family Actions */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Family Settings</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Family Settings</Text>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleLeaveFamily}
+                activeOpacity={0.7}
+              >
+                <AlertCircle size={20} color={Colors.medical.red} />
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    { color: Colors.medical.red },
+                  ]}
+                >
+                  Leave Family
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </ScrollView>
+
+      {/* Modals */}
+      <Modal
+        visible={showCreateFamily}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCreateFamily(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Create Family</Text>
+            <TouchableOpacity
+              onPress={() => setShowCreateFamily(false)}
+              style={styles.closeButton}
+            >
+              <X size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <Text style={styles.inputLabel}>Family Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={familyName}
+              onChangeText={setFamilyName}
+              placeholder="e.g., The Smiths"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TouchableOpacity
+              style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
+              onPress={handleCreateFamily}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Plus size={20} color="white" />
+                  <Text style={styles.submitButtonText}>Create Family</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        visible={showInviteMember}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowInviteMember(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Invite Member</Text>
+            <TouchableOpacity
+              onPress={() => setShowInviteMember(false)}
+              style={styles.closeButton}
+            >
+              <X size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <View style={styles.ageNoticeCard}>
+              <Text style={styles.ageNoticeTitle}>Age Requirement</Text>
+              <Text style={styles.ageNoticeText}>
+                Only people 16 and older can create their own accounts. For
+                children under 16, please use the "Add Child" option.
+              </Text>
+            </View>
+
+            <Text style={styles.inputLabel}>User Email, Phone, or ID</Text>
+            <TextInput
+              style={styles.textInput}
+              value={memberIdentifier}
+              onChangeText={setMemberIdentifier}
+              placeholder="Enter their email, phone, or user ID"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Relationship</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.relationSelector}
+            >
+              {FAMILY_RELATIONS.map((relation) => (
                 <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={handleLeaveFamily}
+                  key={relation.value}
+                  style={[
+                    styles.relationOption,
+                    selectedRelation === relation.value &&
+                      styles.relationOptionSelected,
+                  ]}
+                  onPress={() => setSelectedRelation(relation.value)}
                   activeOpacity={0.7}
                 >
-                  <AlertCircle size={20} color={Colors.medical.red} />
                   <Text
                     style={[
-                      styles.actionButtonText,
-                      { color: Colors.medical.red },
+                      styles.relationOptionText,
+                      selectedRelation === relation.value &&
+                        styles.relationOptionTextSelected,
                     ]}
                   >
-                    Leave Family
+                    {relation.label}
                   </Text>
                 </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </ScrollView>
-
-        {/* Create Family Modal */}
-        <Modal
-          visible={showCreateFamily}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Family</Text>
-              <TouchableOpacity
-                onPress={() => setShowCreateFamily(false)}
-                style={styles.closeButton}
-              >
-                <X size={24} color={iconColors.text} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalContent}>
-              <Text style={styles.inputLabel}>Family Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={familyName}
-                onChangeText={setFamilyName}
-                placeholder="Enter family name (e.g., Smith Family)"
-                placeholderTextColor={colors.textSecondary}
-              />
-              <TouchableOpacity
-                style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
-                onPress={handleCreateFamily}
-                disabled={submitting}
-                activeOpacity={0.8}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Plus size={20} color="white" />
-                    <Text style={styles.submitButtonText}>Create Family</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </Modal>
-
-        {/* Invite Member Modal */}
-        <Modal
-          visible={showInviteMember}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Invite Family Member</Text>
-              <TouchableOpacity
-                onPress={() => setShowInviteMember(false)}
-                style={styles.closeButton}
-              >
-                <X size={24} color={iconColors.text} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalContent}>
-              <View style={styles.ageNoticeCard}>
-                <Text style={styles.ageNoticeTitle}>📋 Age Requirement</Text>
-                <Text style={styles.ageNoticeText}>
-                  Only people 16 years and older can create their own accounts.
-                  For children under 16, use the "Add Child" button instead.
-                </Text>
-              </View>
-
-              <Text style={styles.inputLabel}>User Email, Phone, or ID</Text>
-              <TextInput
-                style={styles.textInput}
-                value={memberIdentifier}
-                onChangeText={setMemberIdentifier}
-                placeholder="Enter email, phone, or user ID"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-
-              <Text style={styles.inputLabel}>Relationship</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.relationSelector}
-              >
-                {FAMILY_RELATIONS.map((relation) => (
-                  <TouchableOpacity
-                    key={relation.value}
-                    style={[
-                      styles.relationOption,
-                      selectedRelation === relation.value &&
-                        styles.relationOptionSelected,
-                    ]}
-                    onPress={() => setSelectedRelation(relation.value)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.relationOptionText,
-                        selectedRelation === relation.value &&
-                          styles.relationOptionTextSelected,
-                      ]}
-                    >
-                      {relation.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <TouchableOpacity
-                style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
-                onPress={handleInviteMember}
-                disabled={submitting}
-                activeOpacity={0.8}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <UserPlus size={20} color="white" />
-                    <Text style={styles.submitButtonText}>Send Invitation</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </Modal>
-
-        {/* Invitations Modal */}
-        <Modal
-          visible={showInvitations}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Family Invitations</Text>
-              <TouchableOpacity
-                onPress={() => setShowInvitations(false)}
-                style={styles.closeButton}
-              >
-                <X size={24} color={iconColors.text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalContent}>
-              {invitations.map((invitation) => (
-                <View key={invitation.id} style={styles.invitationCard}>
-                  <View style={styles.invitationInfo}>
-                    <Text style={styles.invitationTitle}>
-                      {invitation.familyName}
-                    </Text>
-                    <Text style={styles.invitationDescription}>
-                      {invitation.invitedByName} invited you to join as{' '}
-                      <Text style={styles.relationHighlight}>
-                        {
-                          FAMILY_RELATIONS.find(
-                            (r) => r.value === invitation.relation
-                          )?.label
-                        }
-                      </Text>
-                    </Text>
-                  </View>
-                  <View style={styles.invitationActions}>
-                    <TouchableOpacity
-                      style={styles.acceptButton}
-                      onPress={() => handleAcceptInvitation(invitation.id)}
-                      disabled={submitting}
-                      activeOpacity={0.7}
-                    >
-                      <Check size={16} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.declineButton}
-                      onPress={() => handleDeclineInvitation(invitation.id)}
-                      disabled={submitting}
-                      activeOpacity={0.7}
-                    >
-                      <X size={16} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
               ))}
             </ScrollView>
-          </SafeAreaView>
-        </Modal>
 
-        {/* Create Child Account Modal */}
-        <Modal
-          visible={showCreateChild}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Child (Under 16)</Text>
-              <TouchableOpacity
-                onPress={() => setShowCreateChild(false)}
-                style={styles.closeButton}
-              >
-                <X size={24} color={iconColors.text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalContent}>
-              <Text style={styles.childModalDescription}>
-                👶 Create a full account for a child under 16 years old. This
-                will create an account with email and password that you can
-                manage. You'll be able to switch between profiles. Children 16+
-                must create their own accounts.
-              </Text>
-
-              <Text style={styles.inputLabel}>First Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.firstName}
-                onChangeText={(value) =>
-                  updateChildFormData('firstName', value)
-                }
-                placeholder="Enter first name"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <Text style={styles.inputLabel}>Middle Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.middleName}
-                onChangeText={(value) =>
-                  updateChildFormData('middleName', value)
-                }
-                placeholder="Enter middle name (optional)"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <Text style={styles.inputLabel}>Last Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.lastName}
-                onChangeText={(value) => updateChildFormData('lastName', value)}
-                placeholder="Enter last name"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <Text style={styles.inputLabel}>Email Address *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.email}
-                onChangeText={(value) => updateChildFormData('email', value)}
-                placeholder="Enter email address"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-
-              <Text style={styles.inputLabel}>Password *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.password}
-                onChangeText={(value) => updateChildFormData('password', value)}
-                placeholder="Enter password (min 6 characters)"
-                placeholderTextColor={colors.textSecondary}
-                secureTextEntry
-              />
-
-              <Text style={styles.inputLabel}>Date of Birth *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.dateOfBirth}
-                onChangeText={(value) => {
-                  const formatted = formatChildDateOfBirth(value);
-                  updateChildFormData('dateOfBirth', formatted);
-                }}
-                placeholder="MM/DD/YYYY"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="numeric"
-                maxLength={10}
-              />
-
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.textInput}
-                value={childFormData.phoneNumber}
-                onChangeText={(value) => {
-                  const formatted = formatChildPhoneNumber(value);
-                  updateChildFormData('phoneNumber', formatted);
-                }}
-                placeholder="Enter phone number (optional)"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="phone-pad"
-              />
-
-              <Text style={styles.inputLabel}>Address</Text>
-              <TextInput
-                style={[styles.textInput, styles.multilineInput]}
-                value={childFormData.address}
-                onChangeText={(value) => updateChildFormData('address', value)}
-                placeholder="Enter address (optional)"
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                numberOfLines={2}
-              />
-
-              <Text style={styles.inputLabel}>Gender</Text>
-              <TouchableOpacity
-                style={[styles.dropdownButton]}
-                onPress={() => setShowChildGenderDropdown(!showChildGenderDropdown)}
-              >
-                <Text style={[styles.dropdownText, !childFormData.gender && styles.placeholderText]}>
-                  {childFormData.gender ? genderOptions.find(opt => opt.value === childFormData.gender)?.label : 'Select gender'}
-                </Text>
-                <Text style={styles.dropdownArrow}>{showChildGenderDropdown ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              {showChildGenderDropdown && (
-                <View style={styles.dropdownMenu}>
-                  {genderOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={styles.dropdownOption}
-                      onPress={() => {
-                        updateChildFormData('gender', option.value);
-                        setShowChildGenderDropdown(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownOptionText}>{option.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+            <TouchableOpacity
+              style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
+              onPress={handleInviteMember}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <UserPlus size={20} color="white" />
+                  <Text style={styles.submitButtonText}>Send Invitation</Text>
+                </>
               )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
-              <Text style={styles.inputLabel}>Relationship</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.relationSelector}
-              >
-                {FAMILY_RELATIONS.filter(
-                  (r) =>
-                    r.value === 'child' ||
-                    r.value === 'grandchild' ||
-                    r.value === 'sibling'
-                ).map((relation) => (
+      <Modal
+        visible={showInvitations}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowInvitations(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Family Invitations</Text>
+            <TouchableOpacity
+              onPress={() => setShowInvitations(false)}
+              style={styles.closeButton}
+            >
+              <X size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            {invitations.map((invitation) => (
+              <View key={invitation.id} style={styles.invitationCard}>
+                <View style={styles.invitationInfo}>
+                  <Text style={styles.invitationTitle}>
+                    {invitation.familyName}
+                  </Text>
+                  <Text style={styles.invitationDescription}>
+                    {invitation.invitedByName} invited you to join as{' '}
+                    <Text style={styles.relationHighlight}>
+                      {
+                        FAMILY_RELATIONS.find(
+                          (r) => r.value === invitation.relation
+                        )?.label
+                      }
+                    </Text>
+                  </Text>
+                </View>
+                <View style={styles.invitationActions}>
                   <TouchableOpacity
-                    key={relation.value}
-                    style={[
-                      styles.relationOption,
-                      childRelation === relation.value &&
-                        styles.relationOptionSelected,
-                    ]}
-                    onPress={() => setChildRelation(relation.value)}
-                    activeOpacity={0.7}
+                    style={styles.acceptButton}
+                    onPress={() => handleAcceptInvitation(invitation.id)}
+                    disabled={submitting}
                   >
-                    <Text
-                      style={[
-                        styles.relationOptionText,
-                        childRelation === relation.value &&
-                          styles.relationOptionTextSelected,
-                      ]}
-                    >
-                      {relation.label}
+                    <Check size={16} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.declineButton}
+                    onPress={() => handleDeclineInvitation(invitation.id)}
+                    disabled={submitting}
+                  >
+                    <X size={16} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        visible={showCreateChild}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCreateChild(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Child (Under 16)</Text>
+            <TouchableOpacity
+              onPress={() => setShowCreateChild(false)}
+              style={styles.closeButton}
+            >
+              <X size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            <Text style={styles.childModalDescription}>
+              Create a managed account for a child under 16. They will be able
+              to log in with the email and password you create. Children 16+
+              must create their own accounts.
+            </Text>
+
+            <Text style={styles.inputLabel}>First Name *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={childFormData.firstName}
+              onChangeText={(value) =>
+                setChildFormData((p) => ({ ...p, firstName: value }))
+              }
+              placeholder="Enter first name"
+              placeholderTextColor={colors.textSecondary}
+            />
+
+            <Text style={styles.inputLabel}>Last Name *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={childFormData.lastName}
+              onChangeText={(value) =>
+                setChildFormData((p) => ({ ...p, lastName: value }))
+              }
+              placeholder="Enter last name"
+              placeholderTextColor={colors.textSecondary}
+            />
+
+            <Text style={styles.inputLabel}>Email Address *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={childFormData.email}
+              onChangeText={(value) =>
+                setChildFormData((p) => ({ ...p, email: value }))
+              }
+              placeholder="Enter email address"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Password *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={childFormData.password}
+              onChangeText={(value) =>
+                setChildFormData((p) => ({ ...p, password: value }))
+              }
+              placeholder="Enter password (min 6 characters)"
+              placeholderTextColor={colors.textSecondary}
+              secureTextEntry
+            />
+
+            <Text style={styles.inputLabel}>Date of Birth *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={childFormData.dateOfBirth}
+              onChangeText={(value) => {
+                setChildFormData((p) => ({ ...p, dateOfBirth: value }));
+              }}
+              placeholder="MM/DD/YYYY"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="numeric"
+              maxLength={10}
+            />
+
+            <Text style={styles.inputLabel}>Gender</Text>
+            <TouchableOpacity
+              style={[styles.dropdownButton]}
+              onPress={() =>
+                setShowChildGenderDropdown(!showChildGenderDropdown)
+              }
+            >
+              <Text
+                style={[
+                  styles.dropdownText,
+                  !childFormData.gender && styles.placeholderText,
+                ]}
+              >
+                {childFormData.gender
+                  ? genderOptions.find(
+                      (opt) => opt.value === childFormData.gender
+                    )?.label
+                  : 'Select gender'}
+              </Text>
+              <Text style={styles.dropdownArrow}>
+                {showChildGenderDropdown ? '▲' : '▼'}
+              </Text>
+            </TouchableOpacity>
+            {showChildGenderDropdown && (
+              <View style={styles.dropdownMenu}>
+                {genderOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={styles.dropdownOption}
+                    onPress={() => {
+                      setChildFormData((p) => ({ ...p, gender: option.value }));
+                      setShowChildGenderDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownOptionText}>
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
+            )}
 
-              <TouchableOpacity
-                style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
-                onPress={handleCreateChildAccount}
-                disabled={submitting}
-                activeOpacity={0.8}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Baby size={20} color="white" />
-                    <Text style={styles.submitButtonText}>
-                      Add Child Account
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
+            <TouchableOpacity
+              style={[styles.submitButton, { opacity: submitting ? 0.7 : 1 }]}
+              onPress={handleCreateChildAccount}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Baby size={20} color="white" />
+                  <Text style={styles.submitButtonText}>Add Child Account</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
-        <AlertComponent />
-      </LinearGradient>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

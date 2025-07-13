@@ -1,506 +1,248 @@
 import { StyleSheet } from 'react-native';
+import { Colors } from '@/constants/Colors';
 
-export const createProfileStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  scrollView: {
-    flex: 1,
-  },
-
-  scrollContent: {
-    paddingBottom: 100,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 24,
-  },
-
-  headerLeft: {
-    flex: 1,
-  },
-
-  title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginTop: 2,
-  },
-
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  editButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  // Profile Card styles
-  profileCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
+export const createProfileStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 16,
-  },
-
-  profileInfo: {
-    flex: 1,
-  },
-
-  profileName: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-    marginBottom: 4,
-  },
-
-  profileEmail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 2,
-  },
-
-  profilePhone: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  editIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Stats styles
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  statNumber: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-    marginBottom: 4,
-  },
-
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
-  },
-
-  profileSection: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-
-  profileImageContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-
-  editImageButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#009485',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.card,
-  },
-
-  profileRole: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-
-  statsSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 32,
-  },
-
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
+    scrollView: {
+      flex: 1,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-
-  statContent: {
-    flex: 1,
-  },
-
-  menuSection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-
-  menuTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-
-  menuList: {
-    gap: 8,
-  },
-
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
+    scrollContent: {
+      paddingBottom: 40,
     },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 8,
-  },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 24,
+      paddingBottom: 16,
+    },
+    title: {
+      fontSize: 32,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    profileSection: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    profileImage: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      marginBottom: 16,
+    },
+    profileName: {
+      fontSize: 22,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    profileEmail: {
+      fontSize: 16,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.textSecondary,
+    },
+    switchedAccountIndicator: {
+      marginTop: 12,
+      padding: 12,
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: 'rgba(59, 130, 246, 0.2)',
+      alignItems: 'center',
+    },
 
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
+    switchedAccountText: {
+      fontSize: 12,
+      color: Colors.primary,
+      fontFamily: 'Satoshi-Variable',
+      marginBottom: 8,
+    },
 
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+    switchBackButton: {
+      backgroundColor: Colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderRadius: 6,
+    },
 
-  menuContent: {
-    flex: 1,
-  },
+    switchBackButtonText: {
+      fontSize: 12,
+      color: 'white',
+      fontFamily: 'Satoshi-Variable',
+    },
+    menuSection: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    sectionTitle: {
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: 'bold',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 8,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+    },
+    menuItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    menuItemTitle: {
+      fontSize: 16,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.text,
+    },
+    signOutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      margin: 24,
+      paddingVertical: 16,
+      borderRadius: 12,
+      backgroundColor: `${Colors.medical.red}1A`,
+      gap: 8,
+    },
+    signOutText: {
+      fontSize: 16,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: 'bold',
+      color: Colors.medical.red,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 24,
+    },
+    modalTitle: {
+      fontSize: 24,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    closeButton: {
+      padding: 4,
+    },
+    modalContent: {
+      paddingHorizontal: 24,
+      paddingBottom: 24,
+    },
+    accountItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    accountItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    accountName: {
+      fontSize: 16,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.text,
+    },
+    linkedAccountsCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: Colors.primary,
+    },
 
-  menuItemTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-    marginBottom: 2,
-  },
+    linkedAccountsDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontFamily: 'Satoshi-Variable',
+      marginBottom: 16,
+      lineHeight: 20,
+    },
 
-  menuSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
+    linkedAccountItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+      borderRadius: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: 'rgba(59, 130, 246, 0.1)',
+    },
 
-  menuArrow: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    linkedAccountInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
 
-  // Sign Out Button
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 32,
-    gap: 8,
-  },
+    linkedAccountAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: Colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
 
-  signOutText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#ef4444',
-  },
+    linkedAccountInitials: {
+      fontSize: 14,
+      color: 'white',
+      fontFamily: 'Satoshi-Variable',
+    },
 
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+    linkedAccountDetails: {
+      flex: 1,
+    },
 
-  modalContent: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    margin: 20,
-    padding: 20,
-    width: '90%',
-  },
+    linkedAccountName: {
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.text,
+      marginBottom: 2,
+    },
 
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+    linkedAccountType: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontFamily: 'Satoshi-Variable',
+    },
 
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: colors.text,
-  },
+    parentAccountAvatar: {
+      backgroundColor: Colors.medical.orange,
+    },
 
-  form: {
-    marginBottom: 20,
-  },
-
-  inputGroup: {
-    marginBottom: 16,
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-
-  textInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-
-  textArea: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: colors.text,
-    backgroundColor: colors.surface,
-    height: 100,
-    textAlignVertical: 'top',
-  },
-
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-
-  cancelButtonText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  saveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#009485',
-  },
-
-  saveButtonDisabled: {
-    backgroundColor: colors.textSecondary,
-  },
-
-  saveButtonText: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontFamily: 'Inter-Regular',
-  },
-
-  errorContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-  },
-
-  successContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  successText: {
-    fontSize: 14,
-    color: '#22c55e',
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-  },
-
-  bottomSpacing: {
-    height: 100,
-  },
-});
-
-// Keep the old export for backward compatibility
-export const profileStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  // ... other static styles without colors
-}); 
+    parentAccountType: {
+      color: Colors.medical.orange,
+      fontFamily: 'Satoshi-Variable',
+    },
+  });
