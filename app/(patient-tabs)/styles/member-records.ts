@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { Colors } from '@/constants/Colors';
 
 export const createMemberRecordsStyles = (colors: any) =>
   StyleSheet.create({

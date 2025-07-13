@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -13,6 +12,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import { createRecordsStyles } from './styles/records';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -49,7 +49,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
 
-
 import {
   collection,
   query,
@@ -77,62 +76,62 @@ const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
 
 const BUCKET = 'svastheya';
 
-// Predefined tags for medical records
+// Predefined tags for medical records - using theme colors
 const PREDEFINED_TAGS = [
   {
     id: 'cardiology',
     label: 'Cardiology',
     icon: Heart,
-    color: '#ef4444', // red
+    color: Colors.medical.red,
     isCustom: false,
   },
   {
     id: 'neurology',
     label: 'Neurology',
     icon: Brain,
-    color: '#3b82f6', // blue
+    color: Colors.medical.blue,
     isCustom: false,
   },
   {
     id: 'orthopedics',
     label: 'Orthopedics',
     icon: Bone,
-    color: '#f59e42', // orange
+    color: Colors.medical.orange,
     isCustom: false,
   },
   {
     id: 'general',
     label: 'General',
     icon: Activity,
-    color: '#22c55e', // green
+    color: Colors.medical.green,
     isCustom: false,
   },
   {
     id: 'lab_reports',
     label: 'Lab Reports',
     icon: TestTube2,
-    color: '#a21caf', // purple
+    color: Colors.medical.purple,
     isCustom: false,
   },
   {
     id: 'prescriptions',
     label: 'Prescriptions',
     icon: Pill,
-    color: '#eab308', // yellow
+    color: Colors.medical.yellow,
     isCustom: false,
   },
   {
     id: 'imaging',
     label: 'Imaging',
     icon: FileText,
-    color: '#009485', // primary
+    color: Colors.primary,
     isCustom: false,
   },
   {
     id: 'emergency',
     label: 'Emergency',
     icon: Activity,
-    color: '#ef4444', // error
+    color: Colors.medical.red,
     isCustom: false,
   },
 ];
@@ -163,7 +162,11 @@ function getUserEncryptionKey(uid: string): string {
 }
 
 // Helper to decrypt AES-encrypted files (PDFs and images)
-async function decryptFileFromUrl(url: string, record: any, user: any): Promise<string> {
+async function decryptFileFromUrl(
+  url: string,
+  record: any,
+  user: any
+): Promise<string> {
   // Download encrypted file
   const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
@@ -176,11 +179,22 @@ async function decryptFileFromUrl(url: string, record: any, user: any): Promise<
 
   // Decrypt
   const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
-  const decryptedBytes = decrypted.words.reduce((arr: number[], word: number) => {
-    arr.push((word >> 24) & 0xff, (word >> 16) & 0xff, (word >> 8) & 0xff, word & 0xff);
-    return arr;
-  }, []);
-  const decryptedUint8 = new Uint8Array(decryptedBytes).slice(0, decrypted.sigBytes);
+  const decryptedBytes = decrypted.words.reduce(
+    (arr: number[], word: number) => {
+      arr.push(
+        (word >> 24) & 0xff,
+        (word >> 16) & 0xff,
+        (word >> 8) & 0xff,
+        word & 0xff
+      );
+      return arr;
+    },
+    []
+  );
+  const decryptedUint8 = new Uint8Array(decryptedBytes).slice(
+    0,
+    decrypted.sigBytes
+  );
 
   if (Platform.OS === 'web') {
     // Create a Blob and object URL for browser viewing
@@ -189,13 +203,15 @@ async function decryptFileFromUrl(url: string, record: any, user: any): Promise<
     return blobUrl;
   } else {
     // Convert to base64 data URI for WebView (mobile)
-    return `data:${record.fileType};base64,${uint8ArrayToBase64(decryptedUint8)}`;
+    return `data:${record.fileType};base64,${uint8ArrayToBase64(
+      decryptedUint8
+    )}`;
   }
 }
 
-
 export default function MedicalRecordsScreen() {
   const { colors } = useTheme();
+  const styles = createRecordsStyles(colors);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -378,17 +394,10 @@ export default function MedicalRecordsScreen() {
     },
   ];
 
-  // Map medical colors for theme compatibility
-  const medicalColors = {
-    red: '#ef4444',
-    blue: '#3b82f6',
-    orange: '#f59e42',
-    green: '#22c55e',
-    purple: '#a21caf',
-    yellow: '#eab308',
-  };
-  const textLight = colors.textTertiary || '#a3a3a3';
-  const primary = '#3b82f6';
+  // Use theme-aware colors
+  const medicalColors = Colors.medical;
+  const textLight = colors.textTertiary;
+  const primary = Colors.primary;
 
   const getRecordIcon = (type: string, source: string) => {
     if (source === 'lab_uploaded') {
@@ -402,7 +411,7 @@ export default function MedicalRecordsScreen() {
       case 'lab_reports':
         return { icon: TestTube2, color: medicalColors.green };
       default:
-        return { icon: FileText, color: '#888' };
+        return { icon: FileText, color: colors.textSecondary };
     }
   };
 
@@ -611,7 +620,7 @@ export default function MedicalRecordsScreen() {
 
   const handleDeleteRecord = (record: any) => {
     console.log('🗑️ Delete clicked for record:', record);
-    
+
     if (!canEditRecord(record)) {
       showAlert(
         'Permission Denied',
@@ -619,7 +628,7 @@ export default function MedicalRecordsScreen() {
       );
       return;
     }
-  
+
     showAlert(
       'Delete Record',
       'Are you sure you want to delete this record? This action cannot be undone.',
@@ -631,7 +640,7 @@ export default function MedicalRecordsScreen() {
           onPress: async () => {
             try {
               setDeleting(true);
-              
+
               // Extract file path from Supabase URL
               const fileUrl = record.fileUrl;
               if (fileUrl && fileUrl.includes('supabase.co')) {
@@ -640,41 +649,56 @@ export default function MedicalRecordsScreen() {
                   // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
                   const url = new URL(fileUrl);
                   const pathParts = url.pathname.split('/');
-                  
+
                   // Find the bucket name (after 'public')
-                  const publicIndex = pathParts.findIndex(part => part === 'public');
-                  if (publicIndex !== -1 && publicIndex + 1 < pathParts.length) {
+                  const publicIndex = pathParts.findIndex(
+                    (part) => part === 'public'
+                  );
+                  if (
+                    publicIndex !== -1 &&
+                    publicIndex + 1 < pathParts.length
+                  ) {
                     const bucket = pathParts[publicIndex + 1]; // Should be 'svastheya'
                     const filePath = pathParts.slice(publicIndex + 2).join('/'); // Everything after bucket name
-                    
-                    console.log('🗑️ Deleting from Supabase:', { bucket, filePath });
-                    
+
+                    console.log('🗑️ Deleting from Supabase:', {
+                      bucket,
+                      filePath,
+                    });
+
                     // Delete from Supabase Storage
-                    const { error: storageError } = await supabase
-                      .storage
+                    const { error: storageError } = await supabase.storage
                       .from(bucket)
                       .remove([filePath]);
-                      
+
                     if (storageError) {
-                      console.error('Error deleting from storage:', storageError);
+                      console.error(
+                        'Error deleting from storage:',
+                        storageError
+                      );
                       // Continue with Firestore deletion even if storage deletion fails
                     } else {
-                      console.log('✅ Successfully deleted from Supabase storage');
+                      console.log(
+                        '✅ Successfully deleted from Supabase storage'
+                      );
                     }
                   } else {
-                    console.error('Could not parse Supabase URL structure:', fileUrl);
+                    console.error(
+                      'Could not parse Supabase URL structure:',
+                      fileUrl
+                    );
                   }
                 } catch (urlError) {
                   console.error('Error parsing Supabase URL:', urlError);
                   // Continue with Firestore deletion even if URL parsing fails
                 }
               }
-              
+
               // Delete from Firestore
               await deleteDoc(
                 doc(db, 'patients', user!.uid, 'records', record.id)
               );
-              
+
               showAlert('Success', 'Record deleted successfully');
             } catch (error) {
               console.error('Error deleting record:', error);
@@ -687,7 +711,6 @@ export default function MedicalRecordsScreen() {
       ]
     );
   };
-  
 
   const toggleEditTag = (tagId: string) => {
     setEditTags((prev) =>
@@ -700,7 +723,7 @@ export default function MedicalRecordsScreen() {
   return (
     <SafeAreaView style={[styles.container]}>
       <LinearGradient
-        colors={['#f8fafc', '#e2e8f0']}
+        colors={[colors.surface, colors.surfaceSecondary]}
         style={styles.backgroundGradient}
       >
         {/* Header */}
@@ -721,7 +744,7 @@ export default function MedicalRecordsScreen() {
             >
               <Search
                 size={20}
-                color={showSearch ? primary : '#222'}
+                color={showSearch ? primary : colors.text}
                 strokeWidth={2}
               />
             </TouchableOpacity>
@@ -734,7 +757,7 @@ export default function MedicalRecordsScreen() {
             >
               <Filter
                 size={20}
-                color={selectedTags.length > 0 ? primary : '#222'}
+                color={selectedTags.length > 0 ? primary : colors.text}
                 strokeWidth={2}
               />
               {selectedTags.length > 0 && (
@@ -761,7 +784,7 @@ export default function MedicalRecordsScreen() {
             entering={FadeInDown.springify()}
           >
             <View style={styles.searchInputContainer}>
-              <Search size={18} color={'#222'} strokeWidth={2} />
+              <Search size={18} color={colors.textSecondary} strokeWidth={2} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search records, doctors, labs..."
@@ -772,7 +795,7 @@ export default function MedicalRecordsScreen() {
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X size={18} color={'#222'} strokeWidth={2} />
+                  <X size={18} color={colors.textSecondary} strokeWidth={2} />
                 </TouchableOpacity>
               )}
             </View>
@@ -1009,11 +1032,7 @@ export default function MedicalRecordsScreen() {
 
                           <View style={styles.recordActions}>
                             <TouchableOpacity style={styles.actionButton}>
-                              <Eye
-                                size={16}
-                                color={primary}
-                                strokeWidth={2}
-                              />
+                              <Eye size={16} color={primary} strokeWidth={2} />
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.actionButton}>
                               <Download
@@ -1091,11 +1110,7 @@ export default function MedicalRecordsScreen() {
             ) : (
               /* Empty State */
               <View style={styles.emptyState}>
-                <FolderOpen
-                  size={64}
-                  color={textLight}
-                  strokeWidth={1}
-                />
+                <FolderOpen size={64} color={textLight} strokeWidth={1} />
                 <Text style={styles.emptyTitle}>
                   {searchQuery || selectedTags.length > 0
                     ? 'No matching records found'
@@ -1145,7 +1160,7 @@ export default function MedicalRecordsScreen() {
                     <Text style={styles.addCustomTagHeaderText}>Add</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setShowTagModal(false)}>
-                    <X size={24} color={'#222'} strokeWidth={2} />
+                    <X size={24} color={colors.text} strokeWidth={2} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1199,11 +1214,7 @@ export default function MedicalRecordsScreen() {
                             }}
                             style={styles.removeTagButton}
                           >
-                            <X
-                              size={14}
-                              color={textLight}
-                              strokeWidth={2}
-                            />
+                            <X size={14} color={textLight} strokeWidth={2} />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1242,7 +1253,7 @@ export default function MedicalRecordsScreen() {
               <View style={styles.customTagModalHeader}>
                 <Text style={styles.modalTitle}>Add Custom Tag</Text>
                 <TouchableOpacity onPress={() => setShowCustomTagModal(false)}>
-                  <X size={24} color={'#222'} strokeWidth={2} />
+                  <X size={24} color={colors.text} strokeWidth={2} />
                 </TouchableOpacity>
               </View>
 
@@ -1313,7 +1324,7 @@ export default function MedicalRecordsScreen() {
                     <TouchableOpacity
                       onPress={() => setPreviewModalVisible(false)}
                     >
-                      <X size={24} color={'#222'} strokeWidth={2} />
+                      <X size={24} color={colors.text} strokeWidth={2} />
                     </TouchableOpacity>
                   </View>
 
@@ -1387,10 +1398,17 @@ export default function MedicalRecordsScreen() {
                         setPdfPreviewUri(null);
                         setShowPdfPreview(true);
                         try {
-                          const decryptedUri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, user);
+                          const decryptedUri = await decryptFileFromUrl(
+                            selectedRecord.fileUrl,
+                            selectedRecord,
+                            user
+                          );
                           setPdfPreviewUri(decryptedUri);
                         } catch (e) {
-                          showAlert('Error', 'Failed to decrypt and open image.');
+                          showAlert(
+                            'Error',
+                            'Failed to decrypt and open image.'
+                          );
                           setShowPdfPreview(false);
                         }
                       }}
@@ -1404,7 +1422,11 @@ export default function MedicalRecordsScreen() {
                         setPdfPreviewUri(null);
                         setShowPdfPreview(true);
                         try {
-                          const decryptedUri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, user);
+                          const decryptedUri = await decryptFileFromUrl(
+                            selectedRecord.fileUrl,
+                            selectedRecord,
+                            user
+                          );
                           setPdfPreviewUri(decryptedUri);
                         } catch (e) {
                           showAlert('Error', 'Failed to decrypt and open PDF.');
@@ -1427,56 +1449,67 @@ export default function MedicalRecordsScreen() {
 
         {/* PDF Preview Modal */}
         <Modal
-  visible={showPdfPreview}
-  animationType="slide"
-  transparent={false}
-  onRequestClose={() => setShowPdfPreview(false)}
->
-  <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-    <TouchableOpacity
-      style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
-      onPress={() => setShowPdfPreview(false)}
-    >
-      <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
-    </TouchableOpacity>
+          visible={showPdfPreview}
+          animationType="slide"
+          transparent={false}
+          onRequestClose={() => setShowPdfPreview(false)}
+        >
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
+              onPress={() => setShowPdfPreview(false)}
+            >
+              <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
+            </TouchableOpacity>
 
-    {pdfPreviewUri ? (
-      Platform.OS === 'web' ? (
-        <View style={{ flex: 1, marginTop: 60 }}>
-          {selectedRecord?.fileType?.startsWith('image') ? (
-            <img
-              src={pdfPreviewUri}
-              style={{ flex: 1, width: '100%', height: '100%', objectFit: 'contain' }}
-              alt="Image Preview"
-            />
-          ) : (
-            <iframe
-              src={pdfPreviewUri}
-              style={{ flex: 1, width: '100%', height: '100%' }}
-              title="PDF Preview"
-            />
-          )}
-        </View>
-      ) : (
-        <WebView
-          source={{ uri: pdfPreviewUri }}
-          style={{ flex: 1, marginTop: 60 }}
-          useWebKit
-          originWhitelist={['*']}
-          javaScriptEnabled
-          scalesPageToFit
-        />
-      )
-    ) : (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#fff" />
-        <Text style={{ color: '#fff', marginTop: 16 }}>Decrypting file...</Text>
-      </View>
-    )}
-  </SafeAreaView>
-</Modal>
-
-
+            {pdfPreviewUri ? (
+              Platform.OS === 'web' ? (
+                <View style={{ flex: 1, marginTop: 60 }}>
+                  {selectedRecord?.fileType?.startsWith('image') ? (
+                    <img
+                      src={pdfPreviewUri}
+                      style={{
+                        flex: 1,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                      }}
+                      alt="Image Preview"
+                    />
+                  ) : (
+                    <iframe
+                      src={pdfPreviewUri}
+                      style={{ flex: 1, width: '100%', height: '100%' }}
+                      title="PDF Preview"
+                    />
+                  )}
+                </View>
+              ) : (
+                <WebView
+                  source={{ uri: pdfPreviewUri }}
+                  style={{ flex: 1, marginTop: 60 }}
+                  useWebKit
+                  originWhitelist={['*']}
+                  javaScriptEnabled
+                  scalesPageToFit
+                />
+              )
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ActivityIndicator size="large" color="#fff" />
+                <Text style={{ color: '#fff', marginTop: 16 }}>
+                  Decrypting file...
+                </Text>
+              </View>
+            )}
+          </SafeAreaView>
+        </Modal>
 
         {/* Edit Modal */}
         <Modal
@@ -1490,7 +1523,7 @@ export default function MedicalRecordsScreen() {
               <View style={styles.editModalHeader}>
                 <Text style={styles.modalTitle}>Edit Record</Text>
                 <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                  <X size={24} color={'#222'} strokeWidth={2} />
+                  <X size={24} color={colors.text} strokeWidth={2} />
                 </TouchableOpacity>
               </View>
 
@@ -1524,9 +1557,7 @@ export default function MedicalRecordsScreen() {
                       <tag.icon
                         size={16}
                         color={
-                          editTags.includes(tag.id)
-                            ? tag.color
-                            : textLight
+                          editTags.includes(tag.id) ? tag.color : textLight
                         }
                         strokeWidth={2}
                       />
@@ -1577,865 +1608,3 @@ export default function MedicalRecordsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 16,
-  },
-
-  headerLeft: {
-    flex: 1,
-  },
-
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#222',
-    letterSpacing: -0.5,
-  },
-
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-    marginTop: 2,
-  },
-
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    position: 'relative',
-  },
-
-  headerButtonActive: {
-    backgroundColor: `${Colors.primary}15`,
-    borderColor: Colors.primary,
-  },
-
-  filterBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  filterBadgeText: {
-    fontSize: 10,
-    color: 'white',
-    fontFamily: 'Inter-Bold',
-  },
-
-  uploadButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#222',
-  },
-
-  selectedTagsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-
-  selectedTagsList: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  selectedTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-
-  selectedTagText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  filtersContainer: {
-    marginBottom: 20,
-  },
-
-  filtersContent: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-
-  filterTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    gap: 8,
-  },
-
-  filterTabActive: {
-    backgroundColor: '#222',
-    borderColor: '#222',
-  },
-
-  filterText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#222',
-  },
-
-  filterTextActive: {
-    color: '#ffffff',
-  },
-
-  filterCount: {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: 'center',
-  },
-
-  filterCountActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-
-  filterCountText: {
-    fontSize: 11,
-    fontFamily: 'Inter-Bold',
-    color: '#222',
-  },
-
-  filterCountTextActive: {
-    color: '#ffffff',
-  },
-
-  recordsList: {
-    flex: 1,
-  },
-
-  recordsContent: {
-    paddingHorizontal: 20,
-  },
-
-  recordCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    position: 'relative',
-  },
-
-  recordCardContent: {
-    padding: 16,
-  },
-
-  newBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
-  },
-
-  recordMain: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-
-  recordLeft: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-
-  recordIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-
-  recordInfo: {
-    flex: 1,
-  },
-
-  recordTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#222',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-
-  recordMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-
-  recordSource: {
-    fontSize: 13,
-    color: '#888',
-    fontFamily: 'Inter-Medium',
-  },
-
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#a3a3a3',
-    marginHorizontal: 8,
-  },
-
-  recordDate: {
-    fontSize: 13,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-  },
-
-  recordTags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 6,
-  },
-
-  recordTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 4,
-  },
-
-  recordTagText: {
-    fontSize: 10,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  moreTagsText: {
-    fontSize: 10,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-  },
-
-  recordDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  fileInfo: {
-    fontSize: 12,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-  },
-
-  labBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-
-  labBadgeText: {
-    fontSize: 10,
-    color: '#22c55e',
-    fontFamily: 'Inter-SemiBold',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  recordActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  recordFooter: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.06)',
-  },
-
-  statusIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 6,
-  },
-
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-
-  statusText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#888',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#a3a3a3',
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-
-  uploadEmptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 8,
-  },
-
-  uploadEmptyText: {
-    fontSize: 14,
-    color: '#3b82f6',
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  bottomSpacing: {
-    height: 100,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-
-  loadingText: {
-    fontSize: 16,
-    color: '#888',
-    fontFamily: 'Inter-Medium',
-    marginTop: 16,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '80%',
-  },
-
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#222',
-    flex: 1,
-    marginRight: 16,
-  },
-
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-    marginBottom: 16,
-  },
-
-  tagManagement: {
-    marginBottom: 20,
-  },
-
-  tagManagementTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#222',
-    marginBottom: 8,
-  },
-
-  tagManagementList: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  tagManagementItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    gap: 4,
-  },
-
-  tagManagementText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#888',
-  },
-
-  previewImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    marginVertical: 16,
-  },
-
-  openPdfButton: {
-    backgroundColor: '#3b82f6',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-
-  openPdfText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  unsupportedText: {
-    textAlign: 'center',
-    marginVertical: 16,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-  },
-
-  tagModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '70%',
-  },
-
-  tagModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  tagModalHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  addCustomTagHeaderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 12,
-    gap: 4,
-  },
-
-  addCustomTagHeaderText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-    color: '#3b82f6',
-  },
-
-  tagsList: {
-    maxHeight: 300,
-  },
-
-  tagOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-  },
-
-  tagOptionSelected: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-
-  tagOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-
-  tagOptionRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  tagOptionText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#222',
-  },
-
-  customTagBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-
-  customTagBadgeText: {
-    fontSize: 10,
-    fontFamily: 'Inter-Bold',
-    color: '#3b82f6',
-    textTransform: 'uppercase',
-  },
-
-  removeTagButton: {
-    padding: 4,
-  },
-
-  tagCheckmark: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  tagCheckmarkText: {
-    color: 'white',
-    fontSize: 12,
-    fontFamily: 'Inter-Bold',
-  },
-
-  tagModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-
-  clearTagsButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#a3a3a3',
-    alignItems: 'center',
-  },
-
-  clearTagsText: {
-    color: '#888',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  applyTagsButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: '#3b82f6',
-    alignItems: 'center',
-  },
-
-  applyTagsText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  customTagModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-  },
-
-  customTagModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  modalDescription: {
-    fontSize: 14,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-
-  customTagInputContainer: {
-    marginBottom: 24,
-  },
-
-  customTagInput: {
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#222',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-
-  customTagModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  cancelCustomTagButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#a3a3a3',
-    alignItems: 'center',
-  },
-
-  cancelCustomTagText: {
-    color: '#888',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  addCustomTagConfirmButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: '#3b82f6',
-    gap: 6,
-  },
-
-  addCustomTagConfirmButtonDisabled: {
-    backgroundColor: '#a3a3a3',
-  },
-
-  addCustomTagConfirmText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  loadingTagsContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-
-  loadingTagsText: {
-    fontSize: 14,
-    color: '#888',
-    fontFamily: 'Inter-Regular',
-    marginTop: 8,
-  },
-
-  // Edit Modal Styles
-  editModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxHeight: '80%',
-  },
-
-  editModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-
-  editForm: {
-    marginBottom: 24,
-  },
-
-  inputLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#222',
-    marginBottom: 8,
-    marginTop: 16,
-  },
-
-  textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#222',
-  },
-
-  tagGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-
-  editModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#a3a3a3',
-    alignItems: 'center',
-  },
-
-  cancelButtonText: {
-    color: '#888',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-
-  updateButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: '#3b82f6',
-    gap: 6,
-  },
-
-  updateButtonDisabled: {
-    backgroundColor: '#a3a3a3',
-  },
-
-  updateButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-});

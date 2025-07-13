@@ -35,6 +35,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RecordsService, MedicalRecord } from '@/services/recordsService';
 import { getGreeting, getRecordIcon, getStatusColor, formatDate } from './services/recordHelpers';
 import { createHomeStyles } from './styles/home';
+import { db } from '@/constants/firebase';
+import { doc, getDoc, collection, query, getDocs } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +45,8 @@ export default function PatientHomeScreen() {
   const { colors } = useTheme();
   const styles = createHomeStyles(colors);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [familyMembersCount, setFamilyMembersCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Animation values
@@ -64,18 +68,37 @@ export default function PatientHomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      loadMedicalRecords();
+    if (user && userData) {
+      loadData();
     }
-  }, [user]);
+  }, [user, userData]);
 
-  const loadMedicalRecords = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
+      
+      // Load medical records
       const records = await RecordsService.getRecentRecords(user!.uid, 5);
       setMedicalRecords(records);
+      
+      // Get total records count
+      const totalRecordsQuery = query(collection(db, 'patients', user!.uid, 'records'));
+      const totalRecordsSnapshot = await getDocs(totalRecordsQuery);
+      setTotalRecords(totalRecordsSnapshot.size);
+      
+      // Get family members count
+      if (userData?.familyId) {
+        const familyDoc = await getDoc(doc(db, 'families', userData.familyId));
+        if (familyDoc.exists()) {
+          const familyData = familyDoc.data();
+          const membersCount = familyData.members ? familyData.members.length : 1;
+          setFamilyMembersCount(membersCount);
+        }
+      } else {
+        setFamilyMembersCount(1); // Just the user if no family
+      }
     } catch (error) {
-      console.error('Error loading medical records:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -129,22 +152,12 @@ export default function PatientHomeScreen() {
           {/* Quick Stats */}
           <Animated.View style={[styles.statsContainer, cardStyle]}>
             <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIcon, { backgroundColor: `${Colors.medical.green}15` }]}>
-                <Calendar size={20} color={Colors.medical.green} strokeWidth={2} />
-              </View>
-              <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>3</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Upcoming</Text>
-              </View>
-            </View>
-
-            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: `${Colors.medical.blue}15` }]}>
                 <FileText size={20} color={Colors.medical.blue} strokeWidth={2} />
               </View>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>{medicalRecords.length}</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Records</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>{totalRecords}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Records</Text>
               </View>
             </View>
 
@@ -153,8 +166,8 @@ export default function PatientHomeScreen() {
                 <Users size={20} color={Colors.medical.blue} strokeWidth={2} />
               </View>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>5</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Family</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>{familyMembersCount}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Family Members</Text>
               </View>
             </View>
           </Animated.View>
@@ -163,14 +176,6 @@ export default function PatientHomeScreen() {
           <Animated.View style={[styles.actionsContainer, cardStyle]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
             <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => router.push('/(patient-tabs)/appointments')}
-              >
-                <Calendar size={24} color={Colors.primary} strokeWidth={2} />
-                <Text style={[styles.actionText, { color: colors.text }]}>Appointments</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => router.push('/(patient-tabs)/upload-record')}

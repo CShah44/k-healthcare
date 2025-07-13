@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { Colors } from '@/constants/Colors';
 
 export const createRecordsStyles = (colors: any) =>
   StyleSheet.create({
@@ -11,39 +12,35 @@ export const createRecordsStyles = (colors: any) =>
       flex: 1,
     },
 
-    scrollView: {
-      flex: 1,
-    },
-
-    scrollContent: {
-      paddingBottom: 100,
-    },
-
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 20,
       paddingTop: 20,
-      marginBottom: 24,
+      marginBottom: 20,
     },
 
     headerLeft: {
       flex: 1,
     },
 
-    title: {
-      fontSize: 28,
+    headerTitle: {
+      fontSize: 32,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
       color: colors.text,
-      letterSpacing: -0.5,
+      letterSpacing: -0.8,
+      lineHeight: 38,
     },
 
-    subtitle: {
-      fontSize: 14,
+    headerSubtitle: {
+      fontSize: 15,
       color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
-      marginTop: 2,
+      fontWeight: '500',
+      marginTop: 4,
+      letterSpacing: -0.2,
     },
 
     headerActions: {
@@ -51,109 +48,166 @@ export const createRecordsStyles = (colors: any) =>
       gap: 12,
     },
 
-    searchButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.card,
+    headerButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: colors.border,
+      position: 'relative',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
 
-    filterButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.card,
+    headerButtonActive: {
+      backgroundColor: `${Colors.primary}15`,
+      borderColor: Colors.primary,
+      shadowColor: Colors.primary,
+      shadowOpacity: 0.2,
+    },
+
+    filterBadge: {
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      backgroundColor: Colors.primary,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderWidth: 2,
+      borderColor: colors.background,
+    },
+
+    filterBadgeText: {
+      fontSize: 11,
+      color: '#ffffff',
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
     },
 
     uploadButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: '#009485',
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: Colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
+      shadowColor: Colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
     },
 
     searchContainer: {
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+
+    searchInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.card,
-      borderRadius: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      marginHorizontal: 20,
-      marginBottom: 16,
+      paddingVertical: 14,
+      gap: 12,
       borderWidth: 1,
       borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
     },
 
     searchInput: {
       flex: 1,
-      marginLeft: 12,
       fontSize: 16,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
       color: colors.text,
+      letterSpacing: -0.2,
     },
 
     selectedTagsContainer: {
-      marginHorizontal: 20,
-      marginBottom: 16,
+      paddingHorizontal: 20,
+      marginBottom: 20,
     },
 
     selectedTagsList: {
       flexDirection: 'row',
-      gap: 8,
+      gap: 10,
     },
 
     selectedTag: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      gap: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
 
     selectedTagText: {
-      fontSize: 12,
+      fontSize: 13,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: -0.1,
     },
 
     filtersContainer: {
-      marginHorizontal: 20,
-      marginBottom: 20,
+      marginBottom: 24,
     },
 
     filtersContent: {
-      gap: 8,
+      paddingHorizontal: 20,
+      gap: 10,
     },
 
     filterTab: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      paddingVertical: 10,
+      paddingHorizontal: 18,
+      borderRadius: 24,
       borderWidth: 1,
-      backgroundColor: colors.card,
       borderColor: colors.border,
+      gap: 10,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 6,
+      elevation: 2,
     },
 
     filterTabActive: {
-      backgroundColor: '#009485',
-      borderColor: '#009485',
+      backgroundColor: Colors.primary,
+      borderColor: Colors.primary,
+      shadowColor: Colors.primary,
+      shadowOpacity: 0.2,
     },
 
     filterText: {
-      fontSize: 14,
+      fontSize: 15,
       fontFamily: 'Satoshi-Variable',
-      color: colors.textSecondary,
+      fontWeight: '500',
+      color: colors.text,
+      letterSpacing: -0.2,
     },
 
     filterTextActive: {
@@ -161,22 +215,23 @@ export const createRecordsStyles = (colors: any) =>
     },
 
     filterCount: {
-      backgroundColor: 'rgba(0, 0, 0, 0.08)',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 10,
-      minWidth: 20,
+      backgroundColor: colors.border,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 12,
+      minWidth: 24,
       alignItems: 'center',
     },
 
     filterCountActive: {
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
     },
 
     filterCountText: {
-      fontSize: 11,
+      fontSize: 12,
       fontFamily: 'Satoshi-Variable',
-      color: colors.text,
+      fontWeight: '700',
+      color: colors.textSecondary,
     },
 
     filterCountTextActive: {
@@ -193,43 +248,60 @@ export const createRecordsStyles = (colors: any) =>
 
     recordCard: {
       backgroundColor: colors.card,
-      borderRadius: 16,
-      marginBottom: 12,
+      borderRadius: 20,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
+      position: 'relative',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
       elevation: 4,
     },
 
     recordCardContent: {
-      padding: 16,
+      padding: 20,
+    },
+
+    newBadge: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: Colors.primary,
+      shadowColor: Colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.4,
+      shadowRadius: 4,
+      elevation: 3,
     },
 
     recordMain: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 16,
     },
 
     recordLeft: {
       flexDirection: 'row',
-      alignItems: 'center',
       flex: 1,
     },
 
     recordIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
+      width: 48,
+      height: 48,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 12,
+      marginRight: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
 
     recordInfo: {
@@ -237,44 +309,50 @@ export const createRecordsStyles = (colors: any) =>
     },
 
     recordTitle: {
-      fontSize: 16,
+      fontSize: 17,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
       color: colors.text,
-      marginBottom: 4,
-      lineHeight: 20,
+      marginBottom: 6,
+      lineHeight: 22,
+      letterSpacing: -0.3,
     },
 
     recordMeta: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
       marginBottom: 8,
     },
 
     recordSource: {
-      fontSize: 13,
+      fontSize: 14,
       color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: -0.1,
     },
 
     metaDot: {
-      width: 3,
-      height: 3,
-      borderRadius: 1.5,
-      backgroundColor: colors.textSecondary,
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.textTertiary,
+      marginHorizontal: 10,
     },
 
     recordDate: {
-      fontSize: 13,
+      fontSize: 14,
       color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: -0.1,
     },
 
     recordTags: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      marginTop: 8,
+      marginBottom: 8,
+      gap: 8,
     },
 
     recordTag: {
@@ -282,62 +360,78 @@ export const createRecordsStyles = (colors: any) =>
       alignItems: 'center',
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 10,
       gap: 4,
     },
 
     recordTagText: {
-      fontSize: 10,
+      fontSize: 11,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: -0.1,
     },
 
     moreTagsText: {
       fontSize: 11,
       color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
     },
 
     recordDetails: {
-      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
     },
 
     fileInfo: {
-      fontSize: 12,
+      fontSize: 13,
       color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: -0.1,
     },
 
     labBadge: {
-      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+      backgroundColor: `${Colors.medical.green}15`,
       paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingVertical: 3,
       borderRadius: 8,
-      alignSelf: 'flex-start',
-      marginTop: 4,
+      borderWidth: 1,
+      borderColor: `${Colors.medical.green}30`,
     },
 
     labBadgeText: {
-      fontSize: 10,
-      color: '#22c55e',
+      fontSize: 11,
+      color: Colors.medical.green,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
 
     recordActions: {
       flexDirection: 'row',
-      gap: 8,
+      gap: 10,
     },
 
     actionButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
 
     recordFooter: {
-      marginTop: 12,
       paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: colors.border,
@@ -346,8 +440,11 @@ export const createRecordsStyles = (colors: any) =>
     statusIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
       alignSelf: 'flex-start',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      gap: 6,
     },
 
     statusDot: {
@@ -361,85 +458,98 @@ export const createRecordsStyles = (colors: any) =>
       fontFamily: 'Satoshi-Variable',
     },
 
-    loadingContainer: {
-      alignItems: 'center',
-      paddingVertical: 40,
-    },
-
-    loadingText: {
-      marginTop: 12,
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontFamily: 'Satoshi-Variable',
-    },
-
     emptyState: {
       alignItems: 'center',
-      paddingVertical: 60,
+      paddingVertical: 80,
       paddingHorizontal: 40,
     },
 
     emptyTitle: {
-      fontSize: 18,
+      fontSize: 22,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
       color: colors.text,
-      marginBottom: 8,
+      marginTop: 20,
+      marginBottom: 12,
+      textAlign: 'center',
+      letterSpacing: -0.4,
     },
 
     emptySubtitle: {
-      fontSize: 14,
+      fontSize: 16,
       color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
       textAlign: 'center',
-      lineHeight: 20,
-      marginBottom: 24,
+      lineHeight: 24,
+      marginBottom: 32,
+      letterSpacing: -0.2,
     },
 
     uploadEmptyButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#009485',
+      backgroundColor: `${Colors.primary}15`,
       paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 16,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: `${Colors.primary}30`,
+      shadowColor: Colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 3,
     },
 
     uploadEmptyText: {
-      color: '#ffffff',
-      fontSize: 14,
+      fontSize: 15,
+      color: Colors.primary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      letterSpacing: -0.2,
     },
 
-    // Modal styles
+    bottomSpacing: {
+      height: 120,
+    },
+
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
       justifyContent: 'center',
       alignItems: 'center',
     },
 
     tagModalContent: {
       backgroundColor: colors.card,
-      borderRadius: 16,
+      borderRadius: 24,
       margin: 20,
       maxHeight: '80%',
       width: '90%',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 8,
     },
 
     tagModalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 20,
+      padding: 24,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
 
     modalTitle: {
-      fontSize: 18,
+      fontSize: 20,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
       color: colors.text,
+      letterSpacing: -0.4,
     },
 
     tagModalHeaderActions: {
@@ -456,7 +566,7 @@ export const createRecordsStyles = (colors: any) =>
 
     addCustomTagHeaderText: {
       fontSize: 14,
-      color: '#009485',
+      color: Colors.primary,
       fontFamily: 'Satoshi-Variable',
     },
 
@@ -488,9 +598,9 @@ export const createRecordsStyles = (colors: any) =>
     },
 
     tagOptionSelected: {
-      backgroundColor: 'rgba(0, 148, 133, 0.1)',
+      backgroundColor: `${Colors.primary}15`,
       borderWidth: 1,
-      borderColor: '#009485',
+      borderColor: Colors.primary,
     },
 
     tagOptionLeft: {
@@ -507,7 +617,7 @@ export const createRecordsStyles = (colors: any) =>
     },
 
     customTagBadge: {
-      backgroundColor: 'rgba(0, 148, 133, 0.1)',
+      backgroundColor: `${Colors.primary}15`,
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderRadius: 8,
@@ -515,7 +625,7 @@ export const createRecordsStyles = (colors: any) =>
 
     customTagBadgeText: {
       fontSize: 10,
-      color: '#009485',
+      color: Colors.primary,
       fontFamily: 'Satoshi-Variable',
     },
 
@@ -575,7 +685,7 @@ export const createRecordsStyles = (colors: any) =>
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
-      backgroundColor: '#009485',
+      backgroundColor: Colors.primary,
     },
 
     applyTagsText: {
@@ -651,7 +761,7 @@ export const createRecordsStyles = (colors: any) =>
       gap: 8,
       paddingVertical: 12,
       borderRadius: 12,
-      backgroundColor: '#009485',
+      backgroundColor: Colors.primary,
     },
 
     addCustomTagConfirmButtonDisabled: {
@@ -721,7 +831,7 @@ export const createRecordsStyles = (colors: any) =>
     },
 
     openPdfButton: {
-      backgroundColor: '#009485',
+      backgroundColor: Colors.primary,
       paddingVertical: 12,
       paddingHorizontal: 20,
       borderRadius: 12,
@@ -816,7 +926,7 @@ export const createRecordsStyles = (colors: any) =>
       gap: 8,
       paddingVertical: 12,
       borderRadius: 12,
-      backgroundColor: '#009485',
+      backgroundColor: Colors.primary,
     },
 
     updateButtonDisabled: {
@@ -828,40 +938,92 @@ export const createRecordsStyles = (colors: any) =>
       color: '#ffffff',
       fontFamily: 'Satoshi-Variable',
     },
-
-    bottomSpacing: {
-      height: 100,
-    },
-
-    // Additional styles needed by the component
-    tagsContainer: {
-      marginHorizontal: 20,
-      marginBottom: 16,
-    },
-
-    tagsContent: {
-      paddingHorizontal: 4,
-    },
-
-    tag: {
-      flexDirection: 'row',
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      gap: 6,
+      paddingVertical: 60,
     },
 
-    tagText: {
-      fontSize: 12,
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.textSecondary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: -0.2,
     },
 
-    recordHeader: {
+    // Additional styles for member records page
+    backButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+
+    headerContent: {
+      flex: 1,
+      marginLeft: 16,
+    },
+
+    headerMeta: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 12,
+      gap: 12,
+      marginTop: 4,
+    },
+
+    permissionBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${Colors.medical.orange}15`,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+
+    permissionText: {
+      fontSize: 11,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
+      color: Colors.medical.orange,
+      letterSpacing: -0.1,
+    },
+
+    ownRecordsBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${Colors.primary}15`,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+
+    ownRecordsText: {
+      fontSize: 11,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
+      color: Colors.primary,
+      letterSpacing: -0.1,
+    },
+
+    tagsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
     },
 
     statusBadge: {
@@ -870,111 +1032,4 @@ export const createRecordsStyles = (colors: any) =>
       borderRadius: 8,
       alignSelf: 'flex-start',
     },
-
-    tagsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 8,
-    },
-
-    fabContainer: {
-      position: 'absolute',
-      bottom: 20,
-      right: 20,
-      flexDirection: 'row',
-      gap: 12,
-    },
-
-    fab: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-
-    modal: {
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      margin: 20,
-      padding: 20,
-      width: '90%',
-    },
-
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-
-    uploadOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      gap: 12,
-      marginBottom: 12,
-    },
-
-    uploadOptionText: {
-      fontSize: 16,
-      fontFamily: 'Satoshi-Variable',
-    },
-
-    tagsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 20,
-    },
-
-    filterTag: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
-    },
-
-    filterTagText: {
-      fontSize: 14,
-      fontFamily: 'Satoshi-Variable',
-    },
-
-    modalActions: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-
-    modalButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 12,
-      alignItems: 'center',
-      borderWidth: 1,
-    },
-
-    modalButtonText: {
-      fontSize: 14,
-      fontFamily: 'Satoshi-Variable',
-    },
   });
-
-// Keep the old export for backward compatibility
-export const recordsStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  // ... other static styles without colors
-});

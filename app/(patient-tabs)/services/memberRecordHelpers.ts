@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/constants/firebase';
+import { MedicalRecord } from '@/types/medical';
 
 // Permission and access control
 export function canEditRecord(record: any, userData: any, memberId: string): boolean {
@@ -122,4 +123,14 @@ export function getPermissionColor(userData: any, memberId: string): string {
   } else {
     return '#6b7280'; // gray
   }
-} 
+}
+
+export const fetchMemberRecords = async (memberId: string): Promise<MedicalRecord[]> => {
+  const records: MedicalRecord[] = [];
+  const recordsCollection = collection(db, `patients/${memberId}/records`);
+  const recordsSnapshot = await getDocs(recordsCollection);
+  recordsSnapshot.forEach((doc) => {
+    records.push({ id: doc.id, ...doc.data() } as MedicalRecord);
+  });
+  return records;
+}; 

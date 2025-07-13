@@ -239,16 +239,52 @@ export default function PatientSignupScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[GlobalStyles.container, styles.loadingContainer]}>
+      <View style={styles.fullscreenLoadingContainer}>
         <LinearGradient
-          colors={[colors.background, colors.surface]}
+          colors={[colors.background, colors.surface, colors.card]}
           style={styles.loadingGradient}
         >
-          <LoadingSpinner size="large" />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Creating your account...</Text>
-          <Text style={[styles.loadingSubtext, { color: colors.textSecondary }]}>Please wait while we set up your profile</Text>
+          {/* Decorative Elements */}
+          <View style={[styles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
+          <View style={[styles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
+          <View style={[styles.loadingDecorativeCircle3, { backgroundColor: `${Colors.medical.blue}05` }]} />
+          
+          {/* Main Loading Content */}
+          <View style={styles.loadingContent}>
+            {/* Logo/Icon */}
+            <View style={[styles.loadingIconWrapper, { 
+              backgroundColor: `${Colors.primary}15`, 
+              borderColor: `${Colors.primary}30`,
+              shadowColor: colors.shadow 
+            }]}>
+              <Heart size={48} color={Colors.primary} strokeWidth={2} />
+            </View>
+            
+            {/* Loading Spinner */}
+            <View style={styles.spinnerContainer}>
+              <LoadingSpinner size="large" />
+            </View>
+            
+            {/* Loading Text */}
+            <Text style={[styles.loadingTitle, { color: colors.text }]}>
+              Creating your account...
+            </Text>
+            <Text style={[styles.loadingSubtitle, { color: colors.textSecondary }]}>
+              Please wait while we set up your profile
+            </Text>
+            
+            {/* Loading Progress Indicator */}
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                <LinearGradient
+                  colors={Colors.gradients.primary}
+                  style={styles.progressFill}
+                />
+              </View>
+            </View>
+          </View>
         </LinearGradient>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -895,5 +931,107 @@ const styles = StyleSheet.create({
     fontFamily: 'Satoshi-Variable',
     marginBottom: 8,
     textAlign: 'center',
+  },
+
+  // New Loading Screen Styles
+  fullscreenLoadingContainer: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  },
+
+  loadingDecorativeCircle1: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+  },
+
+  loadingDecorativeCircle2: {
+    position: 'absolute',
+    bottom: -80,
+    left: -80,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+  },
+
+  loadingDecorativeCircle3: {
+    position: 'absolute',
+    top: '40%',
+    right: -60,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+  },
+
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+
+  loadingIconWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    borderWidth: 2,
+    shadowColor: Colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  spinnerContainer: {
+    marginBottom: 32,
+    transform: [{ scale: 1.5 }],
+  },
+
+  loadingTitle: {
+    fontSize: 28,
+    fontFamily: 'IvyMode-Regular',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+
+  loadingSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 24,
+  },
+
+  progressContainer: {
+    width: '100%',
+    maxWidth: 280,
+    marginTop: 20,
+  },
+
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+
+  progressFill: {
+    height: '100%',
+    width: '70%',
+    borderRadius: 2,
   },
 });
