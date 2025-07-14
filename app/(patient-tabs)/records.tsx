@@ -12,7 +12,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { createRecordsStyles } from './styles/records';
+import { createRecordsStyles } from '../../styles/records';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -1463,28 +1463,18 @@ export default function MedicalRecordsScreen() {
             </TouchableOpacity>
 
             {pdfPreviewUri ? (
-              Platform.OS === 'web' ? (
-                <View style={{ flex: 1, marginTop: 60 }}>
-                  {selectedRecord?.fileType?.startsWith('image') ? (
-                    <img
-                      src={pdfPreviewUri}
-                      style={{
-                        flex: 1,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                      }}
-                      alt="Image Preview"
-                    />
-                  ) : (
-                    <iframe
-                      src={pdfPreviewUri}
-                      style={{ flex: 1, width: '100%', height: '100%' }}
-                      title="PDF Preview"
-                    />
-                  )}
-                </View>
-              ) : (
+              selectedRecord?.fileType?.startsWith('image') ? (
+                <Image
+                  source={{ uri: pdfPreviewUri }}
+                  style={{
+                    width: '100%',
+                    height: 300,
+                    borderRadius: 12,
+                    marginTop: 60,
+                  }}
+                  resizeMode="contain"
+                />
+              ) : selectedRecord?.fileType === 'application/pdf' ? (
                 <WebView
                   source={{ uri: pdfPreviewUri }}
                   style={{ flex: 1, marginTop: 60 }}
@@ -1493,6 +1483,18 @@ export default function MedicalRecordsScreen() {
                   javaScriptEnabled
                   scalesPageToFit
                 />
+              ) : (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#fff', marginTop: 16 }}>
+                    File type not supported for preview.
+                  </Text>
+                </View>
               )
             ) : (
               <View

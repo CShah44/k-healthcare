@@ -55,7 +55,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
-import { createUploadRecordStyles } from './styles/upload-record';
+import { createUploadRecordStyles } from '../../styles/upload-record';
 import {
   PREDEFINED_TAGS,
   getUserEncryptionKey,

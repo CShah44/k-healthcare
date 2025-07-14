@@ -40,7 +40,7 @@ import {
 import { onSnapshot, doc, collection, query, where } from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 import { useCustomAlert } from '@/components/CustomAlert';
-import { createFamilyTreeStyles } from './styles/family-tree';
+import { createFamilyTreeStyles } from '../../styles/family-tree';
 import {
   createFamily,
   inviteMember,

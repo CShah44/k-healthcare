@@ -34,7 +34,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RecordsService, MedicalRecord } from '@/services/recordsService';
 import { getGreeting, getRecordIcon, getStatusColor, formatDate } from './services/recordHelpers';
-import { createHomeStyles } from './styles/home';
+import { createHomeStyles } from '../../styles/home';
 import { db } from '@/constants/firebase';
 import { doc, getDoc, collection, query, getDocs } from 'firebase/firestore';
 

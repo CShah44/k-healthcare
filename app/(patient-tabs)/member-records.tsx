@@ -62,7 +62,7 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
-import { createRecordsStyles } from './styles/records';
+import { createRecordsStyles } from '../../styles/records';
 import {
   canEditRecord,
   updateMemberRecord,
@@ -184,7 +184,7 @@ function getUserEncryptionKey(uid: string): string {
 async function decryptFileFromUrl(
   url: string,
   record: any,
-  user: any
+  uid: string
 ): Promise<string> {
   // Download encrypted file
   const response = await fetch(url);
@@ -194,7 +194,7 @@ async function decryptFileFromUrl(
   const encryptedBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
 
   // Get encryption key
-  const key = getUserEncryptionKey(user.uid);
+  const key = getUserEncryptionKey(uid);
 
   // Decrypt
   const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
@@ -220,12 +220,24 @@ async function decryptFileFromUrl(
     const blob = new Blob([decryptedUint8], { type: record.fileType });
     const blobUrl = URL.createObjectURL(blob);
     return blobUrl;
+  } else if (record.fileType === 'application/pdf') {
+    // On mobile, write PDF to a temp file and return file:// URI
+    const base64 = uint8ArrayToBase64(decryptedUint8);
+    const fileUri = `${FileSystem.cacheDirectory}svastheya_${Date.now()}.pdf`;
+    await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+    return fileUri;
   } else {
-    // Convert to base64 data URI for WebView (mobile)
+    // For images, return data URI
     return `data:${record.fileType};base64,${uint8ArrayToBase64(
       decryptedUint8
     )}`;
   }
+}
+
+async function openPdfFile(fileUri: string) {
+  // For best experience on Android, install expo-intent-launcher and use it to open PDFs in external apps.
+  // For now, use Linking.openURL for both platforms.
+  await Linking.openURL(fileUri);
 }
 
 export default function MemberRecordsScreen() {
@@ -707,7 +719,7 @@ export default function MemberRecordsScreen() {
                                 const decryptedUri = await decryptFileFromUrl(
                                   record.fileUrl,
                                   record,
-                                  user
+                                  memberId // use memberId as uid
                                 );
                                 setPdfPreviewUri(decryptedUri);
                               } catch (e) {
@@ -815,7 +827,7 @@ export default function MemberRecordsScreen() {
                           const decryptedUri = await decryptFileFromUrl(
                             selectedRecord.fileUrl,
                             selectedRecord,
-                            user
+                            memberId // use memberId as uid
                           );
                           setPdfPreviewUri(decryptedUri);
                         } catch (e) {
@@ -907,14 +919,13 @@ export default function MemberRecordsScreen() {
                   resizeMode="contain"
                 />
               ) : selectedRecord?.fileType === 'application/pdf' ? (
-                <WebView
-                  source={{ uri: pdfPreviewUri }}
-                  style={{ flex: 1, marginTop: 60 }}
-                  useWebKit
-                  originWhitelist={['*']}
-                  javaScriptEnabled
-                  scalesPageToFit
-                />
+                // Show loading indicator while useEffect opens the PDF
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color="#fff" />
+                  <Text style={{ color: '#fff', marginTop: 16 }}>
+                    Opening PDF in system viewer...
+                  </Text>
+                </View>
               ) : (
                 <View
                   style={{

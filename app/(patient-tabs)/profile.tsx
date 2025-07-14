@@ -25,7 +25,7 @@ import {
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { createProfileStyles } from './styles/profile';
+import { createProfileStyles } from '../../styles/profile';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useCustomAlert } from '@/components/CustomAlert';
 

@@ -24,7 +24,7 @@ import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { createAppointmentsStyles } from './styles/appointments';
+import { createAppointmentsStyles } from '../../styles/appointments';
 
 const { width } = Dimensions.get('window');
 

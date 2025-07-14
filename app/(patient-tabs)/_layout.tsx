@@ -3,7 +3,7 @@ import { Heart, FileText, Users, User } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import React from 'react';
 import { Platform, StatusBar } from 'react-native';
-import { layoutStyles } from './styles/layout';
+import { layoutStyles } from '../../styles/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function PatientTabsLayout() {

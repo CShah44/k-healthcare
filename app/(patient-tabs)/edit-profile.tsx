@@ -26,7 +26,7 @@ import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { createEditProfileStyles } from './styles/edit-profile';
+import { createEditProfileStyles } from '../../styles/edit-profile';
 
 export default function EditPatientProfileScreen() {
   const { userData: user, updateUserProfile, isLoading } = useAuth();
