@@ -4,15 +4,15 @@ import { db } from '@/constants/firebase';
 import { MedicalRecord } from '@/types/medical';
 
 // Permission and access control
-export function canEditRecord(record: any, userData: any, memberId: string): boolean {
+export function canEditRecord(record: any, userData: any, memberId: string, familyData?: any): boolean {
   // Users can edit/delete their own records
   if (memberId === userData?.uid) return true;
   
-  // Family creators can edit family member records
-  if (userData?.familyId && userData?.isFamilyCreator) return true;
+  // Family creators (owners) can edit any family member's records
+  if (familyData && familyData.createdBy === userData?.uid) return true;
   
-  // Allow editing of self-uploaded records
-  return record.type === 'uploaded' || record.source !== 'lab_uploaded';
+  // All other family members can only view records, not edit
+  return false;
 }
 
 // Record management functions
@@ -105,20 +105,20 @@ export function filterMemberRecords(
 }
 
 // Permission display helpers
-export function getPermissionText(userData: any, memberId: string): string {
+export function getPermissionText(userData: any, memberId: string, familyData?: any): string {
   if (memberId === userData?.uid) {
     return 'Your Records';
-  } else if (userData?.familyId && userData?.isFamilyCreator) {
-    return 'Family Creator Access';
+  } else if (familyData && familyData.createdBy === userData?.uid) {
+    return 'Family Owner Access';
   } else {
-    return 'Limited Access';
+    return 'View Only Access';
   }
 }
 
-export function getPermissionColor(userData: any, memberId: string): string {
+export function getPermissionColor(userData: any, memberId: string, familyData?: any): string {
   if (memberId === userData?.uid) {
     return '#3b82f6'; // blue
-  } else if (userData?.familyId && userData?.isFamilyCreator) {
+  } else if (familyData && familyData.createdBy === userData?.uid) {
     return '#f97316'; // orange
   } else {
     return '#6b7280'; // gray

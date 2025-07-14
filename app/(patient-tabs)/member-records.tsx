@@ -377,10 +377,10 @@ export default function MemberRecordsScreen() {
 
   // Restore missing handler functions that use the extracted services
   const handleEditRecord = (record: any) => {
-    if (!canEditRecord(record, userData, memberId!)) {
+    if (!canEditRecord(record, userData, memberId!, familyData)) {
       showAlert(
         'Permission Denied',
-        'You can only edit your own records or if you are the family creator.'
+        'You can only edit your own records. Only the family owner can edit other family members\' records.'
       );
       return;
     }
@@ -414,10 +414,10 @@ export default function MemberRecordsScreen() {
   };
 
   const handleDeleteRecord = (record: any) => {
-    if (!canEditRecord(record, userData, memberId!)) {
+    if (!canEditRecord(record, userData, memberId!, familyData)) {
       showAlert(
         'Permission Denied',
-        'You can only delete your own records or if you are the family creator.'
+        'You can only delete your own records. Only the family owner can delete other family members\' records.'
       );
       return;
     }
@@ -464,8 +464,8 @@ export default function MemberRecordsScreen() {
   );
 
   // Update permission text and color to use extracted services
-  const permissionText = getPermissionText(userData, memberId!);
-  const permissionColor = getPermissionColor(userData, memberId!);
+  const permissionText = getPermissionText(userData, memberId!, familyData);
+  const permissionColor = getPermissionColor(userData, memberId!, familyData);
 
   if (loading) {
     return (
@@ -506,6 +506,13 @@ export default function MemberRecordsScreen() {
                     <View style={styles.permissionBadge}>
                       <Crown size={12} color={Colors.medical.orange} />
                       <Text style={styles.permissionText}>Full Access</Text>
+                    </View>
+                  )}
+                {familyData?.createdBy !== user?.uid &&
+                  memberId !== user?.uid && (
+                    <View style={styles.viewOnlyBadge}>
+                      <Eye size={12} color={Colors.medical.blue} />
+                      <Text style={styles.viewOnlyText}>View Only</Text>
                     </View>
                   )}
                 {memberId === user?.uid && (
@@ -558,7 +565,7 @@ export default function MemberRecordsScreen() {
                 record.type,
                 record.source
               );
-              const canEdit = canEditRecord(record, userData, memberId!);
+              const canEdit = canEditRecord(record, userData, memberId!, familyData);
               const statusColor =
                 record.status === 'normal'
                   ? Colors.medical.green

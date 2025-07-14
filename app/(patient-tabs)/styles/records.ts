@@ -1019,6 +1019,24 @@ export const createRecordsStyles = (colors: any) =>
       letterSpacing: -0.1,
     },
 
+    viewOnlyBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${Colors.medical.blue}15`,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+
+    viewOnlyText: {
+      fontSize: 11,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
+      color: Colors.medical.blue,
+      letterSpacing: -0.1,
+    },
+
     tagsRow: {
       flexDirection: 'row',
       alignItems: 'center',
