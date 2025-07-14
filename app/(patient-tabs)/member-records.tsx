@@ -266,13 +266,15 @@ export default function MemberRecordsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const headerTranslateY = useSharedValue(-20);
+  // Animation values - disable on mobile for better performance
+  const headerOpacity = useSharedValue(Platform.OS === 'web' ? 0 : 1);
+  const headerTranslateY = useSharedValue(Platform.OS === 'web' ? -20 : 0);
 
   useEffect(() => {
-    headerOpacity.value = withTiming(1, { duration: 800 });
-    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+    if (Platform.OS === 'web') {
+      headerOpacity.value = withTiming(1, { duration: 800 });
+      headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+    }
   }, []);
 
   // Load member data and verify family relationship
@@ -479,9 +481,41 @@ export default function MemberRecordsScreen() {
   const permissionText = getPermissionText(userData, memberId!, familyData);
   const permissionColor = getPermissionColor(userData, memberId!, familyData);
 
+  // Mobile-specific styles
+  const mobileStyles = {
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      minHeight: '100%',
+    },
+    recordsList: {
+      flex: 1,
+      minHeight: 400,
+    },
+    recordsContent: {
+      paddingHorizontal: 20,
+      flexGrow: 1,
+      paddingBottom: 120,
+    },
+    recordCard: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      position: 'relative' as const,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+      minHeight: 120,
+    },
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading member records...</Text>
@@ -491,13 +525,13 @@ export default function MemberRecordsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
       <LinearGradient
         colors={[colors.surface, colors.surfaceSecondary]}
         style={styles.backgroundGradient}
       >
         {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <Animated.View style={[styles.header, Platform.OS === 'web' ? headerAnimatedStyle : {}]}>
           <View style={styles.headerLeft}>
             <TouchableOpacity
               style={styles.backButton}
@@ -567,9 +601,10 @@ export default function MemberRecordsScreen() {
 
         {/* Records List */}
         <ScrollView
-          style={styles.recordsList}
-          contentContainerStyle={styles.recordsContent}
+          style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordsList : styles.recordsList}
+          contentContainerStyle={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordsContent : styles.recordsContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {filteredRecords.length > 0 ? (
             filteredRecords.map((record, index) => {
@@ -587,12 +622,12 @@ export default function MemberRecordsScreen() {
                   ? Colors.medical.blue
                   : colors.textSecondary;
               return (
-                <Animated.View
+                <View
                   key={record.id}
-                  entering={FadeInDown.delay(index * 100).springify()}
+                  style={{ marginBottom: 16 }}
                 >
                   <TouchableOpacity
-                    style={[
+                    style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordCard : [
                       styles.recordCard,
                       {
                         backgroundColor: colors.card,
@@ -765,7 +800,7 @@ export default function MemberRecordsScreen() {
                       </View>
                     </View>
                   </TouchableOpacity>
-                </Animated.View>
+                </View>
               );
             })
           ) : (

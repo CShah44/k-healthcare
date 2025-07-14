@@ -241,22 +241,24 @@ export default function MedicalRecordsScreen() {
   const { user } = useAuth();
   const { showAlert, AlertComponent } = useCustomAlert();
 
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const headerTranslateY = useSharedValue(-20);
-  const filterOpacity = useSharedValue(0);
-  const filterTranslateX = useSharedValue(-30);
+  // Animation values - disable on mobile for better performance
+  const headerOpacity = useSharedValue(Platform.OS === 'web' ? 0 : 1);
+  const headerTranslateY = useSharedValue(Platform.OS === 'web' ? -20 : 0);
+  const filterOpacity = useSharedValue(Platform.OS === 'web' ? 0 : 1);
+  const filterTranslateX = useSharedValue(Platform.OS === 'web' ? -30 : 0);
 
   useEffect(() => {
-    // Animate header entrance
-    headerOpacity.value = withTiming(1, { duration: 800 });
-    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+    if (Platform.OS === 'web') {
+      // Animate header entrance only on web
+      headerOpacity.value = withTiming(1, { duration: 800 });
+      headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
 
-    // Animate filters with delay
-    setTimeout(() => {
-      filterOpacity.value = withTiming(1, { duration: 600 });
-      filterTranslateX.value = withSpring(0, { damping: 12, stiffness: 80 });
-    }, 200);
+      // Animate filters with delay
+      setTimeout(() => {
+        filterOpacity.value = withTiming(1, { duration: 600 });
+        filterTranslateX.value = withSpring(0, { damping: 12, stiffness: 80 });
+      }, 200);
+    }
   }, []);
 
   // Real-time Firebase syncing
@@ -720,14 +722,46 @@ export default function MedicalRecordsScreen() {
     );
   };
 
+  // Mobile-specific styles
+  const mobileStyles = {
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      minHeight: '100%',
+    },
+    recordsList: {
+      flex: 1,
+      minHeight: 400,
+    },
+    recordsContent: {
+      paddingHorizontal: 20,
+      flexGrow: 1,
+      paddingBottom: 120,
+    },
+    recordCard: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      position: 'relative' as const,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+      minHeight: 120,
+    },
+  };
+
   return (
-    <SafeAreaView style={[styles.container]}>
+    <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
       <LinearGradient
         colors={[colors.surface, colors.surfaceSecondary]}
         style={styles.backgroundGradient}
       >
         {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <Animated.View style={[styles.header, Platform.OS === 'web' ? headerAnimatedStyle : {}]}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>Medical Records</Text>
             <Text style={styles.headerSubtitle}>
@@ -781,7 +815,7 @@ export default function MedicalRecordsScreen() {
         {showSearch && (
           <Animated.View
             style={styles.searchContainer}
-            entering={FadeInDown.springify()}
+            entering={Platform.OS === 'web' ? FadeInDown.springify() : undefined}
           >
             <View style={styles.searchInputContainer}>
               <Search size={18} color={colors.textSecondary} strokeWidth={2} />
@@ -841,7 +875,7 @@ export default function MedicalRecordsScreen() {
         )}
 
         {/* Filter Tabs */}
-        <Animated.View style={[styles.filtersContainer, filterAnimatedStyle]}>
+        <Animated.View style={[styles.filtersContainer, Platform.OS === 'web' ? filterAnimatedStyle : {}]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -898,9 +932,10 @@ export default function MedicalRecordsScreen() {
         ) : (
           /* Records List */
           <ScrollView
-            style={styles.recordsList}
-            contentContainerStyle={styles.recordsContent}
+            style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordsList : styles.recordsList}
+            contentContainerStyle={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordsContent : styles.recordsContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             {filteredRecords.length > 0 ? (
               filteredRecords.map((record, index) => {
@@ -911,12 +946,12 @@ export default function MedicalRecordsScreen() {
                 const canEdit = canEditRecord(record);
 
                 return (
-                  <Animated.View
+                  <View
                     key={record.id}
-                    entering={FadeInDown.delay(index * 100).springify()}
+                    style={{ marginBottom: 16 }}
                   >
                     <TouchableOpacity
-                      style={styles.recordCard}
+                      style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordCard : styles.recordCard}
                       activeOpacity={0.7}
                       onPress={() => {
                         setSelectedRecord(record);
@@ -1104,7 +1139,7 @@ export default function MedicalRecordsScreen() {
                         )}
                       </View>
                     </TouchableOpacity>
-                  </Animated.View>
+                  </View>
                 );
               })
             ) : (
