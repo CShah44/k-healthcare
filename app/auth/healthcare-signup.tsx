@@ -31,6 +31,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
+import { nanoid } from 'nanoid';
 
 const { width } = Dimensions.get('window');
 
@@ -62,6 +64,8 @@ interface SignupData extends UserData {
 
 export default function HealthcareSignupScreen() {
   const { colors, isDarkMode } = useTheme();
+
+  const { IDFY_API_KEY } = Constants.expoConfig?.extra || {};
 
   const [formData, setFormData] = useState<SignupData>({
     firstName: '',
@@ -143,14 +147,24 @@ export default function HealthcareSignupScreen() {
     setDoctorVerificationStatus('pending');
 
     try {
+      if (!IDFY_API_KEY) {
+        throw new Error('IDFY API key is not configured');
+      }
+
       const myHeaders = new Headers();
-      myHeaders.append('api-key', 'YOUR_IDFY_API_KEY'); // Replace with actual API key
+      myHeaders.append('api-key', IDFY_API_KEY); // Use environment variable
       myHeaders.append('Content-Type', 'application/json');
 
-      //  TODO FIX THIS TASK ID AND GROUP ID
+      // Generate unique task_id and group_id using nanoid
+      const taskId = nanoid(16); // 16-character unique task ID
+      const groupId = nanoid(16); // 16-character unique group ID
+
+      console.log('Generated task_id:', taskId);
+      console.log('Generated group_id:', groupId);
+
       const raw = JSON.stringify({
-        task_id: '74f4c926-250c-43ca-9c53-453e87ceacd1',
-        group_id: '8e16424a-58fc-4ba4-ab20-5bc8e7c3c41e',
+        task_id: taskId,
+        group_id: groupId,
         data: {
           registration_no: doctorVerificationData.registrationNo,
           year_of_registration: doctorVerificationData.yearOfRegistration,
@@ -168,8 +182,12 @@ export default function HealthcareSignupScreen() {
         'https://eve.idfy.com/v3/tasks/async/verify_with_source/ncvt_iti',
         requestOptions
       );
-      const result = await response.text();
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.text();
       console.log('Doctor verification result:', result);
 
       // Parse the result and update status accordingly
@@ -182,7 +200,8 @@ export default function HealthcareSignupScreen() {
       } else {
         setDoctorVerificationStatus('failed');
         setVerificationError(
-          'Doctor credentials could not be verified. Please check your details.'
+          parsedResult.message ||
+            'Doctor credentials could not be verified. Please check your details.'
         );
       }
     } catch (error) {

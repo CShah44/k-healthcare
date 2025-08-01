@@ -11,6 +11,7 @@ declare module '@env' {
   
     export const EMAIL_USER: string;
     export const EMAIL_PASS: string;
+    export const IDFY_API_KEY: string;
     // Add any other environment variables you use here
   }
   

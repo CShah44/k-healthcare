@@ -46,6 +46,28 @@ export default function ProfileScreen() {
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const { showAlert, AlertComponent } = useCustomAlert();
 
+  // Helper function to format user ID based on role
+  const formatUserId = (customUserId: string | undefined, role: string) => {
+    if (!customUserId) return 'ID not available';
+    
+    let rolePrefix = '';
+    switch (role) {
+      case 'patient':
+        rolePrefix = 'pat';
+        break;
+      case 'doctor':
+        rolePrefix = 'doc';
+        break;
+      case 'lab_assistant':
+        rolePrefix = 'lab';
+        break;
+      default:
+        rolePrefix = 'usr';
+    }
+    
+    return `sva-${rolePrefix}-${customUserId}`;
+  };
+
   useEffect(() => {
     const fetchAccessibleAccounts = async () => {
       setLoadingAccounts(true);
@@ -66,34 +88,30 @@ export default function ProfileScreen() {
     try {
       await switchToAccount(accountId);
       Alert.alert('Success', 'Switched to account successfully!');
-     } catch (error: any) {
+    } catch (error: any) {
       Alert.alert('Error', error.message);
     }
   };
 
   const handleSignOut = () => {
-    showAlert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    showAlert('Sign Out', 'Are you sure you want to sign out?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            router.replace('/auth/patient-login');
+          } catch (error) {
+            showAlert('Error', 'Failed to sign out. Please try again.');
+          }
         },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/auth/patient-login');
-            } catch (error) {
-              showAlert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const menuItems = [
@@ -164,6 +182,9 @@ export default function ProfileScreen() {
             {userData?.firstName} {userData?.lastName}
           </Text>
           <Text style={styles.profileEmail}>{user?.email}</Text>
+          <Text style={styles.profileEmail}>
+            {formatUserId(userData?.customUserId, userData?.role || '')}
+          </Text>
           {isSwitchedAccount && (
             <View style={styles.switchedAccountIndicator}>
               <Text style={styles.switchedAccountText}>
@@ -253,10 +274,7 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-        >
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <LogOut size={20} color={Colors.medical.red} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>

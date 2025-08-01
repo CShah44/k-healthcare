@@ -13,6 +13,7 @@ import {
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/constants/firebase';
 import { getDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { nanoid } from 'nanoid';
 
 import {
   createUserWithEmailAndPassword,
@@ -32,6 +33,7 @@ interface UserData {
   address: string;
   gender: string;
   role: 'patient' | 'doctor' | 'lab_assistant';
+  customUserId?: string; // 8-character nanoid for user identification
   licenseNumber?: string;
   department?: string;
   hospital?: string;
@@ -176,6 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       const user = userCredential.user;
+      
+      // Generate 8-character nanoid for custom user ID
+      const customUserId = nanoid(8);
 
       const userDataForFirestore: UserData & {
         createdAt: any;
@@ -191,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         address: data.address,
         gender: data.gender,
         role: data.role,
+        customUserId: customUserId, // Store the generated nanoid
         licenseNumber: data.licenseNumber || '',
         department: data.department || '',
         hospital: data.hospital || '',
@@ -238,6 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         address: data.address,
         gender: data.gender,
         role: data.role,
+        customUserId: customUserId, // Include the generated nanoid
         licenseNumber: data.licenseNumber,
         department: data.department,
         hospital: data.hospital,
@@ -286,6 +293,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       const childUser = userCredential.user;
+      
+      // Generate 8-character nanoid for custom user ID
+      const customUserId = nanoid(8);
 
       const childUserData: UserData & {
         createdAt: any;
@@ -301,6 +311,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         address: data.address,
         gender: data.gender,
         role: data.role,
+        customUserId: customUserId, // Store the generated nanoid
         licenseNumber: data.licenseNumber || '',
         department: data.department || '',
         hospital: data.hospital || '',
@@ -657,7 +668,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       // Update local state
-      setUserData(prev => prev ? { ...prev, ...updates } : null);
+      setUserData((prev) => (prev ? { ...prev, ...updates } : null));
     } catch (error: any) {
       console.error('Error updating profile:', error);
       throw new Error('Failed to update profile. Please try again.');
