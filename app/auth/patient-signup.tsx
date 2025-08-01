@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
 
   spinnerContainer: {
     marginBottom: 32,
-    transform: [{ scale: 1.5 }],
+    transform: [{ scale: 1.5 }], // scale should be a number
   },
 
   loadingTitle: {

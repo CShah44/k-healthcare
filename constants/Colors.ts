@@ -78,7 +78,7 @@ export const Colors = {
     success: ['#10B981', '#059669'],
     warning: ['#F59E0B', '#D97706'],
     error: ['#EF4444', '#DC2626'],
-  },
+  } as const,
 
   // Status Colors
   status: {

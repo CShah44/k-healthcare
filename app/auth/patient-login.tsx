@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
-import {
-  sendPasswordResetEmail,
-  fetchSignInMethodsForEmail,
-} from 'firebase/auth';
-import { query, where, getDocs } from 'firebase/firestore';
 
 import {
   View,
   Text,
-  StyleSheet,
-  Alert,
   TouchableOpacity,
   Dimensions,
+  StyleSheet,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCustomAlert } from '@/components/CustomAlert';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -35,11 +32,11 @@ export default function PatientLoginScreen() {
     identifier?: string;
     password?: string;
   }>({});
-  const { login, isLoading, forgotPassword } = useAuth();
+   const { showAlert, AlertComponent } = useCustomAlert();
+  const { login, isLoading, forgotPassword } = useAuth()!;
   const { colors } = useTheme();
   const [showForgot, setShowForgot] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
-  const [resetMessage, setResetMessage] = useState('');
 
   const validateForm = () => {
     const newErrors: { identifier?: string; password?: string } = {};
@@ -55,21 +52,22 @@ export default function PatientLoginScreen() {
     try {
       await login(identifier, password, 'patient');
       router.replace('/(patient-tabs)');
-    } catch (error) {
-      Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
+    } catch (error: any) {
+      showAlert('Login Failed', error.message || 'Invalid credentials. Please try again.');
     }
   };
 
   const handleForgotPassword = async () => {
     if (!resetEmail) {
-      setResetMessage('Please enter your email.');
+      showAlert('Error', 'Please enter your email.');
       return;
     }
     try {
       await forgotPassword(resetEmail);
-      setResetMessage('Password reset email sent!');
-    } catch (e) {
-      setResetMessage('Failed to send reset email.');
+      showAlert('Success', 'Password reset email sent!');
+      setShowForgot(false);
+    } catch (e: any) {
+      showAlert('Error', e.message || 'Failed to send reset email.');
     }
   };
 
@@ -98,7 +96,7 @@ export default function PatientLoginScreen() {
             
             {/* Loading Spinner */}
             <View style={styles.spinnerContainer}>
-              <LoadingSpinner size="large" />
+              <LoadingSpinner size={48} />
             </View>
             
             {/* Loading Text */}
@@ -267,45 +265,53 @@ export default function PatientLoginScreen() {
         </View>
       </LinearGradient>
 
-      {showForgot && (
-        <View style={[styles.forgotModal, { backgroundColor: colors.card }]}>
-          <Text style={[styles.forgotTitle, { color: colors.text }]}>
-            Reset Password
-          </Text>
-          <Text
-            style={[styles.forgotDescription, { color: colors.textSecondary }]}
-          >
-            Enter your email to reset password:
-          </Text>
-          <Input
-            placeholder="Email address"
-            value={resetEmail}
-            onChangeText={setResetEmail}
-            autoCapitalize="none"
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                color: colors.text,
-              },
-            ]}
-          />
-          <Button title="Send Reset Email" onPress={handleForgotPassword} />
-          {resetMessage ? (
-            <Text
-              style={[styles.resetMessage, { color: Colors.medical.green }]}
-            >
-              {resetMessage}
+        <AlertComponent/>
+      <Modal
+        visible={showForgot}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowForgot(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.forgotTitle, { color: colors.text }]}>
+              Reset Password
             </Text>
-          ) : null}
-          <Button
-            title="Close"
-            onPress={() => setShowForgot(false)}
-            style={{ marginTop: 8 }}
-          />
+            <Text
+              style={[styles.forgotDescription, { color: colors.textSecondary }]}
+            >
+              Enter your email address and we'll send you a link to reset your
+              password.
+            </Text>
+            <TextInput
+              placeholder="Email address"
+              value={resetEmail}
+              onChangeText={setResetEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[
+                styles.input,
+                styles.resetInput,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+            />
+            <Button title="Send Reset Email" onPress={handleForgotPassword} />
+            <Button
+              title="Cancel"
+              onPress={() => {
+                setShowForgot(false);
+                setResetEmail('');
+              }}
+              style={{ marginTop: 8 }}
+              variant="secondary"
+            />
+          </View>
         </View>
-      )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -493,14 +499,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontFamily: 'Satoshi-Variable',
   },
+  
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
 
-  forgotModal: {
-    position: 'absolute',
-    top: '30%',
-    left: 20,
-    right: 20,
-    borderRadius: 16,
+  modalContent: {
     padding: 24,
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -510,24 +521,22 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-
+  
   forgotTitle: {
     fontSize: 20,
     fontFamily: 'IvyMode-Regular',
     marginBottom: 8,
   },
-
+  
   forgotDescription: {
     fontSize: 14,
     fontFamily: 'Satoshi-Variable',
     marginBottom: 16,
+    lineHeight: 20,
   },
 
-  resetMessage: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginTop: 8,
-    textAlign: 'center',
+  resetInput: {
+    marginBottom: 16,
   },
 
   // New Loading Screen Styles
@@ -594,8 +603,8 @@ const styles = StyleSheet.create({
   },
 
   spinnerContainer: {
-    marginBottom: 32,
-    transform: [{ scale: 1.5 }],
+   marginBottom: 32,
+    transform: [{ scale: 1.5 }], // scale should be a number
   },
 
   loadingTitle: {

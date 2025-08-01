@@ -180,36 +180,41 @@ async function decryptFileFromUrl(
   // Decrypt
   const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
   const decryptedBytes = decrypted.words.reduce(
-    (arr: number[], word: number) => {
-      arr.push(
-        (word >> 24) & 0xff,
-        (word >> 16) & 0xff,
-        (word >> 8) & 0xff,
-        word & 0xff
-      );
-      return arr;
-    },
-    []
+      (arr: number[], word: number) => {
+        arr.push(
+            (word >> 24) & 0xff,
+            (word >> 16) & 0xff,
+            (word >> 8) & 0xff,
+            word & 0xff
+        );
+        return arr;
+      },
+      []
   );
-  const decryptedUint8 = new Uint8Array(decryptedBytes).slice(
-    0,
-    decrypted.sigBytes
-  );
-
+  const decryptedUint8 = new Uint8Array(decryptedBytes).slice(0, decrypted.sigBytes);
   if (Platform.OS === 'web') {
-    // Create a Blob and object URL for browser viewing
     const blob = new Blob([decryptedUint8], { type: record.fileType });
+    if (decryptedUint8.length === 0) {
+        throw new Error('Decryption failed or empty content');
+    }
     const blobUrl = URL.createObjectURL(blob);
     return blobUrl;
-  } else {
-    // Convert to base64 data URI for WebView (mobile)
-    return `data:${record.fileType};base64,${uint8ArrayToBase64(
-      decryptedUint8
-    )}`;
+  }
+  else {
+    const base64Data = uint8ArrayToBase64(decryptedUint8);
+    const fileExtension = record.fileType.includes('pdf') ? 'pdf' : 'jpg';
+    const path = `${FileSystem.cacheDirectory}${record.title || 'record'}.${fileExtension}`;
+
+    await FileSystem.writeAsStringAsync(path, base64Data, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    return path; // returns file:// URI
   }
 }
 
 export default function MedicalRecordsScreen() {
+
   const { colors } = useTheme();
   const styles = createRecordsStyles(colors);
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -237,6 +242,22 @@ export default function MedicalRecordsScreen() {
   // Add state for PDF preview
   const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+
+  useEffect(() => {
+    if (
+      Platform.OS === 'web' &&
+      showPdfPreview &&
+      pdfPreviewUri &&
+      selectedRecord?.fileType === 'application/pdf'
+    ) {
+      const newWindow = window.open(pdfPreviewUri, '_blank');
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        alert('Popup blocked! Please allow popups for this site.');
+      }
+      setShowPdfPreview(false);
+    }
+  }, [showPdfPreview, pdfPreviewUri, selectedRecord]);
+
 
   const { user } = useAuth();
   const { showAlert, AlertComponent } = useCustomAlert();
@@ -1484,69 +1505,84 @@ export default function MedicalRecordsScreen() {
 
         {/* PDF Preview Modal */}
         <Modal
-          visible={showPdfPreview}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setShowPdfPreview(false)}
-        >
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-            <TouchableOpacity
-              style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
-              onPress={() => setShowPdfPreview(false)}
-            >
-              <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
-            </TouchableOpacity>
+  visible={showPdfPreview}
+  animationType="slide"
+  transparent={false}
+  onRequestClose={() => setShowPdfPreview(false)}
+>
+  <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+    <TouchableOpacity
+      style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
+      onPress={() => setShowPdfPreview(false)}
+    >
+      <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
+    </TouchableOpacity>
+    {pdfPreviewUri ? (
+  selectedRecord?.fileType?.startsWith('image') ? (
+    <Image
+      source={{ uri: pdfPreviewUri }}
+      style={{
+        width: '100%',
+        height: 300,
+        borderRadius: 12,
+        marginTop: 60,
+      }}
+      resizeMode="contain"
+    />
+  ) : selectedRecord?.fileType === 'application/pdf' ? (
+    Platform.OS === 'web' ? (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: '#fff', marginTop: 16 }}>
+          Opening PDF in new tab...
+        </Text>
+      </View>
+    ) : (
+      <WebView
+        source={{ uri: pdfPreviewUri }}
+        style={{ flex: 1, marginTop: 60 }}
+        useWebKit
+        originWhitelist={['*']}
+        javaScriptEnabled
+        scalesPageToFit
+      />
+    )
+  ) : (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ color: '#fff', marginTop: 16 }}>
+        File type not supported for preview.
+      </Text>
+    </View>
+  )
+) : (
+  <View
+    style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}
+  >
+    <ActivityIndicator size="large" color="#fff" />
+    <Text style={{ color: '#fff', marginTop: 16 }}>
+      Decrypting file...
+    </Text>
+  </View>
+)}
 
-            {pdfPreviewUri ? (
-              selectedRecord?.fileType?.startsWith('image') ? (
-                <Image
-                  source={{ uri: pdfPreviewUri }}
-                  style={{
-                    width: '100%',
-                    height: 300,
-                    borderRadius: 12,
-                    marginTop: 60,
-                  }}
-                  resizeMode="contain"
-                />
-              ) : selectedRecord?.fileType === 'application/pdf' ? (
-                <WebView
-                  source={{ uri: pdfPreviewUri }}
-                  style={{ flex: 1, marginTop: 60 }}
-                  useWebKit
-                  originWhitelist={['*']}
-                  javaScriptEnabled
-                  scalesPageToFit
-                />
-              ) : (
-                <View
-                  style={{
-                    flex: 1,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: '#fff', marginTop: 16 }}>
-                    File type not supported for preview.
-                  </Text>
-                </View>
-              )
-            ) : (
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <ActivityIndicator size="large" color="#fff" />
-                <Text style={{ color: '#fff', marginTop: 16 }}>
-                  Decrypting file...
-                </Text>
-              </View>
-            )}
-          </SafeAreaView>
-        </Modal>
+  </SafeAreaView>
+</Modal>
+
 
         {/* Edit Modal */}
         <Modal
@@ -1609,7 +1645,7 @@ export default function MedicalRecordsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
+              </View> 
 
               <View style={styles.editModalActions}>
                 <TouchableOpacity
@@ -1637,7 +1673,7 @@ export default function MedicalRecordsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </View> 
         </Modal>
 
         <AlertComponent />

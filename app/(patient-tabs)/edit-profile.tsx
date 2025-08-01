@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -27,6 +28,7 @@ import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createEditProfileStyles } from '../../styles/edit-profile';
+import { useCustomAlert } from '@/components/CustomAlert';
 
 export default function EditPatientProfileScreen() {
   const { userData: user, updateUserProfile, isLoading } = useAuth();
@@ -34,7 +36,7 @@ export default function EditPatientProfileScreen() {
   const styles = createEditProfileStyles(colors);
   
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
+      firstName: user?.firstName || '',
     middleName: user?.middleName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
@@ -45,6 +47,7 @@ export default function EditPatientProfileScreen() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const { showAlert, AlertComponent } = useCustomAlert();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -56,35 +59,37 @@ export default function EditPatientProfileScreen() {
   const handleSave = async () => {
     // Basic validation
     if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      Alert.alert('Error', 'First name and last name are required.');
+      showAlert('Error', 'First name and last name are required.');
       return;
     }
 
     if (!formData.email.trim()) {
-      Alert.alert('Error', 'Email is required.');
+      showAlert('Error', 'Email is required.');
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      Alert.alert('Error', 'Please enter a valid email address.');
+      showAlert('Error', 'Please enter a valid email address.');
       return;
     }
 
     try {
       setIsSaving(true);
       await updateUserProfile(formData);
-      Alert.alert('Success', 'Profile updated successfully!', [
+      showAlert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message);
     } finally {
       setIsSaving(false);
     }
   };
+   
 
+ 
   const formFields = [
     {
       icon: User,
@@ -243,6 +248,7 @@ export default function EditPatientProfileScreen() {
           
         </SafeAreaView>
       </KeyboardAvoidingView>
+       <AlertComponent/>
     </SafeAreaView>
   );
 }

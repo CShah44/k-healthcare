@@ -66,7 +66,7 @@ export default function ProfileScreen() {
     try {
       await switchToAccount(accountId);
       Alert.alert('Success', 'Switched to account successfully!');
-    } catch (error: any) {
+     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
   };
