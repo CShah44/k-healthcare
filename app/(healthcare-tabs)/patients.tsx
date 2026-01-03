@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Users, Search, Filter, Plus, Phone, Mail, Calendar, ChevronRight, TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import {
+  Users,
+  Search,
+  Filter,
+  Plus,
+  Phone,
+  Mail,
+  Calendar,
+  ChevronRight,
+  TriangleAlert as AlertTriangle,
+} from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function PatientsScreen() {
+  const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
 
@@ -28,7 +47,8 @@ export default function PatientsScreen() {
       status: 'stable',
       phone: '+1 (555) 123-4567',
       email: 'john.smith@email.com',
-      avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
     {
       id: '2',
@@ -41,7 +61,8 @@ export default function PatientsScreen() {
       status: 'monitoring',
       phone: '+1 (555) 234-5678',
       email: 'sarah.johnson@email.com',
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
     {
       id: '3',
@@ -54,7 +75,8 @@ export default function PatientsScreen() {
       status: 'critical',
       phone: '+1 (555) 345-6789',
       email: 'michael.brown@email.com',
-      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
     {
       id: '4',
@@ -67,7 +89,8 @@ export default function PatientsScreen() {
       status: 'stable',
       phone: '+1 (555) 456-7890',
       email: 'emma.wilson@email.com',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
     {
       id: '5',
@@ -80,7 +103,8 @@ export default function PatientsScreen() {
       status: 'monitoring',
       phone: '+1 (555) 567-8901',
       email: 'david.chen@email.com',
-      avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
+      avatar:
+        'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
     },
   ];
 
@@ -93,59 +117,75 @@ export default function PatientsScreen() {
       case 'critical':
         return Colors.medical.red;
       default:
-        return Colors.textSecondary;
+        return colors.textSecondary;
     }
   };
 
   const getStatusBackground = (status: string) => {
     switch (status) {
       case 'stable':
-        return Colors.medical.lightGreen;
+        return 'rgba(34, 197, 94, 0.1)';
       case 'monitoring':
-        return Colors.medical.lightOrange;
+        return 'rgba(249, 115, 22, 0.1)';
       case 'critical':
-        return Colors.medical.lightRed;
+        return 'rgba(239, 68, 68, 0.1)';
       default:
-        return Colors.surfaceSecondary;
+        return colors.surfaceSecondary;
     }
   };
 
-  const filteredPatients = patients.filter(patient => {
-    const matchesSearch = patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         patient.condition.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || patient.status === selectedFilter;
+  const filteredPatients = patients.filter((patient) => {
+    const matchesSearch =
+      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.condition.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter =
+      selectedFilter === 'all' || patient.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Patients</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Patients
+        </Text>
         <TouchableOpacity style={styles.addButton}>
-          <Plus size={20} color={Colors.surface} />
+          <Plus size={20} color="white" />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Search size={20} color={Colors.textSecondary} />
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Search size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search patients..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor={Colors.textLight}
+            placeholderTextColor={colors.textSecondary}
           />
         </View>
-        <TouchableOpacity style={styles.filterButton}>
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            { backgroundColor: `${Colors.primary}15` },
+          ]}
+        >
           <Filter size={20} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
       {/* Status Filters */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filtersContainer}
         contentContainerStyle={styles.filtersContent}
@@ -155,14 +195,26 @@ export default function PatientsScreen() {
             key={filter.id}
             style={[
               styles.filterChip,
-              selectedFilter === filter.id && styles.filterChipActive
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+              selectedFilter === filter.id && {
+                backgroundColor: Colors.primary,
+                borderColor: Colors.primary,
+              },
             ]}
             onPress={() => setSelectedFilter(filter.id)}
           >
-            <Text style={[
-              styles.filterText,
-              selectedFilter === filter.id && styles.filterTextActive
-            ]}>
+            <Text
+              style={[
+                styles.filterText,
+                { color: colors.textSecondary },
+                selectedFilter === filter.id && {
+                  color: 'white',
+                },
+              ]}
+            >
               {filter.label}
             </Text>
           </TouchableOpacity>
@@ -170,64 +222,110 @@ export default function PatientsScreen() {
       </ScrollView>
 
       {/* Patients List */}
-      <ScrollView style={styles.patientsList} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.patientsList}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.patientsContainer}>
           {filteredPatients.map((patient) => (
-            <TouchableOpacity key={patient.id} style={styles.patientCard}>
+            <TouchableOpacity
+              key={patient.id}
+              style={[styles.patientCard, { backgroundColor: colors.surface }]}
+            >
               <View style={styles.patientHeader}>
-                <Image source={{ uri: patient.avatar }} style={styles.patientAvatar} />
+                <Image
+                  source={{ uri: patient.avatar }}
+                  style={styles.patientAvatar}
+                />
                 <View style={styles.patientInfo}>
                   <View style={styles.patientNameRow}>
-                    <Text style={styles.patientName}>{patient.name}</Text>
+                    <Text style={[styles.patientName, { color: colors.text }]}>
+                      {patient.name}
+                    </Text>
                     {patient.status === 'critical' && (
                       <AlertTriangle size={16} color={Colors.medical.red} />
                     )}
                   </View>
-                  <Text style={styles.patientDetails}>
+                  <Text
+                    style={[
+                      styles.patientDetails,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {patient.age} years • {patient.gender}
                   </Text>
-                  <Text style={styles.patientCondition}>{patient.condition}</Text>
+                  <Text
+                    style={[styles.patientCondition, { color: colors.text }]}
+                  >
+                    {patient.condition}
+                  </Text>
                 </View>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusBackground(patient.status) }
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    { color: getStatusColor(patient.status) }
-                  ]}>
-                    {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusBackground(patient.status) },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(patient.status) },
+                    ]}
+                  >
+                    {patient.status.charAt(0).toUpperCase() +
+                      patient.status.slice(1)}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.patientDetails}>
+              <View style={styles.patientDetailsRow}>
                 <View style={styles.detailRow}>
-                  <Calendar size={14} color={Colors.textSecondary} />
-                  <Text style={styles.detailText}>
-                    Last visit: {new Date(patient.lastVisit).toLocaleDateString()}
+                  <Calendar size={14} color={colors.textSecondary} />
+                  <Text
+                    style={[styles.detailText, { color: colors.textSecondary }]}
+                  >
+                    Last visit:{' '}
+                    {new Date(patient.lastVisit).toLocaleDateString()}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Calendar size={14} color={Colors.primary} />
-                  <Text style={styles.detailText}>
-                    Next: {new Date(patient.nextAppointment).toLocaleDateString()}
+                  <Text
+                    style={[styles.detailText, { color: colors.textSecondary }]}
+                  >
+                    Next:{' '}
+                    {new Date(patient.nextAppointment).toLocaleDateString()}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.patientActions}>
-                <TouchableOpacity style={styles.actionButton}>
+              <View
+                style={[
+                  styles.patientActions,
+                  { borderTopColor: colors.border },
+                ]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: `${Colors.primary}15` },
+                  ]}
+                >
                   <Phone size={16} color={Colors.primary} />
                   <Text style={styles.actionText}>Call</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: `${Colors.primary}15` },
+                  ]}
+                >
                   <Mail size={16} color={Colors.primary} />
                   <Text style={styles.actionText}>Email</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.viewButton}>
                   <Text style={styles.viewButtonText}>View Records</Text>
-                  <ChevronRight size={16} color={Colors.surface} />
+                  <ChevronRight size={16} color="white" />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -240,9 +338,8 @@ export default function PatientsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.background,
+    flex: 1,
   },
-  
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -250,13 +347,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  
   headerTitle: {
     fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '700',
   },
-  
   addButton: {
     width: 40,
     height: 40,
@@ -265,189 +360,149 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     marginBottom: 16,
     gap: 12,
   },
-  
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
-  
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
     marginLeft: 12,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
   },
-  
   filterButton: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: Colors.medical.lightBlue,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
   filtersContainer: {
     marginBottom: 20,
   },
-  
   filtersContent: {
     paddingHorizontal: 20,
     gap: 12,
   },
-  
   filterChip: {
-    backgroundColor: Colors.surface,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
-  
-  filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  
   filterText: {
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: Colors.textSecondary,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
   },
-  
-  filterTextActive: {
-    color: Colors.surface,
-  },
-  
   patientsList: {
     flex: 1,
   },
-  
   patientsContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  
   patientCard: {
-    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 2,
   },
-  
   patientHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  
   patientAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
     marginRight: 12,
   },
-  
   patientInfo: {
     flex: 1,
   },
-  
   patientNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
   },
-  
   patientName: {
     fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
   },
-  
   patientDetails: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     marginBottom: 2,
   },
-  
   patientCondition: {
     fontSize: 14,
-    color: Colors.text,
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
   },
-  
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     alignSelf: 'flex-start',
   },
-  
   statusText: {
     fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
   },
-  
+  patientDetailsRow: {
+    marginBottom: 12,
+    gap: 4,
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
   },
-  
   detailText: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Satoshi-Variable',
     marginLeft: 8,
   },
-  
   patientActions: {
     flexDirection: 'row',
     gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
-  
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: Colors.medical.lightBlue,
     borderRadius: 8,
     gap: 6,
   },
-  
   actionText: {
     fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
     color: Colors.primary,
   },
-  
   viewButton: {
     flex: 1,
     flexDirection: 'row',
@@ -459,10 +514,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 6,
   },
-  
   viewButtonText: {
     fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.surface,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
+    color: 'white',
   },
 });

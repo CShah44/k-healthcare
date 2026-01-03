@@ -49,7 +49,7 @@ export default function ProfileScreen() {
   // Helper function to format user ID based on role
   const formatUserId = (customUserId: string | undefined, role: string) => {
     if (!customUserId) return 'ID not available';
-    
+
     let rolePrefix = '';
     switch (role) {
       case 'patient':
@@ -64,7 +64,7 @@ export default function ProfileScreen() {
       default:
         rolePrefix = 'usr';
     }
-    
+
     return `sva-${rolePrefix}-${customUserId}`;
   };
 

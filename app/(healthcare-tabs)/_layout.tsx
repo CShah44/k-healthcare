@@ -1,27 +1,29 @@
 import { Tabs } from 'expo-router';
 import { Activity, Users, FileText, User } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
-import React from 'react';
+import { layoutStyles } from '../../styles/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function HealthcareTabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopColor: Colors.border,
-          borderTopWidth: 1,
-          paddingTop: 5,
-          paddingBottom: 5,
-          height: 60,
+          ...layoutStyles.tabBarStyle,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
+          shadowColor: colors.shadow,
         },
         tabBarLabelStyle: {
-          fontFamily: 'Inter-Medium',
-          fontSize: 12,
+          ...layoutStyles.tabBarLabelStyle,
+          fontFamily: 'Satoshi-Variable',
         },
+        tabBarIconStyle: layoutStyles.tabBarIconStyle,
       }}
     >
       <Tabs.Screen
@@ -29,7 +31,7 @@ export default function HealthcareTabsLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
-            <Activity size={size} color={color} />
+            <Activity size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -37,7 +39,9 @@ export default function HealthcareTabsLayout() {
         name="patients"
         options={{
           title: 'Patients',
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Users size={size} color={color} strokeWidth={2} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -45,7 +49,7 @@ export default function HealthcareTabsLayout() {
         options={{
           title: 'Records',
           tabBarIcon: ({ color, size }) => (
-            <FileText size={size} color={color} />
+            <FileText size={size} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -53,7 +57,18 @@ export default function HealthcareTabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <User size={size} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+
+      {/* Hidden routes */}
+      <Tabs.Screen
+        name="create-prescription"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' }, // Hide tab bar on this screen if desired, or keep it. Patient app hides tabs on sub-screens often.
         }}
       />
     </Tabs>

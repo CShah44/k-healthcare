@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   View,
   Text,
@@ -48,8 +48,14 @@ export default function RoleSelectionScreen() {
     headerOpacity.value = withTiming(1, { duration: 800 });
     headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
 
-    card1Scale.value = withDelay(300, withSpring(1, { damping: 12, stiffness: 100 }));
-    card2Scale.value = withDelay(500, withSpring(1, { damping: 12, stiffness: 100 }));
+    card1Scale.value = withDelay(
+      300,
+      withSpring(1, { damping: 12, stiffness: 100 })
+    );
+    card2Scale.value = withDelay(
+      500,
+      withSpring(1, { damping: 12, stiffness: 100 })
+    );
 
     footerOpacity.value = withDelay(800, withTiming(1, { duration: 600 }));
   }, []);
@@ -76,7 +82,9 @@ export default function RoleSelectionScreen() {
   }));
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <LinearGradient
         colors={[colors.background, colors.surface]}
         style={styles.backgroundGradient}
@@ -94,7 +102,9 @@ export default function RoleSelectionScreen() {
           {/* Header with Logo - Now inside ScrollView */}
           <Animated.View style={[styles.headerContent, headerStyle]}>
             <Logo size={60} animated={true} />
-            <Text style={[styles.appName, { color: colors.text }]}>Svastheya</Text>
+            <Text style={[styles.appName, { color: colors.text }]}>
+              Svastheya
+            </Text>
             <Text style={[styles.tagline, { color: colors.textSecondary }]}>
               Your Health, Our Priority
             </Text>
@@ -105,7 +115,9 @@ export default function RoleSelectionScreen() {
             <Text style={[styles.welcomeTitle, { color: colors.text }]}>
               Welcome to Better Health
             </Text>
-            <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}
+            >
               Choose your role to begin your personalized healthcare journey
             </Text>
           </Animated.View>
@@ -119,7 +131,10 @@ export default function RoleSelectionScreen() {
                 delay={0}
               >
                 <LinearGradient
-                  colors={['rgba(0, 148, 133, 0.05)', 'rgba(0, 148, 133, 0.02)']}
+                  colors={[
+                    'rgba(0, 148, 133, 0.05)',
+                    'rgba(0, 148, 133, 0.02)',
+                  ]}
                   style={styles.roleCardGradient}
                 >
                   <View style={styles.roleHeader}>
@@ -132,7 +147,11 @@ export default function RoleSelectionScreen() {
                       </LinearGradient>
                     </View>
                     <View style={styles.roleArrow}>
-                      <ArrowRight size={20} color={Colors.primary} strokeWidth={2} />
+                      <ArrowRight
+                        size={20}
+                        color={Colors.primary}
+                        strokeWidth={2}
+                      />
                     </View>
                   </View>
 
@@ -140,26 +159,62 @@ export default function RoleSelectionScreen() {
                     <Text style={[styles.roleTitle, { color: colors.text }]}>
                       I'm a Patient
                     </Text>
-                    <Text style={[styles.roleDescription, { color: colors.textSecondary }]}>
-                      Access medical records, track health metrics, and manage your complete health journey
+                    <Text
+                      style={[
+                        styles.roleDescription,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Access medical records, track health metrics, and manage
+                      your complete health journey
                     </Text>
 
                     <View style={styles.roleFeatures}>
                       <View style={styles.featureItem}>
-                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
-                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.featureDot,
+                            { backgroundColor: Colors.primary },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.featureText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Medical Records
                         </Text>
                       </View>
                       <View style={styles.featureItem}>
-                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
-                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.featureDot,
+                            { backgroundColor: Colors.primary },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.featureText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Health Tracking
                         </Text>
                       </View>
                       <View style={styles.featureItem}>
-                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
-                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.featureDot,
+                            { backgroundColor: Colors.primary },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.featureText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Family Tree
                         </Text>
                       </View>
@@ -176,7 +231,10 @@ export default function RoleSelectionScreen() {
                 delay={200}
               >
                 <LinearGradient
-                  colors={['rgba(0, 148, 133, 0.05)', 'rgba(0, 148, 133, 0.02)']}
+                  colors={[
+                    'rgba(0, 148, 133, 0.05)',
+                    'rgba(0, 148, 133, 0.02)',
+                  ]}
                   style={styles.roleCardGradient}
                 >
                   <View style={styles.roleHeader}>
@@ -189,7 +247,11 @@ export default function RoleSelectionScreen() {
                       </LinearGradient>
                     </View>
                     <View style={styles.roleArrow}>
-                      <ArrowRight size={20} color={Colors.primary} strokeWidth={2} />
+                      <ArrowRight
+                        size={20}
+                        color={Colors.primary}
+                        strokeWidth={2}
+                      />
                     </View>
                   </View>
 
@@ -197,26 +259,62 @@ export default function RoleSelectionScreen() {
                     <Text style={[styles.roleTitle, { color: colors.text }]}>
                       I'm a Healthcare Professional
                     </Text>
-                    <Text style={[styles.roleDescription, { color: colors.textSecondary }]}>
-                      Manage patient records, lab results, and provide exceptional healthcare services
+                    <Text
+                      style={[
+                        styles.roleDescription,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Manage patient records, lab results, and provide
+                      exceptional healthcare services
                     </Text>
 
                     <View style={styles.roleFeatures}>
                       <View style={styles.featureItem}>
-                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
-                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.featureDot,
+                            { backgroundColor: Colors.primary },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.featureText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Patient Management
                         </Text>
                       </View>
                       <View style={styles.featureItem}>
-                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
-                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.featureDot,
+                            { backgroundColor: Colors.primary },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.featureText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Lab Results
                         </Text>
                       </View>
                       <View style={styles.featureItem}>
-                        <View style={[styles.featureDot, { backgroundColor: Colors.primary }]} />
-                        <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                        <View
+                          style={[
+                            styles.featureDot,
+                            { backgroundColor: Colors.primary },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.featureText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Digital Prescriptions
                         </Text>
                       </View>
@@ -229,7 +327,12 @@ export default function RoleSelectionScreen() {
 
           {/* Footer */}
           <Animated.View style={[styles.footer, footerStyle]}>
-            <View style={[styles.securityBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.securityBadge,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <Shield size={18} color={Colors.primary} strokeWidth={2} />
               <Text style={[styles.securityText, { color: Colors.primary }]}>
                 HIPAA Compliant & Secure

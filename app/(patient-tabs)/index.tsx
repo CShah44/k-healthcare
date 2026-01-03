@@ -33,7 +33,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RecordsService, MedicalRecord } from '@/services/recordsService';
-import { getGreeting, getRecordIcon, getStatusColor, formatDate } from './services/recordHelpers';
+import {
+  getGreeting,
+  getRecordIcon,
+  getStatusColor,
+  formatDate,
+} from './services/recordHelpers';
 import { createHomeStyles } from '../../styles/home';
 import { db } from '@/constants/firebase';
 import { doc, getDoc, collection, query, getDocs } from 'firebase/firestore';
@@ -76,22 +81,26 @@ export default function PatientHomeScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // Load medical records
       const records = await RecordsService.getRecentRecords(user!.uid, 5);
       setMedicalRecords(records);
-      
+
       // Get total records count
-      const totalRecordsQuery = query(collection(db, 'patients', user!.uid, 'records'));
+      const totalRecordsQuery = query(
+        collection(db, 'patients', user!.uid, 'records')
+      );
       const totalRecordsSnapshot = await getDocs(totalRecordsQuery);
       setTotalRecords(totalRecordsSnapshot.size);
-      
+
       // Get family members count
       if (userData?.familyId) {
         const familyDoc = await getDoc(doc(db, 'families', userData.familyId));
         if (familyDoc.exists()) {
           const familyData = familyDoc.data();
-          const membersCount = familyData.members ? familyData.members.length : 1;
+          const membersCount = familyData.members
+            ? familyData.members.length
+            : 1;
           setFamilyMembersCount(membersCount);
         }
       } else {
@@ -117,14 +126,26 @@ export default function PatientHomeScreen() {
   const recentRecords = medicalRecords.slice(0, 3);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <LinearGradient
         colors={[colors.background, colors.surface]}
         style={styles.backgroundGradient}
       >
         {/* Decorative Elements */}
-        <View style={[styles.decorativeCircle1, { backgroundColor: 'rgba(0, 148, 133, 0.05)' }]} />
-        <View style={[styles.decorativeCircle2, { backgroundColor: 'rgba(34, 197, 94, 0.06)' }]} />
+        <View
+          style={[
+            styles.decorativeCircle1,
+            { backgroundColor: 'rgba(0, 148, 133, 0.05)' },
+          ]}
+        />
+        <View
+          style={[
+            styles.decorativeCircle2,
+            { backgroundColor: 'rgba(34, 197, 94, 0.06)' },
+          ]}
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -142,7 +163,10 @@ export default function PatientHomeScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              style={[styles.notificationButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[
+                styles.notificationButton,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               onPress={() => router.push('/notifications')}
             >
               <Bell size={20} color={colors.text} strokeWidth={2} />
@@ -151,45 +175,93 @@ export default function PatientHomeScreen() {
 
           {/* Quick Stats */}
           <Animated.View style={[styles.statsContainer, cardStyle]}>
-            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIcon, { backgroundColor: `${Colors.medical.blue}15` }]}>
-                <FileText size={20} color={Colors.medical.blue} strokeWidth={2} />
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statIcon,
+                  { backgroundColor: `${Colors.medical.blue}15` },
+                ]}
+              >
+                <FileText
+                  size={20}
+                  color={Colors.medical.blue}
+                  strokeWidth={2}
+                />
               </View>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>{totalRecords}</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Records</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>
+                  {totalRecords}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Total Records
+                </Text>
               </View>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.statIcon, { backgroundColor: `${Colors.medical.blue}15` }]}>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statIcon,
+                  { backgroundColor: `${Colors.medical.blue}15` },
+                ]}
+              >
                 <Users size={20} color={Colors.medical.blue} strokeWidth={2} />
               </View>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>{familyMembersCount}</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Family Members</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>
+                  {familyMembersCount}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Family Members
+                </Text>
               </View>
             </View>
           </Animated.View>
 
           {/* Quick Actions */}
           <Animated.View style={[styles.actionsContainer, cardStyle]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Quick Actions
+            </Text>
             <View style={styles.actionButtons}>
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
                 onPress={() => router.push('/(patient-tabs)/upload-record')}
               >
                 <Plus size={24} color={Colors.primary} strokeWidth={2} />
-                <Text style={[styles.actionText, { color: colors.text }]}>Upload Record</Text>
+                <Text style={[styles.actionText, { color: colors.text }]}>
+                  Upload Record
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
                 onPress={() => router.push('/(patient-tabs)/records')}
               >
                 <FileText size={24} color={Colors.primary} strokeWidth={2} />
-                <Text style={[styles.actionText, { color: colors.text }]}>View Records</Text>
+                <Text style={[styles.actionText, { color: colors.text }]}>
+                  View Records
+                </Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -197,48 +269,101 @@ export default function PatientHomeScreen() {
           {/* Recent Records */}
           <Animated.View style={[styles.recordsContainer, cardStyle]}>
             <View style={styles.recordsHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Records</Text>
-              <TouchableOpacity onPress={() => router.push('/(patient-tabs)/records')}>
-                <Text style={[styles.viewAllText, { color: Colors.primary }]}>View All</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Recent Records
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/(patient-tabs)/records')}
+              >
+                <Text style={[styles.viewAllText, { color: Colors.primary }]}>
+                  View All
+                </Text>
               </TouchableOpacity>
             </View>
 
             {loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading records...</Text>
+                <Text
+                  style={[styles.loadingText, { color: colors.textSecondary }]}
+                >
+                  Loading records...
+                </Text>
               </View>
             ) : recentRecords.length > 0 ? (
               <View style={styles.recordsList}>
                 {recentRecords.map((record, index) => {
-                  const { icon: IconComponent, color } = getRecordIcon(record.type, record.source);
+                  const { icon: IconComponent, color } = getRecordIcon(
+                    record.type,
+                    record.source
+                  );
                   return (
                     <TouchableOpacity
                       key={record.id}
-                      style={[styles.recordCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                      onPress={() => router.push(`/(patient-tabs)/records?id=${record.id}`)}
+                      style={[
+                        styles.recordCard,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                      onPress={() =>
+                        router.push(`/(patient-tabs)/records?id=${record.id}`)
+                      }
                     >
-                      <View style={[styles.recordIcon, { backgroundColor: `${color}15` }]}>
-                        <IconComponent size={20} color={color} strokeWidth={2} />
+                      <View
+                        style={[
+                          styles.recordIcon,
+                          { backgroundColor: `${color}15` },
+                        ]}
+                      >
+                        <IconComponent
+                          size={20}
+                          color={color}
+                          strokeWidth={2}
+                        />
                       </View>
                       <View style={styles.recordInfo}>
-                        <Text style={[styles.recordTitle, { color: colors.text }]} numberOfLines={1}>
+                        <Text
+                          style={[styles.recordTitle, { color: colors.text }]}
+                          numberOfLines={1}
+                        >
                           {record.title}
                         </Text>
-                        <Text style={[styles.recordDate, { color: colors.textSecondary }]}>
+                        <Text
+                          style={[
+                            styles.recordDate,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           {formatDate(record.uploadedAt)}
                         </Text>
                       </View>
-                      <ChevronRight size={16} color={colors.textSecondary} strokeWidth={2} />
+                      <ChevronRight
+                        size={16}
+                        color={colors.textSecondary}
+                        strokeWidth={2}
+                      />
                     </TouchableOpacity>
                   );
                 })}
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <FileText size={48} color={colors.textSecondary} strokeWidth={1} />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Records Yet</Text>
-                <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                <FileText
+                  size={48}
+                  color={colors.textSecondary}
+                  strokeWidth={1}
+                />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  No Records Yet
+                </Text>
+                <Text
+                  style={[
+                    styles.emptySubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Upload your first medical record to get started
                 </Text>
               </View>
@@ -249,5 +374,3 @@ export default function PatientHomeScreen() {
     </SafeAreaView>
   );
 }
-
-

@@ -33,6 +33,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
 import { nanoid } from 'nanoid';
+import { MEDICAL_COUNCILS } from '../constants/medical-councils';
 
 const { width } = Dimensions.get('window');
 
@@ -64,8 +65,6 @@ interface SignupData extends UserData {
 
 export default function HealthcareSignupScreen() {
   const { colors, isDarkMode } = useTheme();
-
-  const { IDFY_API_KEY } = Constants.expoConfig?.extra || {};
 
   const [formData, setFormData] = useState<SignupData>({
     firstName: '',
@@ -104,7 +103,9 @@ export default function HealthcareSignupScreen() {
   const [doctorVerificationStatus, setDoctorVerificationStatus] = useState<
     'pending' | 'verified' | 'failed' | null
   >(null);
+
   const [verificationError, setVerificationError] = useState('');
+  const [showCouncilModal, setShowCouncilModal] = useState(false);
 
   // Get auth context with fallback
   const authContext = useAuth();
@@ -147,14 +148,6 @@ export default function HealthcareSignupScreen() {
     setDoctorVerificationStatus('pending');
 
     try {
-      if (!IDFY_API_KEY) {
-        throw new Error('IDFY API key is not configured');
-      }
-
-      const myHeaders = new Headers();
-      myHeaders.append('api-key', IDFY_API_KEY); // Use environment variable
-      myHeaders.append('Content-Type', 'application/json');
-
       // Generate unique task_id and group_id using nanoid
       const taskId = nanoid(16); // 16-character unique task ID
       const groupId = nanoid(16); // 16-character unique group ID
@@ -162,45 +155,33 @@ export default function HealthcareSignupScreen() {
       console.log('Generated task_id:', taskId);
       console.log('Generated group_id:', groupId);
 
-      const raw = JSON.stringify({
-        task_id: taskId,
-        group_id: groupId,
-        data: {
-          registration_no: doctorVerificationData.registrationNo,
-          year_of_registration: doctorVerificationData.yearOfRegistration,
-          council_name: doctorVerificationData.councilName,
-        },
-      });
-
-      const requestOptions = {
+      const response = await fetch('http://localhost:3001/verify-doctor', {
         method: 'POST',
-        headers: myHeaders,
-        body: raw,
-      };
-
-      const response = await fetch(
-        'https://eve.idfy.com/v3/tasks/async/verify_with_source/ncvt_iti',
-        requestOptions
-      );
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          registrationNo: doctorVerificationData.registrationNo,
+          yearOfRegistration: doctorVerificationData.yearOfRegistration,
+          councilName: doctorVerificationData.councilName,
+          taskId,
+          groupId,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.text();
+      const result = await response.json();
       console.log('Doctor verification result:', result);
 
-      // Parse the result and update status accordingly
-      const parsedResult = JSON.parse(result);
-      if (
-        parsedResult.status === 'completed' &&
-        parsedResult.result?.verified === true
-      ) {
+      if (result.success && result.verified === true) {
         setDoctorVerificationStatus('verified');
       } else {
         setDoctorVerificationStatus('failed');
         setVerificationError(
-          parsedResult.message ||
+          result.message ||
             'Doctor credentials could not be verified. Please check your details.'
         );
       }
@@ -439,6 +420,55 @@ export default function HealthcareSignupScreen() {
       marginTop: 16,
       fontFamily: 'Satoshi-Variable',
     },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 20,
+      maxHeight: '80%',
+      paddingBottom: 40,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: -4,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 5,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      fontFamily: 'Satoshi-Variable',
+    },
+    closeButton: {
+      padding: 8,
+    },
+    councilList: {
+      paddingHorizontal: 20,
+    },
+    councilItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+    },
+    councilItemText: {
+      fontSize: 16,
+      fontFamily: 'Satoshi-Variable',
+    },
   });
 
   // Show loading state
@@ -629,160 +659,251 @@ export default function HealthcareSignupScreen() {
 
               {/* Doctor Verification Section */}
               {formData.role === 'doctor' && (
-                <View
-                  style={[
-                    styles.verificationSection,
-                    {
-                      backgroundColor: isDarkMode
-                        ? `${Colors.primary}12`
-                        : `${Colors.primary}08`,
-                      borderColor: isDarkMode
-                        ? `${Colors.primary}30`
-                        : `${Colors.primary}20`,
-                    },
-                  ]}
-                >
-                  <View style={styles.verificationHeader}>
-                    <Shield size={20} color={Colors.primary} />
+                <>
+                  <View
+                    style={[
+                      styles.verificationSection,
+                      {
+                        backgroundColor: isDarkMode
+                          ? `${Colors.primary}12`
+                          : `${Colors.primary}08`,
+                        borderColor: isDarkMode
+                          ? `${Colors.primary}30`
+                          : `${Colors.primary}20`,
+                      },
+                    ]}
+                  >
+                    <View style={styles.verificationHeader}>
+                      <Shield size={20} color={Colors.primary} />
+                      <Text
+                        style={[
+                          styles.verificationTitle,
+                          { color: Colors.primary },
+                        ]}
+                      >
+                        Doctor Verification
+                      </Text>
+                    </View>
                     <Text
                       style={[
-                        styles.verificationTitle,
-                        { color: Colors.primary },
+                        styles.verificationSubtitle,
+                        { color: colors.textSecondary },
                       ]}
                     >
-                      Doctor Verification
+                      Please provide your medical council registration details
+                      for verification
                     </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.verificationSubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    Please provide your medical council registration details for
-                    verification
-                  </Text>
 
-                  <View style={styles.inputContainer}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>
-                      Registration Number *
-                    </Text>
-                    <Input
-                      placeholder="Enter your medical registration number"
-                      value={doctorVerificationData.registrationNo}
-                      onChangeText={(value) =>
-                        updateDoctorVerificationData('registrationNo', value)
-                      }
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                    />
-                  </View>
+                    <View style={styles.inputContainer}>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>
+                        Registration Number *
+                      </Text>
+                      <Input
+                        placeholder="Enter your medical registration number"
+                        value={doctorVerificationData.registrationNo}
+                        onChangeText={(value) =>
+                          updateDoctorVerificationData('registrationNo', value)
+                        }
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                      />
+                    </View>
 
-                  <View style={styles.inputContainer}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>
-                      Year of Registration *
-                    </Text>
-                    <Input
-                      placeholder="YYYY"
-                      value={doctorVerificationData.yearOfRegistration}
-                      onChangeText={(value) =>
-                        updateDoctorVerificationData(
-                          'yearOfRegistration',
-                          value
-                        )
-                      }
-                      keyboardType="numeric"
-                      maxLength={4}
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                    />
-                  </View>
+                    <View style={styles.inputContainer}>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>
+                        Year of Registration *
+                      </Text>
+                      <Input
+                        placeholder="YYYY"
+                        value={doctorVerificationData.yearOfRegistration}
+                        onChangeText={(value) =>
+                          updateDoctorVerificationData(
+                            'yearOfRegistration',
+                            value
+                          )
+                        }
+                        keyboardType="numeric"
+                        maxLength={4}
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                      />
+                    </View>
 
-                  <View style={styles.inputContainer}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>
-                      Medical Council Name *
-                    </Text>
-                    <Input
-                      placeholder="e.g., Bombay Medical Council"
-                      value={doctorVerificationData.councilName}
-                      onChangeText={(value) =>
-                        updateDoctorVerificationData('councilName', value)
-                      }
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  {verificationError && (
-                    <Text style={styles.errorText}>{verificationError}</Text>
-                  )}
-
-                  <TouchableOpacity
-                    onPress={verifyDoctorCredentials}
-                    activeOpacity={0.8}
-                    style={[
-                      styles.verifyButton,
-                      isVerifyingDoctor && styles.buttonDisabled,
-                      doctorVerificationStatus === 'verified' && [
-                        styles.verifiedButton,
-                        { backgroundColor: Colors.light.success },
-                      ],
-                    ]}
-                    disabled={
-                      isVerifyingDoctor ||
-                      doctorVerificationStatus === 'verified'
-                    }
-                  >
-                    <LinearGradient
-                      colors={
-                        doctorVerificationStatus === 'verified'
-                          ? ([Colors.light.success, Colors.light.success] as [
-                              string,
-                              string
-                            ])
-                          : isVerifyingDoctor
-                          ? (['#9ca3af', '#6b7280'] as [string, string])
-                          : (Colors.gradients.primary as [string, string])
-                      }
-                      style={styles.verifyButtonGradient}
-                    >
-                      <View style={styles.verifyButtonContent}>
-                        {isVerifyingDoctor ? (
-                          <LoadingSpinner size={20} color="#ffffff" />
-                        ) : doctorVerificationStatus === 'verified' ? (
-                          <CheckCircle size={20} color="#ffffff" />
-                        ) : (
-                          <Shield size={20} color="#ffffff" />
-                        )}
-                        <Text style={styles.verifyButtonText}>
-                          {isVerifyingDoctor
-                            ? 'Verifying...'
-                            : doctorVerificationStatus === 'verified'
-                            ? 'Verified'
-                            : 'Verify Credentials'}
+                    <View style={styles.inputContainer}>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>
+                        Medical Council Name *
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowCouncilModal(true)}
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            justifyContent: 'center',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: doctorVerificationData.councilName
+                              ? colors.text
+                              : colors.textSecondary,
+                            fontSize: 16,
+                            fontFamily: 'Satoshi-Variable',
+                          }}
+                        >
+                          {doctorVerificationData.councilName ||
+                            'Select Medical Council'}
                         </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <Modal
+                      visible={showCouncilModal}
+                      animationType="slide"
+                      transparent={true}
+                      onRequestClose={() => setShowCouncilModal(false)}
+                    >
+                      <View style={themedStyles.modalOverlay}>
+                        <View
+                          style={[
+                            themedStyles.modalContent,
+                            { backgroundColor: colors.surface },
+                          ]}
+                        >
+                          <View style={themedStyles.modalHeader}>
+                            <Text
+                              style={[
+                                themedStyles.modalTitle,
+                                { color: colors.text },
+                              ]}
+                            >
+                              Select Medical Council
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => setShowCouncilModal(false)}
+                              style={themedStyles.closeButton}
+                            >
+                              <Text
+                                style={{
+                                  color: colors.textSecondary,
+                                  fontSize: 24,
+                                }}
+                              >
+                                ×
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          <ScrollView style={themedStyles.councilList}>
+                            {MEDICAL_COUNCILS.map((council, index) => (
+                              <TouchableOpacity
+                                key={index}
+                                style={[
+                                  themedStyles.councilItem,
+                                  { borderBottomColor: colors.border },
+                                ]}
+                                onPress={() => {
+                                  updateDoctorVerificationData(
+                                    'councilName',
+                                    council
+                                  );
+                                  setShowCouncilModal(false);
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    themedStyles.councilItemText,
+                                    { color: colors.text },
+                                    doctorVerificationData.councilName ===
+                                      council && {
+                                      color: Colors.primary,
+                                      fontWeight: '600',
+                                    },
+                                  ]}
+                                >
+                                  {council}
+                                </Text>
+                                {doctorVerificationData.councilName ===
+                                  council && (
+                                  <CheckCircle
+                                    size={20}
+                                    color={Colors.primary}
+                                  />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
                       </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
+                    </Modal>
+
+                    {verificationError && (
+                      <Text style={styles.errorText}>{verificationError}</Text>
+                    )}
+
+                    <TouchableOpacity
+                      onPress={verifyDoctorCredentials}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.verifyButton,
+                        isVerifyingDoctor && styles.buttonDisabled,
+                        doctorVerificationStatus === 'verified' && [
+                          styles.verifiedButton,
+                          { backgroundColor: Colors.light.success },
+                        ],
+                      ]}
+                      disabled={
+                        isVerifyingDoctor ||
+                        doctorVerificationStatus === 'verified'
+                      }
+                    >
+                      <LinearGradient
+                        colors={
+                          doctorVerificationStatus === 'verified'
+                            ? ([Colors.light.success, Colors.light.success] as [
+                                string,
+                                string
+                              ])
+                            : isVerifyingDoctor
+                            ? (['#9ca3af', '#6b7280'] as [string, string])
+                            : (Colors.gradients.primary as [string, string])
+                        }
+                        style={styles.verifyButtonGradient}
+                      >
+                        <View style={styles.verifyButtonContent}>
+                          {isVerifyingDoctor ? (
+                            <LoadingSpinner size={20} color="#ffffff" />
+                          ) : doctorVerificationStatus === 'verified' ? (
+                            <CheckCircle size={20} color="#ffffff" />
+                          ) : (
+                            <Shield size={20} color="#ffffff" />
+                          )}
+                          <Text style={styles.verifyButtonText}>
+                            {isVerifyingDoctor
+                              ? 'Verifying...'
+                              : doctorVerificationStatus === 'verified'
+                              ? 'Verified'
+                              : 'Verify Credentials'}
+                          </Text>
+                        </View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </>
               )}
 
               <View style={styles.inputContainer}>
