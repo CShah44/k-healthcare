@@ -29,9 +29,11 @@ import {
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function HealthcareProfileScreen() {
   const { userData: user, logout } = useAuth();
+  const { colors } = useTheme();
 
   const profileData = [
     { icon: Mail, label: 'Email', value: user?.email || 'Not provided' },
@@ -55,26 +57,26 @@ export default function HealthcareProfileScreen() {
         {
           icon: Award,
           label: 'Credentials & Certifications',
-          action: () => {},
+          action: () => { },
         },
-        { icon: Building, label: 'Hospital Affiliations', action: () => {} },
-        { icon: FileText, label: 'Professional Documents', action: () => {} },
+        { icon: Building, label: 'Hospital Affiliations', action: () => { } },
+        { icon: FileText, label: 'Professional Documents', action: () => { } },
       ],
     },
     {
       title: 'App Settings',
       items: [
-        { icon: Bell, label: 'Notifications', action: () => {} },
-        { icon: Settings, label: 'Account Settings', action: () => {} },
-        { icon: Shield, label: 'Privacy & Security', action: () => {} },
+        { icon: Bell, label: 'Notifications', action: () => { } },
+        { icon: Settings, label: 'Account Settings', action: () => { } },
+        { icon: Shield, label: 'Privacy & Security', action: () => { } },
       ],
     },
     {
       title: 'Support',
       items: [
-        { icon: HelpCircle, label: 'Help & Support', action: () => {} },
-        { icon: FileText, label: 'Terms of Service', action: () => {} },
-        { icon: Shield, label: 'Privacy Policy', action: () => {} },
+        { icon: HelpCircle, label: 'Help & Support', action: () => { } },
+        { icon: FileText, label: 'Terms of Service', action: () => { } },
+        { icon: Shield, label: 'Privacy Policy', action: () => { } },
       ],
     },
   ];
@@ -85,12 +87,12 @@ export default function HealthcareProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
+    <SafeAreaView style={[GlobalStyles.container, styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity 
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
+          <TouchableOpacity
             style={styles.editButton}
             onPress={() => router.push('/(healthcare-tabs)/edit-profile')}
           >
@@ -99,51 +101,48 @@ export default function HealthcareProfileScreen() {
         </View>
 
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: colors.surface }]}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={{
-                uri: 'https://images.pexels.com/photos/5327921/pexels-photo-5327921.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-              }}
-              style={styles.profileImage}
-            />
-            <TouchableOpacity style={styles.editImageButton}>
-              <Edit size={12} color={Colors.surface} />
+            <View style={[styles.profileImage, { backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }]}>
+              <User size={40} color={colors.textSecondary} />
+            </View>
+            <TouchableOpacity style={[styles.editImageButton, { backgroundColor: Colors.primary }]}>
+              <Edit size={12} color={colors.surface} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>
+          <Text style={[styles.userName, { color: colors.text }]}>
             Dr. {user?.firstName} {user?.lastName}
           </Text>
-          <Text style={styles.userRole}>
+          <Text style={[styles.userRole, { color: colors.textSecondary }]}>
             {user?.role === 'doctor' ? 'Doctor' : 'Lab Assistant'} • {user?.department || 'General'}
           </Text>
-          <Text style={styles.hospital}>{user?.hospital || 'Healthcare Institution'}</Text>
+          <Text style={[styles.hospital, { color: colors.textTertiary }]}>{user?.hospital || 'Healthcare Institution'}</Text>
         </View>
 
         {/* Professional Stats */}
         <View style={styles.statsContainer}>
           {professionalStats.map((stat, index) => (
-            <View key={index} style={styles.statCard}>
+            <View key={index} style={[styles.statCard, { backgroundColor: colors.surface }]}>
               <View style={styles.statIcon}>
                 <stat.icon size={18} color={Colors.primary} />
               </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
             </View>
           ))}
         </View>
 
         {/* Profile Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Professional Information</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Professional Information</Text>
           {profileData.map((item, index) => (
-            <View key={index} style={styles.infoRow}>
+            <View key={index} style={[styles.infoRow, { backgroundColor: colors.surface }]}>
               <View style={styles.infoIcon}>
                 <item.icon size={18} color={Colors.primary} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>{item.label}</Text>
-                <Text style={styles.infoValue}>{item.value}</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{item.value}</Text>
               </View>
             </View>
           ))}
@@ -152,25 +151,25 @@ export default function HealthcareProfileScreen() {
         {/* Menu Sections */}
         {menuSections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.menuCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{section.title}</Text>
+            <View style={[styles.menuCard, { backgroundColor: colors.surface }]}>
               {section.items.map((item, itemIndex) => (
                 <TouchableOpacity
                   key={itemIndex}
                   style={[
                     styles.menuItem,
                     itemIndex < section.items.length - 1 &&
-                      styles.menuItemBorder,
+                    { borderBottomWidth: 1, borderBottomColor: colors.border },
                   ]}
                   onPress={item.action}
                 >
                   <View style={styles.menuItemLeft}>
                     <View style={styles.menuIcon}>
-                      <item.icon size={18} color={Colors.textSecondary} />
+                      <item.icon size={18} color={colors.textSecondary} />
                     </View>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
                   </View>
-                  <ChevronRight size={18} color={Colors.textLight} />
+                  <ChevronRight size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -179,15 +178,18 @@ export default function HealthcareProfileScreen() {
 
         {/* Logout Button */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut size={18} color={Colors.error} />
-            <Text style={styles.logoutText}>Sign Out</Text>
+          <TouchableOpacity style={[
+            styles.logoutButton,
+            { backgroundColor: colors.surface, borderColor: colors.error }
+          ]} onPress={handleLogout}>
+            <LogOut size={18} color={colors.error} />
+            <Text style={[styles.logoutText, { color: colors.error }]}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>
+          <Text style={[styles.versionText, { color: colors.textTertiary }]}>
             K Healthcare Professional v1.0.0
           </Text>
         </View>
@@ -198,7 +200,7 @@ export default function HealthcareProfileScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.background,
+
   },
 
   header: {
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    color: Colors.text,
+
   },
 
   editButton: {
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
   },
 
   profileCard: {
-    backgroundColor: Colors.surface,
+
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 24,
@@ -264,20 +266,20 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: Colors.text,
+
     marginBottom: 4,
   },
 
   userRole: {
     fontSize: 14,
-    color: Colors.textSecondary,
+
     fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
 
   hospital: {
     fontSize: 12,
-    color: Colors.textLight,
+
     fontFamily: 'Inter-Regular',
   },
 
@@ -292,7 +294,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '47%',
-    backgroundColor: Colors.surface,
+
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -316,13 +318,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
-    color: Colors.text,
+
     marginBottom: 4,
   },
 
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
   },
@@ -335,14 +337,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
+
     marginBottom: 12,
   },
 
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -364,19 +366,19 @@ const styles = StyleSheet.create({
 
   infoLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+
     fontFamily: 'Inter-Regular',
     marginBottom: 2,
   },
 
   infoValue: {
     fontSize: 14,
-    color: Colors.text,
+
     fontFamily: 'Inter-SemiBold',
   },
 
   menuCard: {
-    backgroundColor: Colors.surface,
+
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -390,7 +392,7 @@ const styles = StyleSheet.create({
 
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+
   },
 
   menuItemLeft: {
@@ -408,7 +410,7 @@ const styles = StyleSheet.create({
 
   menuLabel: {
     fontSize: 16,
-    color: Colors.text,
+
     fontFamily: 'Inter-Regular',
   },
 
@@ -416,17 +418,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surface,
+
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.error,
+
     gap: 8,
   },
 
   logoutText: {
     fontSize: 16,
-    color: Colors.error,
+
     fontFamily: 'Inter-SemiBold',
   },
 
@@ -437,7 +439,7 @@ const styles = StyleSheet.create({
 
   versionText: {
     fontSize: 12,
-    color: Colors.textLight,
+
     fontFamily: 'Inter-Regular',
   },
 });

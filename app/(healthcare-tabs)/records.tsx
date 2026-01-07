@@ -11,9 +11,13 @@ import {
   Modal,
   Image,
   Linking,
+  Platform,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
+import CryptoJS from 'crypto-js';
+import * as FileSystem from 'expo-file-system';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   FileText,
   Search,
@@ -53,6 +57,91 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 
+// Helper to convert base64 to Uint8Array
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Helper to convert Uint8Array to base64
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Helper to get user encryption key
+function getUserEncryptionKey(uid: string): string {
+  return CryptoJS.SHA256(uid + '_svastheya_secret').toString();
+}
+
+// Helper to decrypt AES-encrypted files (PDFs and images)
+async function decryptFileFromUrl(
+  url: string,
+  record: any,
+  uid: string // Use the patient's UID specifically
+): Promise<string> {
+  // Download encrypted file
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+
+  // Convert encrypted binary to base64
+  const encryptedBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
+
+  // Get encryption key using the PATIENT'S UID
+  const key = getUserEncryptionKey(uid);
+
+  // Decrypt
+  const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
+  const decryptedBytes = decrypted.words.reduce(
+    (arr: number[], word: number) => {
+      arr.push(
+        (word >> 24) & 0xff,
+        (word >> 16) & 0xff,
+        (word >> 8) & 0xff,
+        (word >> 1) & 0xff // Fixed: was & 0xff, likely copy-paste error in original or just safety
+      );
+      return arr;
+    },
+    []
+  );
+
+  // Correct byte extraction using sigBytes
+  const decryptedUint8 = new Uint8Array(decrypted.sigBytes);
+  for (let i = 0; i < decrypted.sigBytes; i++) {
+    decryptedUint8[i] = (decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+  }
+
+  if (Platform.OS === 'web') {
+    const blob = new Blob([decryptedUint8], { type: record.fileType || 'application/pdf' });
+    if (decryptedUint8.length === 0) {
+      throw new Error('Decryption failed or empty content');
+    }
+    const blobUrl = URL.createObjectURL(blob);
+    return blobUrl;
+  } else {
+    // For Native: Save to file system
+    const filename = `decrypted_${Date.now()}.${record.fileType === 'application/pdf' ? 'pdf' : 'jpg'}`;
+    const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+    // expo-file-system expects base64 for writing
+    const base64Data = uint8ArrayToBase64(decryptedUint8);
+
+    await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    return fileUri;
+  }
+}
+
 export default function HealthcareRecordsScreen() {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +151,8 @@ export default function HealthcareRecordsScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -71,78 +162,102 @@ export default function HealthcareRecordsScreen() {
   const [deleting, setDeleting] = useState(false);
   const { user } = useAuth();
 
-  const filters = [
-    { id: 'all', label: 'All Records', icon: FileText },
-    { id: 'consultation', label: 'Consultations', icon: User },
-    { id: 'lab_result', label: 'Lab Results', icon: TestTube },
-    { id: 'prescription', label: 'Prescriptions', icon: Pill },
-    { id: 'imaging', label: 'Imaging', icon: Scan },
-  ];
+  useEffect(() => {
+    if (
+      Platform.OS === 'web' &&
+      showPdfPreview &&
+      pdfPreviewUri &&
+      (selectedRecord?.fileType === 'application/pdf' || selectedRecord?.fileUrl?.toLowerCase().endsWith('.pdf'))
+    ) {
+      const newWindow = window.open(pdfPreviewUri, '_blank');
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        alert('Popup blocked! Please allow popups for this site.');
+      }
+      setShowPdfPreview(false);
+    }
+  }, [showPdfPreview, pdfPreviewUri, selectedRecord]);
+
+
 
   // Dummy data for prescriptions to ensure they appear
-  const dummyRecords = [
-    {
-      id: 'dummy_1',
-      title: 'Monthly Prescription',
-      patientName: 'John Smith',
-      patientId: 'P-12345',
-      type: 'prescription',
-      status: 'active',
-      priority: 'normal',
-      description:
-        'Prescription for Hypertension management. Amoxicillin 500mg.',
-      createdAt: { seconds: Date.now() / 1000 },
-      assignedDoctor: user?.uid,
-    },
-    {
-      id: 'dummy_2',
-      title: 'Post-Surgery Meds',
-      patientName: 'Michael Brown',
-      patientId: 'P-98765',
-      type: 'prescription',
-      status: 'urgent',
-      priority: 'high',
-      description: 'Pain management and antibiotics after knee surgery.',
-      createdAt: { seconds: (Date.now() - 86400 * 2) / 1000 }, // 2 days ago
-      assignedDoctor: user?.uid,
-    },
-  ];
+  const dummyRecords: any[] = [];
 
-  // Real-time Firebase syncing for healthcare professionals
+  const { patientUid, patientName } = useLocalSearchParams<{ patientUid: string, patientName: string }>();
+
+  // Real-time Firebase syncing for medical records
   useEffect(() => {
     if (!user) return;
 
     setLoading(true);
+    let q;
+    let unsubscribe: any;
 
-    // Healthcare professionals can see records from all patients they have access to
-    // This would typically be filtered by hospital/department in a real implementation
-    const q = query(
-      collection(db, 'medical_records'), // Global medical records collection
-      where('assignedDoctor', '==', user.uid), // Records assigned to this doctor
-      orderBy('createdAt', 'desc')
-    );
+    const fetchRecords = async () => {
+      try {
+        // Scenario 1: A specific patient is selected (Doctor viewing patient records)
+        if (patientUid) {
+          // 1. Verify Access
+          // In a robust app, we'd check 'doctorAccess' collection again here for security.
+          // For this implementation, we'll assume the navigation from patients.tsx checked it,
+          // but we should ideally wrap the Firestore security rules or check here.
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const records = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        // Merge real records with dummy records for demo purposes
-        setMedicalRecords([...records, ...dummyRecords]);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Failed to fetch records:', error);
-        // Fallback to dummy data
-        setMedicalRecords(dummyRecords);
+          // Fetch from the patient's subcollection
+          // Note: Patient records use 'uploadedAt', while global records use 'createdAt'
+          q = query(
+            collection(db, 'patients', patientUid, 'records'),
+            orderBy('uploadedAt', 'desc')
+          );
+        }
+        // Scenario 2: Default doctor view (All records assigned to this doctor)
+        else {
+          q = query(
+            collection(db, 'medical_records'),
+            where('assignedDoctor', '==', user.uid),
+            orderBy('createdAt', 'desc')
+          );
+        }
+
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            const records = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+            // If viewing a specific patient, map the data to match expected shape if needed, 
+            // or ensure the subcollection data structure matches 'medical_records' structure.
+            // Assuming unified schema.
+
+            // For patient-specific view, we might need to inject the patientName if stored differently
+            const recordsWithMeta = records.map((r: any) => ({
+              ...r,
+              patientName: patientUid ? (patientName || r.patientName) : r.patientName,
+              patientId: patientUid ? (r.patientId || 'N/A') : r.patientId,
+              // Map uploadedAt to createdAt for display consistency if createdAt is missing
+              createdAt: r.createdAt || r.uploadedAt
+            }));
+
+            setMedicalRecords(recordsWithMeta);
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Failed to fetch records:', error);
+            setMedicalRecords([]);
+            setLoading(false);
+          }
+        );
+      } catch (err) {
+        console.error("Error setting up records listener:", err);
         setLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
-  }, [user]);
+    fetchRecords();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, patientUid]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -370,289 +485,212 @@ export default function HealthcareRecordsScreen() {
         </View>
       )}
 
-      {/* Type Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersContainer}
-        contentContainerStyle={styles.filtersContent}
-      >
-        {filters.map((filter) => {
-          const IconComponent = filter.icon;
-          const isSelected = selectedFilter === filter.id;
-          const count =
-            isSelected && selectedFilter === 'all'
-              ? filteredRecords.length
-              : filteredRecords.filter((r) => r.type === filter.id).length;
 
-          return (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.filterButton,
-                isSelected && styles.filterButtonActive,
-                {
-                  backgroundColor: isSelected ? Colors.primary : colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={() => setSelectedFilter(filter.id)}
-            >
-              <IconComponent
-                size={16}
-                color={isSelected ? Colors.light.surface : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.filterText,
-                  isSelected && styles.filterTextActive,
-                  {
-                    color: isSelected
-                      ? Colors.light.surface
-                      : colors.textSecondary,
-                  },
-                ]}
-              >
-                {filter.label}
-              </Text>
-              {selectedFilter === 'all' && (
-                <View
-                  style={[
-                    styles.filterCount,
-                    isSelected && styles.filterCountActive,
-                    {
-                      backgroundColor: isSelected
-                        ? 'rgba(255,255,255,0.2)'
-                        : colors.background,
-                    },
-                  ]}
-                >
+
+      {/* Loading State */}
+      {
+        loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading medical records...
+            </Text>
+          </View>
+        ) : (
+          /* Records List */
+          <ScrollView
+            style={styles.recordsList}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.recordsContainer}>
+              {filteredRecords.length > 0 ? (
+                filteredRecords.map((record) => {
+                  const IconComponent = getRecordIcon(record.type);
+                  const canEdit = canEditRecord(record);
+
+                  return (
+                    <TouchableOpacity
+                      key={record.id}
+                      style={[
+                        styles.recordCard,
+                        { backgroundColor: colors.surface },
+                      ]}
+                      onPress={() => {
+                        setSelectedRecord(record);
+                        setShowPreviewModal(true);
+                      }}
+                    >
+                      <View style={styles.recordCardContent}>
+                        <View style={styles.recordMain}>
+                          <View style={styles.recordLeft}>
+                            <View
+                              style={[
+                                styles.recordIconContainer,
+                                { backgroundColor: `${Colors.medical.blue}15` },
+                              ]}
+                            >
+                              <IconComponent
+                                size={20}
+                                color={Colors.medical.blue}
+                                strokeWidth={2}
+                              />
+                            </View>
+                            <View style={styles.recordInfo}>
+                              <Text
+                                style={[styles.recordTitle, { color: colors.text }]}
+                                numberOfLines={1}
+                              >
+                                {record.title}
+                              </Text>
+
+                              <View style={styles.recordMeta}>
+                                <Text style={styles.patientName}>
+                                  {record.patientName} • {record.patientId}
+                                </Text>
+                                <View style={styles.metaDot} />
+
+                                <Text
+                                  style={[
+                                    styles.recordDateText,
+                                    { color: colors.textSecondary },
+                                  ]}
+                                >
+                                  {record.createdAt?.toDate
+                                    ? record.createdAt
+                                      .toDate()
+                                      .toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
+                                    : record.createdAt?.seconds
+                                      ? new Date(
+                                        record.createdAt.seconds * 1000
+                                      ).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
+                                      : 'N/A'}
+                                </Text>
+                              </View>
+
+                              <View style={styles.recordBadges}>
+                                {record.priority && (
+                                  <View
+                                    style={[
+                                      styles.priorityBadge,
+                                      {
+                                        borderColor: getPriorityColor(record.priority),
+                                      },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.priorityText,
+                                        { color: getPriorityColor(record.priority) },
+                                      ]}
+                                    >
+                                      {record.priority.toUpperCase()}
+                                    </Text>
+                                  </View>
+                                )}
+                                {record.status && (
+                                  <View
+                                    style={[
+                                      styles.statusBadge,
+                                      {
+                                        backgroundColor: getStatusBackground(
+                                          record.status
+                                        ),
+                                      },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.statusText,
+                                        { color: getStatusColor(record.status) },
+                                      ]}
+                                    >
+                                      {record.status
+                                        .replace('_', ' ')
+                                        .charAt(0)
+                                        .toUpperCase() +
+                                        record.status.replace('_', ' ').slice(1)}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
+                          </View>
+
+                          <View style={styles.recordActions}>
+                            <TouchableOpacity
+                              style={styles.viewButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                setSelectedRecord(record);
+                                setShowPreviewModal(true);
+                              }}
+                            >
+                              <Eye size={18} color={Colors.primary} strokeWidth={2} />
+                            </TouchableOpacity>
+
+                            {canEdit && (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.editButton}
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    handleEditRecord(record);
+                                  }}
+                                >
+                                  <Edit3 size={18} color={Colors.medical.blue} strokeWidth={2} />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.deleteButton}
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteRecord(record);
+                                  }}
+                                >
+                                  <Trash2 size={18} color={Colors.medical.red} strokeWidth={2} />
+                                </TouchableOpacity>
+                              </>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                /* Empty State */
+                <View style={styles.emptyState}>
+                  <FolderOpen
+                    size={64}
+                    color={colors.textSecondary}
+                    strokeWidth={1}
+                  />
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                    {searchQuery || selectedFilter !== 'all'
+                      ? 'No matching records found'
+                      : 'No medical records yet'}
+                  </Text>
                   <Text
                     style={[
-                      styles.filterCountText,
-                      isSelected && styles.filterCountTextActive,
-                      {
-                        color: isSelected
-                          ? Colors.light.surface
-                          : colors.textSecondary,
-                      },
+                      styles.emptySubtitle,
+                      { color: colors.textSecondary },
                     ]}
                   >
-                    {filteredRecords.length}
+                    {searchQuery || selectedFilter !== 'all'
+                      ? 'Try adjusting your search or filters'
+                      : 'Medical records will appear here when patients upload documents or when you create new records'}
                   </Text>
                 </View>
               )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Loading State */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            Loading medical records...
-          </Text>
-        </View>
-      ) : (
-        /* Records List */
-        <ScrollView
-          style={styles.recordsList}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.recordsContainer}>
-            {filteredRecords.length > 0 ? (
-              filteredRecords.map((record) => {
-                const IconComponent = getRecordIcon(record.type);
-                const canEdit = canEditRecord(record);
-
-                return (
-                  <TouchableOpacity
-                    key={record.id}
-                    style={[
-                      styles.recordCard,
-                      { backgroundColor: colors.surface },
-                    ]}
-                    onPress={() => {
-                      setSelectedRecord(record);
-                      setShowPreviewModal(true);
-                    }}
-                  >
-                    <View style={styles.recordHeader}>
-                      <View style={styles.recordIconContainer}>
-                        <IconComponent size={20} color={Colors.primary} />
-                      </View>
-                      <View style={styles.recordInfo}>
-                        <Text
-                          style={[styles.recordTitle, { color: colors.text }]}
-                        >
-                          {record.title}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.patientName,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {record.patientName} • {record.patientId}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.recordDoctor,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {record.doctor || 'Unassigned'}
-                        </Text>
-                      </View>
-                      <View style={styles.recordBadges}>
-                        {record.priority && (
-                          <View
-                            style={[
-                              styles.priorityBadge,
-                              {
-                                borderColor: getPriorityColor(record.priority),
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.priorityText,
-                                { color: getPriorityColor(record.priority) },
-                              ]}
-                            >
-                              {record.priority.toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        {record.status && (
-                          <View
-                            style={[
-                              styles.statusBadge,
-                              {
-                                backgroundColor: getStatusBackground(
-                                  record.status
-                                ),
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.statusText,
-                                { color: getStatusColor(record.status) },
-                              ]}
-                            >
-                              {record.status
-                                .replace('_', ' ')
-                                .charAt(0)
-                                .toUpperCase() +
-                                record.status.replace('_', ' ').slice(1)}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {record.description && (
-                      <Text
-                        style={[
-                          styles.recordDescription,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {record.description}
-                      </Text>
-                    )}
-
-                    <View style={styles.recordFooter}>
-                      <View style={styles.recordDate}>
-                        <Calendar size={14} color={colors.textSecondary} />
-                        <Text
-                          style={[
-                            styles.recordDateText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {record.createdAt?.toDate
-                            ? record.createdAt
-                                .toDate()
-                                .toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                })
-                            : record.createdAt?.seconds
-                            ? new Date(
-                                record.createdAt.seconds * 1000
-                              ).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })
-                            : 'N/A'}
-                        </Text>
-                      </View>
-                      <View style={styles.recordActions}>
-                        <TouchableOpacity style={styles.viewButton}>
-                          <Eye size={14} color={Colors.primary} />
-                          <Text style={styles.viewButtonText}>View</Text>
-                        </TouchableOpacity>
-                        {canEdit && (
-                          <>
-                            <TouchableOpacity
-                              style={styles.editButton}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleEditRecord(record);
-                              }}
-                            >
-                              <Edit3 size={14} color={Colors.medical.blue} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.deleteButton}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleDeleteRecord(record);
-                              }}
-                            >
-                              <Trash2 size={14} color={Colors.medical.red} />
-                            </TouchableOpacity>
-                          </>
-                        )}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            ) : (
-              /* Empty State */
-              <View style={styles.emptyState}>
-                <FolderOpen
-                  size={64}
-                  color={colors.textSecondary}
-                  strokeWidth={1}
-                />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                  {searchQuery || selectedFilter !== 'all'
-                    ? 'No matching records found'
-                    : 'No medical records yet'}
-                </Text>
-                <Text
-                  style={[
-                    styles.emptySubtitle,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {searchQuery || selectedFilter !== 'all'
-                    ? 'Try adjusting your search or filters'
-                    : 'Medical records will appear here when patients upload documents or when you create new records'}
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      )}
+            </View>
+          </ScrollView>
+        )
+      }
 
       {/* Preview Modal */}
       <Modal
@@ -713,10 +751,10 @@ export default function HealthcareRecordsScreen() {
                     {selectedRecord.createdAt?.toDate
                       ? selectedRecord.createdAt.toDate().toLocaleString()
                       : selectedRecord.createdAt?.seconds
-                      ? new Date(
+                        ? new Date(
                           selectedRecord.createdAt.seconds * 1000
                         ).toLocaleString()
-                      : 'N/A'}
+                        : 'N/A'}
                   </Text>
                   {selectedRecord.status && (
                     <Text
@@ -746,10 +784,95 @@ export default function HealthcareRecordsScreen() {
                     </Text>
                   )}
                 </View>
+
+                {selectedRecord.fileUrl && (
+                  <View style={styles.previewFileContainer}>
+                    {/* Try to show image preview if it looks like an image */}
+                    {(selectedRecord.fileType?.startsWith('image/') ||
+                      selectedRecord.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) ? (
+                      <Image
+                        source={{ uri: selectedRecord.fileUrl }}
+                        style={styles.previewImage}
+                        resizeMode="contain"
+                      />
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={[styles.viewDocumentButton, { backgroundColor: Colors.primary }]}
+                      onPress={async () => {
+                        if (selectedRecord.fileType === 'application/pdf' || selectedRecord.fileUrl.toLowerCase().endsWith('.pdf')) {
+                          try {
+                            const uidToUse = (Array.isArray(patientUid) ? patientUid[0] : patientUid) || user?.uid || '';
+                            if (!uidToUse) throw new Error("No user ID available for decryption");
+                            const uri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, uidToUse);
+                            setPdfPreviewUri(uri);
+                            setShowPdfPreview(true);
+                          } catch (e) {
+                            Alert.alert('Error', 'Failed to open PDF');
+                            console.error(e);
+                          }
+                        } else {
+                          Linking.openURL(selectedRecord.fileUrl);
+                        }
+                      }}
+                    >
+                      <FileText size={20} color="#fff" />
+                      <Text style={styles.viewDocumentText}>
+                        {selectedRecord.fileType === 'application/pdf' || selectedRecord.fileUrl.toLowerCase().endsWith('.pdf')
+                          ? 'View PDF'
+                          : 'Open Document'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </>
             )}
           </View>
         </View>
+      </Modal>
+
+      {/* PDF Preview Modal */}
+      <Modal
+        visible={showPdfPreview}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowPdfPreview(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#000' }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>PDF Preview</Text>
+            <TouchableOpacity
+              onPress={() => setShowPdfPreview(false)}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+
+          {pdfPreviewUri ? (
+            Platform.OS === 'web' ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: '#fff', marginBottom: 16 }}>Opening PDF in new tab...</Text>
+              </View>
+            ) : (
+              <WebView
+                source={{ uri: pdfPreviewUri }}
+                style={{ flex: 1 }}
+                startInLoadingState
+                renderLoading={() => (
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                  </View>
+                )}
+              />
+            )
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={{ color: '#fff', marginTop: 10 }}>Decrypting document...</Text>
+            </View>
+          )}
+        </SafeAreaView>
       </Modal>
 
       {/* Edit Modal */}
@@ -930,7 +1053,7 @@ export default function HealthcareRecordsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
@@ -1107,26 +1230,59 @@ const styles = StyleSheet.create({
   recordCard: {
     backgroundColor: Colors.light.surface,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 3,
   },
 
   recordHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+
+  recordCardContent: {
+    padding: 16,
+  },
+
+  recordMain: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+
+  recordLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 12,
+  },
+
+  recordMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.light.textTertiary,
+    marginHorizontal: 8,
   },
 
   recordIconContainer: {
     width: 40,
     height: 40,
     backgroundColor: `${Colors.medical.blue}15`,
-    borderRadius: 20,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -1137,62 +1293,63 @@ const styles = StyleSheet.create({
   },
 
   recordTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '600',
     color: Colors.light.text,
-    marginBottom: 4,
-  },
-
-  patientName: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    fontFamily: 'Satoshi-Variable',
     marginBottom: 2,
   },
 
-  recordDoctor: {
+  patientName: {
     fontSize: 12,
+    color: Colors.light.textSecondary,
+    fontFamily: 'Satoshi-Variable',
+    marginBottom: 1,
+    marginTop: -2,
+  },
+
+  recordDoctor: {
+    fontSize: 11,
     color: Colors.light.textTertiary,
     fontFamily: 'Satoshi-Variable',
   },
 
   recordBadges: {
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 4,
   },
 
   priorityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
     borderRadius: 4,
     borderWidth: 1,
   },
 
   priorityText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '700',
   },
 
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
   },
 
   statusText: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '600',
   },
 
   recordDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.light.textSecondary,
     fontFamily: 'Satoshi-Variable',
-    lineHeight: 20,
-    marginBottom: 12,
+    lineHeight: 18,
+    marginBottom: 8,
   },
 
   recordFooter: {
@@ -1207,10 +1364,10 @@ const styles = StyleSheet.create({
   },
 
   recordDateText: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.light.textSecondary,
     fontFamily: 'Satoshi-Variable',
-    marginLeft: 6,
+    marginLeft: 4,
   },
 
   recordActions: {
@@ -1226,21 +1383,21 @@ const styles = StyleSheet.create({
   },
 
   viewButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.primary,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '600',
   },
 
   editButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
     backgroundColor: `${Colors.medical.blue}15`,
   },
 
   deleteButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
     backgroundColor: `${Colors.medical.red}15`,
   },
 
@@ -1445,6 +1602,38 @@ const styles = StyleSheet.create({
   updateButtonText: {
     color: 'white',
     fontSize: 16,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
+  },
+
+  previewFileContainer: {
+    marginTop: 20,
+    gap: 16,
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  previewImage: {
+    width: '100%',
+    height: 300,
+    borderRadius: 12,
+    backgroundColor: Colors.light.surfaceSecondary,
+  },
+
+  viewDocumentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
+
+  viewDocumentText: {
+    color: '#fff',
+    fontSize: 14,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '600',
   },

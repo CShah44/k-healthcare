@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import {
   Activity,
   Users,
+  User,
   FileText,
   Calendar,
   TriangleAlert as AlertTriangle,
@@ -59,93 +60,40 @@ export default function HealthcareDashboardScreen() {
     {
       icon: Users,
       label: 'Total Patients',
-      value: '247',
-      change: '+12',
+      value: '0',
+      change: '0',
       color: Colors.medical.blue,
       bgColor: 'rgba(59, 130, 246, 0.1)',
     },
     {
       icon: Calendar,
       label: "Today's Appointments",
-      value: '18',
-      change: '+3',
+      value: '0',
+      change: '0',
       color: Colors.medical.green,
       bgColor: 'rgba(34, 197, 94, 0.1)',
     },
     {
       icon: FileText,
       label: 'Pending Reports',
-      value: '8',
-      change: '-2',
+      value: '0',
+      change: '0',
       color: Colors.medical.orange,
       bgColor: 'rgba(249, 115, 22, 0.1)',
     },
     {
       icon: AlertTriangle,
       label: 'Critical Cases',
-      value: '3',
+      value: '0',
       change: '0',
       color: Colors.medical.red,
       bgColor: 'rgba(239, 68, 68, 0.1)',
     },
   ];
 
-  const recentPatients = [
-    {
-      id: '1',
-      name: 'John Smith',
-      age: 45,
-      condition: 'Hypertension',
-      lastVisit: '2024-10-20',
-      status: 'stable',
-      avatar:
-        'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      age: 32,
-      condition: 'Diabetes Type 2',
-      lastVisit: '2024-10-19',
-      status: 'monitoring',
-      avatar:
-        'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-    {
-      id: '3',
-      name: 'Michael Brown',
-      age: 58,
-      condition: 'Post-Surgery',
-      lastVisit: '2024-10-18',
-      status: 'critical',
-      avatar:
-        'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-  ];
+  const recentPatients: any[] = [];
 
-  const todayAppointments = [
-    {
-      id: '1',
-      patient: 'Emma Wilson',
-      time: '09:00 AM',
-      type: 'Consultation',
-      status: 'confirmed',
-    },
-    {
-      id: '2',
-      patient: 'David Chen',
-      time: '10:30 AM',
-      type: 'Follow-up',
-      status: 'in-progress',
-    },
-    {
-      id: '3',
-      patient: 'Lisa Rodriguez',
-      time: '02:15 PM',
-      type: 'Lab Review',
-      status: 'pending',
-    },
-  ];
+  const todayAppointments: any[] = [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -216,12 +164,9 @@ export default function HealthcareDashboardScreen() {
               <Bell size={20} color={colors.text} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.profileButton}>
-              <Image
-                source={{
-                  uri: 'https://images.pexels.com/photos/5327921/pexels-photo-5327921.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-                }}
-                style={styles.profileImage}
-              />
+              <View style={{ width: '100%', height: '100%', backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                <User size={24} color={colors.textSecondary} />
+              </View>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -363,53 +308,61 @@ export default function HealthcareDashboardScreen() {
             </TouchableOpacity>
           </View>
 
-          {todayAppointments.map((appointment, index) => (
-            <TouchableOpacity
-              key={appointment.id}
-              style={[
-                styles.appointmentCard,
-                { backgroundColor: colors.surface },
-              ]}
-            >
-              <View style={styles.appointmentTime}>
-                <Clock size={16} color={colors.textSecondary} />
-                <Text
-                  style={[styles.timeText, { color: colors.textSecondary }]}
-                >
-                  {appointment.time}
-                </Text>
-              </View>
-              <View style={styles.appointmentInfo}>
-                <Text style={[styles.patientName, { color: colors.text }]}>
-                  {appointment.patient}
-                </Text>
-                <Text
-                  style={[
-                    styles.appointmentType,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {appointment.type}
-                </Text>
-              </View>
-              <View
+          {todayAppointments.length > 0 ? (
+            todayAppointments.map((appointment, index) => (
+              <TouchableOpacity
+                key={appointment.id}
                 style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusBackground(appointment.status) },
+                  styles.appointmentCard,
+                  { backgroundColor: colors.surface },
                 ]}
               >
-                <Text
+                <View style={styles.appointmentTime}>
+                  <Clock size={16} color={colors.textSecondary} />
+                  <Text
+                    style={[styles.timeText, { color: colors.textSecondary }]}
+                  >
+                    {appointment.time}
+                  </Text>
+                </View>
+                <View style={styles.appointmentInfo}>
+                  <Text style={[styles.patientName, { color: colors.text }]}>
+                    {appointment.patient}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.appointmentType,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {appointment.type}
+                  </Text>
+                </View>
+                <View
                   style={[
-                    styles.statusText,
-                    { color: getStatusColor(appointment.status) },
+                    styles.statusBadge,
+                    { backgroundColor: getStatusBackground(appointment.status) },
                   ]}
                 >
-                  {appointment.status.charAt(0).toUpperCase() +
-                    appointment.status.slice(1)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(appointment.status) },
+                    ]}
+                  >
+                    {appointment.status.charAt(0).toUpperCase() +
+                      appointment.status.slice(1)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={[styles.appointmentCard, { backgroundColor: colors.surface, justifyContent: 'center', padding: 24 }]}>
+              <Text style={{ color: colors.textSecondary, textAlign: 'center', fontFamily: 'Satoshi-Variable' }}>
+                No appointments for today
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* Recent Patients */}
@@ -428,52 +381,60 @@ export default function HealthcareDashboardScreen() {
             </TouchableOpacity>
           </View>
 
-          {recentPatients.map((patient) => (
-            <TouchableOpacity
-              key={patient.id}
-              style={[styles.patientCard, { backgroundColor: colors.surface }]}
-            >
-              <Image
-                source={{ uri: patient.avatar }}
-                style={styles.patientAvatar}
-              />
-              <View style={styles.patientInfo}>
-                <Text style={[styles.patientName, { color: colors.text }]}>
-                  {patient.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.patientDetails,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Age {patient.age} • {patient.condition}
-                </Text>
-                <Text
-                  style={[styles.lastVisit, { color: colors.textSecondary }]}
-                >
-                  Last visit: {new Date(patient.lastVisit).toLocaleDateString()}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusBackground(patient.status) },
-                ]}
+          {recentPatients.length > 0 ? (
+            recentPatients.map((patient) => (
+              <TouchableOpacity
+                key={patient.id}
+                style={[styles.patientCard, { backgroundColor: colors.surface }]}
               >
-                <Text
+                <Image
+                  source={{ uri: patient.avatar }}
+                  style={styles.patientAvatar}
+                />
+                <View style={styles.patientInfo}>
+                  <Text style={[styles.patientName, { color: colors.text }]}>
+                    {patient.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.patientDetails,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Age {patient.age} • {patient.condition}
+                  </Text>
+                  <Text
+                    style={[styles.lastVisit, { color: colors.textSecondary }]}
+                  >
+                    Last visit: {new Date(patient.lastVisit).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View
                   style={[
-                    styles.statusText,
-                    { color: getStatusColor(patient.status) },
+                    styles.statusBadge,
+                    { backgroundColor: getStatusBackground(patient.status) },
                   ]}
                 >
-                  {patient.status.charAt(0).toUpperCase() +
-                    patient.status.slice(1)}
-                </Text>
-              </View>
-              <ChevronRight size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(patient.status) },
+                    ]}
+                  >
+                    {patient.status.charAt(0).toUpperCase() +
+                      patient.status.slice(1)}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={[styles.patientCard, { backgroundColor: colors.surface, justifyContent: 'center', padding: 24 }]}>
+              <Text style={{ color: colors.textSecondary, textAlign: 'center', fontFamily: 'Satoshi-Variable' }}>
+                No recent patients
+              </Text>
+            </View>
+          )}
         </Animated.View>
       </ScrollView>
     </SafeAreaView>

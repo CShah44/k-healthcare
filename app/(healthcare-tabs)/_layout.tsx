@@ -1,11 +1,26 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Activity, Users, FileText, User } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { layoutStyles } from '../../styles/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function HealthcareTabsLayout() {
   const { colors } = useTheme();
+  const { userData, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (userData?.role !== 'doctor' && userData?.role !== 'lab_assistant') {
+    return <Redirect href="/auth" />;
+  }
 
   return (
     <Tabs

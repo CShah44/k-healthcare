@@ -27,6 +27,7 @@ import {
   Users,
   Pill,
   FileImage,
+  Shield,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -161,16 +162,34 @@ export default function PatientHomeScreen() {
               <Text style={[styles.name, { color: colors.text }]}>
                 {userData?.firstName || 'User'}
               </Text>
+              {userData?.patientId && (
+                <View style={styles.idContainer}>
+                  <Text style={[styles.idText, { color: colors.textSecondary }]}>
+                    ID: {userData.patientId}
+                  </Text>
+                </View>
+              )}
             </View>
-            <TouchableOpacity
-              style={[
-                styles.notificationButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-              onPress={() => router.push('/notifications')}
-            >
-              <Bell size={20} color={colors.text} strokeWidth={2} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={[
+                  styles.notificationButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => router.push('/(patient-tabs)/access-requests')}
+              >
+                <Shield size={20} color={colors.text} strokeWidth={2} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.notificationButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => router.push('/notifications')}
+              >
+                <Bell size={20} color={colors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
           </Animated.View>
 
           {/* Quick Stats */}
@@ -371,6 +390,6 @@ export default function PatientHomeScreen() {
           </Animated.View>
         </ScrollView>
       </LinearGradient>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }

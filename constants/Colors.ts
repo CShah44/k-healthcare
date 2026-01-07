@@ -13,19 +13,19 @@ export const Colors = {
     surfaceSecondary: '#F1F5F9',
     card: '#FFFFFF',
     cardSecondary: '#F8FAFC',
-    
+
     text: '#1E293B',
     textSecondary: '#64748B',
     textTertiary: '#94A3B8',
     textInverse: '#FFFFFF',
-    
+
     border: '#E2E8F0',
     borderSecondary: '#F1F5F9',
     divider: '#F1F5F9',
-    
+
     shadow: 'rgba(0, 0, 0, 0.1)',
     shadowStrong: 'rgba(0, 0, 0, 0.15)',
-    
+
     success: '#10B981',
     warning: '#F59E0B',
     error: '#EF4444',
@@ -39,19 +39,19 @@ export const Colors = {
     surfaceSecondary: '#334155',
     card: '#1E293B',
     cardSecondary: '#334155',
-    
+
     text: '#F8FAFC',
     textSecondary: '#CBD5E1',
     textTertiary: '#94A3B8',
     textInverse: '#0F172A',
-    
+
     border: '#334155',
     borderSecondary: '#475569',
     divider: '#334155',
-    
+
     shadow: 'rgba(0, 0, 0, 0.3)',
     shadowStrong: 'rgba(0, 0, 0, 0.5)',
-    
+
     success: '#10B981',
     warning: '#F59E0B',
     error: '#EF4444',
@@ -68,6 +68,7 @@ export const Colors = {
     purple: '#8B5CF6',
     teal: '#009485',
     cyan: '#06B6D4',
+    lightBlue: '#E0F2FE',
   },
 
   // Gradient Colors

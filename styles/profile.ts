@@ -34,11 +34,14 @@ export const createProfileStyles = (colors: any) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
-    profileImage: {
+    profileAvatar: {
       width: 100,
       height: 100,
       borderRadius: 50,
       marginBottom: 16,
+      backgroundColor: Colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     profileName: {
       fontSize: 22,

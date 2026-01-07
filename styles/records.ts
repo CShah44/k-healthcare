@@ -733,7 +733,7 @@ export const createRecordsStyles = (colors: any) =>
       color: colors.text,
       backgroundColor: colors.surface,
     },
-
+  
     customTagModalActions: {
       flexDirection: 'row',
       gap: 12,

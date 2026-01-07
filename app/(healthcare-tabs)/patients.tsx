@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  Modal,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Users,
+  User,
   Search,
   Filter,
   Plus,
@@ -19,14 +23,21 @@ import {
   Calendar,
   ChevronRight,
   TriangleAlert as AlertTriangle,
+  FileText,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { collection, query, onSnapshot, getDocs, where, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { useRouter } from 'expo-router';
+import { db } from '@/constants/firebase';
 
 export default function PatientsScreen() {
+  const router = useRouter();
   const { colors } = useTheme();
+  const { user, userData } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState('all'); // This state is no longer used for filtering patients, but kept if needed for UI filter chips
 
   const filters = [
     { id: 'all', label: 'All Patients' },
@@ -35,113 +46,152 @@ export default function PatientsScreen() {
     { id: 'stable', label: 'Stable' },
   ];
 
-  const patients = [
-    {
-      id: '1',
-      name: 'John Smith',
-      age: 45,
-      gender: 'Male',
-      condition: 'Hypertension',
-      lastVisit: '2024-10-20',
-      nextAppointment: '2024-10-25',
-      status: 'stable',
-      phone: '+1 (555) 123-4567',
-      email: 'john.smith@email.com',
-      avatar:
-        'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      age: 32,
-      gender: 'Female',
-      condition: 'Diabetes Type 2',
-      lastVisit: '2024-10-19',
-      nextAppointment: '2024-10-28',
-      status: 'monitoring',
-      phone: '+1 (555) 234-5678',
-      email: 'sarah.johnson@email.com',
-      avatar:
-        'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-    {
-      id: '3',
-      name: 'Michael Brown',
-      age: 58,
-      gender: 'Male',
-      condition: 'Post-Surgery Recovery',
-      lastVisit: '2024-10-18',
-      nextAppointment: '2024-10-22',
-      status: 'critical',
-      phone: '+1 (555) 345-6789',
-      email: 'michael.brown@email.com',
-      avatar:
-        'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-    {
-      id: '4',
-      name: 'Emma Wilson',
-      age: 28,
-      gender: 'Female',
-      condition: 'Routine Check-up',
-      lastVisit: '2024-10-15',
-      nextAppointment: '2024-11-15',
-      status: 'stable',
-      phone: '+1 (555) 456-7890',
-      email: 'emma.wilson@email.com',
-      avatar:
-        'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-    {
-      id: '5',
-      name: 'David Chen',
-      age: 41,
-      gender: 'Male',
-      condition: 'Cardiac Monitoring',
-      lastVisit: '2024-10-17',
-      nextAppointment: '2024-10-24',
-      status: 'monitoring',
-      phone: '+1 (555) 567-8901',
-      email: 'david.chen@email.com',
-      avatar:
-        'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop',
-    },
-  ];
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'stable':
-        return Colors.medical.green;
-      case 'monitoring':
-        return Colors.medical.orange;
-      case 'critical':
-        return Colors.medical.red;
-      default:
-        return colors.textSecondary;
-    }
-  };
+  useEffect(() => {
+    if (!user) return;
 
-  const getStatusBackground = (status: string) => {
-    switch (status) {
-      case 'stable':
-        return 'rgba(34, 197, 94, 0.1)';
-      case 'monitoring':
-        return 'rgba(249, 115, 22, 0.1)';
-      case 'critical':
-        return 'rgba(239, 68, 68, 0.1)';
-      default:
-        return colors.surfaceSecondary;
-    }
-  };
+    const q = query(
+      collection(db, 'doctorAccess'),
+      where('doctorId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      async (querySnapshot) => {
+        const patientsPromises = querySnapshot.docs.map(async (accessDoc) => {
+          const accessData = accessDoc.data();
+          const patientUid = accessData.patientUid;
+          const expiresAt = accessData.expiresAt instanceof Timestamp ? accessData.expiresAt.toDate() : new Date(accessData.expiresAt);
+
+          const isExpired = expiresAt < new Date();
+          const accessStatus = isExpired ? 'Expired' : 'Active';
+
+          try {
+            const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', patientUid)));
+            if (!userDoc.empty) {
+              const userData = userDoc.docs[0].data();
+              const dob = userData.dateOfBirth ? new Date(userData.dateOfBirth) : null;
+              const age = dob ? new Date().getFullYear() - dob.getFullYear() : 'N/A';
+
+              return {
+                id: userDoc.docs[0].id, // Use actual user ID as the key
+                name: `${userData.firstName} ${userData.lastName}`,
+                age: age,
+                gender: userData.gender || 'Unknown',
+                patientId: userData.patientId || userData.customUserId || 'N/A',
+                accessStatus: accessStatus,
+                avatar: userData.avatarUrl || null,
+                accessExpiresAt: expiresAt
+              };
+            }
+          } catch (err) {
+            console.error("Error fetching user details for", patientUid, err);
+          }
+
+          return null;
+        });
+
+        const activePatients = (await Promise.all(patientsPromises)).filter(p => p !== null);
+        setPatients(activePatients);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching patients:', error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   const filteredPatients = patients.filter((patient) => {
     const matchesSearch =
       patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.condition.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      selectedFilter === 'all' || patient.status === selectedFilter;
-    return matchesSearch && matchesFilter;
+      patient.patientId?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
+
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestPatientId, setRequestPatientId] = useState('');
+  const [requestLoading, setRequestLoading] = useState(false);
+
+  const handleSendRequest = async () => {
+    if (!requestPatientId.trim()) {
+      Alert.alert('Error', 'Please enter a Patient ID');
+      return;
+    }
+
+    setRequestLoading(true);
+    try {
+      // 1. Find the patient by patientId OR customUserId
+      const usersRef = collection(db, 'users');
+      // Create two queries to check both potential ID fields
+      const q1 = query(usersRef, where('patientId', '==', requestPatientId.trim()));
+      const q2 = query(usersRef, where('customUserId', '==', requestPatientId.trim()));
+
+      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+      let patientDoc = null;
+      if (!snap1.empty) patientDoc = snap1.docs[0];
+      else if (!snap2.empty) patientDoc = snap2.docs[0];
+
+      if (!patientDoc) {
+        Alert.alert('Error', 'Patient not found. Please check the ID and try again.');
+        setRequestLoading(false);
+        return;
+      }
+
+      const patientData = patientDoc.data();
+      const patientUid = patientDoc.id;
+
+      // 2. Check for duplicate pending requests
+      const requestsRef = collection(db, 'accessRequests');
+      const duplicateQuery = query(
+        requestsRef,
+        where('patientUid', '==', patientUid),
+        where('doctorId', '==', user?.uid),
+        where('status', '==', 'pending')
+      );
+
+      const duplicateSnap = await getDocs(duplicateQuery);
+      if (!duplicateSnap.empty) {
+        Alert.alert('Request Pending', 'You already have a pending request for this patient.');
+        setRequestLoading(false);
+        return;
+      }
+
+      // 3. Create new request
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+
+      await addDoc(requestsRef, {
+        patientId: patientData.patientId || patientData.customUserId,
+        patientUid: patientUid,
+        patientName: `${patientData.firstName} ${patientData.lastName}`,
+        patientDob: patientData.dateOfBirth || null,
+        patientAvatar: patientData.avatarUrl || null,
+        doctorId: user?.uid,
+        doctorName: `${userData?.firstName} ${userData?.lastName}`,
+        doctorSpecialty: userData?.specialty || 'General',
+        doctorAvatar: userData?.avatarUrl || null,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        expiresAt: Timestamp.fromDate(expiresAt),
+      });
+
+      Alert.alert('Success', 'Access request sent. Waiting for patient approval.');
+      setShowRequestModal(false);
+      setRequestPatientId('');
+
+    } catch (error) {
+      console.error('Error sending request:', error);
+      Alert.alert('Error', 'Failed to send request. Please try again.');
+    } finally {
+      setRequestLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -151,7 +201,10 @@ export default function PatientsScreen() {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           Patients
         </Text>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setShowRequestModal(true)}
+        >
           <Plus size={20} color="white" />
         </TouchableOpacity>
       </View>
@@ -183,43 +236,55 @@ export default function PatientsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Status Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersContainer}
-        contentContainerStyle={styles.filtersContent}
-      >
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter.id}
-            style={[
-              styles.filterChip,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-              selectedFilter === filter.id && {
-                backgroundColor: Colors.primary,
-                borderColor: Colors.primary,
-              },
-            ]}
-            onPress={() => setSelectedFilter(filter.id)}
-          >
-            <Text
+      {/* Filters */}
+      <View style={styles.filtersContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContent}
+        >
+          {filters.map((filter) => (
+            <TouchableOpacity
+              key={filter.id}
               style={[
-                styles.filterText,
-                { color: colors.textSecondary },
-                selectedFilter === filter.id && {
-                  color: 'white',
+                styles.filterChip,
+                {
+                  backgroundColor:
+                    selectedFilter === filter.id
+                      ? Colors.primary
+                      : colors.surface,
+                  borderColor:
+                    selectedFilter === filter.id
+                      ? Colors.primary
+                      : colors.border,
                 },
               ]}
+              onPress={() => setSelectedFilter(filter.id)}
             >
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <Text
+                style={[
+                  styles.filterText,
+                  {
+                    color:
+                      selectedFilter === filter.id
+                        ? 'white'
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 12, gap: 8 }}>
+          <AlertTriangle size={14} color={colors.textSecondary} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Satoshi-Variable' }}>
+            Patients appear here only after they approve access
+          </Text>
+        </View>
+      </View>
 
       {/* Patients List */}
       <ScrollView
@@ -227,111 +292,202 @@ export default function PatientsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.patientsContainer}>
-          {filteredPatients.map((patient) => (
-            <TouchableOpacity
-              key={patient.id}
-              style={[styles.patientCard, { backgroundColor: colors.surface }]}
-            >
-              <View style={styles.patientHeader}>
-                <Image
-                  source={{ uri: patient.avatar }}
-                  style={styles.patientAvatar}
-                />
-                <View style={styles.patientInfo}>
-                  <View style={styles.patientNameRow}>
+          {filteredPatients.length > 0 ? (
+            filteredPatients.map((patient) => (
+              <View
+                key={patient.id}
+                style={[styles.patientCard, { backgroundColor: colors.surface }]}
+              >
+                <View style={[styles.patientHeader, { marginBottom: 12 }]}>
+                  {patient.avatar ? (
+                    <Image
+                      source={{ uri: patient.avatar }}
+                      style={styles.patientAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.patientAvatar, { backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }]}>
+                      <User size={24} color={colors.textSecondary} />
+                    </View>
+                  )}
+                  <View style={styles.patientInfo}>
                     <Text style={[styles.patientName, { color: colors.text }]}>
                       {patient.name}
                     </Text>
-                    {patient.status === 'critical' && (
-                      <AlertTriangle size={16} color={Colors.medical.red} />
-                    )}
+                    <Text
+                      style={[
+                        styles.patientDetails,
+                        { color: colors.textSecondary, marginTop: 4 },
+                      ]}
+                    >
+                      ID: {patient.patientId || 'N/A'}
+                    </Text>
                   </View>
-                  <Text
+                  <View
                     style={[
-                      styles.patientDetails,
-                      { color: colors.textSecondary },
+                      styles.statusBadge,
+                      {
+                        backgroundColor: patient.accessStatus === 'Active'
+                          ? 'rgba(34, 197, 94, 0.1)'
+                          : 'rgba(239, 68, 68, 0.1)'
+                      },
                     ]}
                   >
-                    {patient.age} years • {patient.gender}
-                  </Text>
-                  <Text
-                    style={[styles.patientCondition, { color: colors.text }]}
-                  >
-                    {patient.condition}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.statusText,
+                        {
+                          color: patient.accessStatus === 'Active'
+                            ? Colors.medical.green
+                            : Colors.medical.red
+                        },
+                      ]}
+                    >
+                      {patient.accessStatus}
+                    </Text>
+                  </View>
                 </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusBackground(patient.status) },
-                  ]}
-                >
-                  <Text
+
+                {/* Actions */}
+                <View style={[styles.patientActions, { borderTopColor: colors.border }]}>
+                  <TouchableOpacity
                     style={[
-                      styles.statusText,
-                      { color: getStatusColor(patient.status) },
+                      styles.viewButton,
+                      {
+                        backgroundColor: colors.surfaceSecondary,
+                        opacity: patient.accessStatus === 'Active' ? 1 : 0.5,
+                      },
                     ]}
+                    disabled={patient.accessStatus !== 'Active'}
+                    onPress={() => router.push({
+                      pathname: '/(healthcare-tabs)/records',
+                      params: { patientUid: patient.id, patientName: patient.name }
+                    })}
                   >
-                    {patient.status.charAt(0).toUpperCase() +
-                      patient.status.slice(1)}
-                  </Text>
+                    <FileText size={16} color={colors.textSecondary} />
+                    <Text style={[styles.viewButtonText, { color: colors.textSecondary }]}>
+                      View Records
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-
-              <View style={styles.patientDetailsRow}>
-                <View style={styles.detailRow}>
-                  <Calendar size={14} color={colors.textSecondary} />
-                  <Text
-                    style={[styles.detailText, { color: colors.textSecondary }]}
-                  >
-                    Last visit:{' '}
-                    {new Date(patient.lastVisit).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Calendar size={14} color={Colors.primary} />
-                  <Text
-                    style={[styles.detailText, { color: colors.textSecondary }]}
-                  >
-                    Next:{' '}
-                    {new Date(patient.nextAppointment).toLocaleDateString()}
-                  </Text>
-                </View>
+            ))
+          ) : (
+            <View style={{ alignItems: 'center', justifyContent: 'center', padding: 40, marginTop: 40 }}>
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: colors.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16
+              }}>
+                <Users size={40} color={colors.textSecondary} />
               </View>
-
-              <View
-                style={[
-                  styles.patientActions,
-                  { borderTopColor: colors.border },
-                ]}
+              <Text style={{
+                fontSize: 18,
+                fontFamily: 'Satoshi-Variable',
+                fontWeight: '600',
+                color: colors.text,
+                marginBottom: 8
+              }}>
+                No patients yet
+              </Text>
+              <Text style={{
+                textAlign: 'center',
+                color: colors.textSecondary,
+                fontFamily: 'Satoshi-Variable',
+                lineHeight: 22,
+                maxWidth: 260,
+                marginBottom: 24
+              }}>
+                Request access using Patient ID to view patient records
+              </Text>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: Colors.primary,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                onPress={() => setShowRequestModal(true)}
               >
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: `${Colors.primary}15` },
-                  ]}
-                >
-                  <Phone size={16} color={Colors.primary} />
-                  <Text style={styles.actionText}>Call</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: `${Colors.primary}15` },
-                  ]}
-                >
-                  <Mail size={16} color={Colors.primary} />
-                  <Text style={styles.actionText}>Email</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.viewButton}>
-                  <Text style={styles.viewButtonText}>View Records</Text>
-                  <ChevronRight size={16} color="white" />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <Plus size={18} color="white" />
+                <Text style={{ color: 'white', fontFamily: 'Satoshi-Variable', fontWeight: '600', fontSize: 16 }}>
+                  Request Patient Access
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
+
+      {/* Request Access Modal */}
+      <Modal
+        visible={showRequestModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRequestModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 20, fontFamily: 'Satoshi-Variable', fontWeight: '700', color: colors.text }}>
+                Request Patient Access
+              </Text>
+              <TouchableOpacity onPress={() => setShowRequestModal(false)}>
+                <Plus size={24} color={colors.textSecondary} style={{ transform: [{ rotate: '45deg' }] }} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: colors.textSecondary, fontFamily: 'Satoshi-Variable', marginBottom: 24 }}>
+              Enter the Patient ID to request access to their medical records. The patient will need to approve this request.
+            </Text>
+
+            <Text style={{ fontSize: 14, fontFamily: 'Satoshi-Variable', fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+              Patient ID
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: colors.background,
+                borderRadius: 12,
+                padding: 16,
+                color: colors.text,
+                fontFamily: 'Satoshi-Variable',
+                borderWidth: 1,
+                borderColor: colors.border,
+                marginBottom: 24,
+              }}
+              placeholder="e.g. SVP-123456"
+              placeholderTextColor={colors.textSecondary}
+              value={requestPatientId}
+              onChangeText={setRequestPatientId}
+              autoCapitalize="characters"
+            />
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: Colors.primary,
+                paddingVertical: 16,
+                borderRadius: 12,
+                alignItems: 'center',
+              }}
+              onPress={handleSendRequest}
+            >
+              {requestLoading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={{ color: 'white', fontFamily: 'Satoshi-Variable', fontWeight: '600', fontSize: 16 }}>
+                  Send Request
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

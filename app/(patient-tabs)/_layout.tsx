@@ -1,19 +1,33 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Heart, FileText, Users, User } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import React from 'react';
-import { Platform, StatusBar } from 'react-native';
+import { Platform, StatusBar, View, ActivityIndicator } from 'react-native';
 import { layoutStyles } from '../../styles/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PatientTabsLayout() {
   const { colors } = useTheme();
+  const { userData, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (userData?.role !== 'patient') {
+    return <Redirect href="/auth" />;
+  }
 
   return (
     <>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="transparent" 
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
         translucent={true}
       />
       <Tabs
@@ -67,7 +81,7 @@ export default function PatientTabsLayout() {
             ),
           }}
         />
-        
+
         {/* Hidden routes - these won't appear in the tab bar */}
         <Tabs.Screen
           name="appointments"
@@ -89,6 +103,12 @@ export default function PatientTabsLayout() {
         />
         <Tabs.Screen
           name="edit-profile"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="access-requests"
           options={{
             href: null,
           }}

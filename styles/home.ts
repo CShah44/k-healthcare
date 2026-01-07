@@ -66,6 +66,21 @@ export const createHomeStyles = (colors: any) =>
       letterSpacing: -0.5,
     },
 
+    idContainer: {
+      marginTop: 8,
+      backgroundColor: 'rgba(0, 148, 133, 0.1)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      alignSelf: 'flex-start',
+    },
+
+    idText: {
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+    },
+
     userName: {
       fontSize: 28,
       color: colors.text,

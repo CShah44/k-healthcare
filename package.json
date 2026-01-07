@@ -21,6 +21,7 @@
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "expo": "^54.0.0",
     "expo-blur": "~14.1.5",

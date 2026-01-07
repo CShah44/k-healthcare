@@ -40,7 +40,22 @@ console.log('Firebase Config:', {
 // Prevent re-initialization
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-const auth = getAuth(app);
+import { Platform } from 'react-native';
+// @ts-ignore
+import { initializeAuth, getReactNativePersistence, browserSessionPersistence, Auth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Initialize Auth with platform-specific persistence
+let auth: Auth;
+if (Platform.OS === 'web') {
+  auth = initializeAuth(app, {
+    persistence: browserSessionPersistence
+  });
+} else {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+}
 const db = getFirestore(app);
 const storage = getStorage(app);
 

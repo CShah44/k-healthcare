@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
   Edit,
+  User,
   Users,
   ChevronRight,
   LogOut,
@@ -128,6 +129,12 @@ export default function ProfileScreen() {
       onPress: () => router.push('/(patient-tabs)/family-tree'),
     },
     {
+      id: 'access-requests',
+      title: 'Access Requests',
+      icon: Shield,
+      onPress: () => router.push('/(patient-tabs)/access-requests'),
+    },
+    {
       id: 'settings',
       title: 'Settings',
       icon: Settings,
@@ -172,18 +179,15 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.profileSection}>
-          <Image
-            source={{
-              uri: 'https://cdn.getyourguide.com/image/format=auto,fit=crop,gravity=auto,quality=60,width=450,height=450,dpr=2/tour_img/5c4a943ab6f1618a0279e6bab5fafa4298c1e0d13760fdf7d1ddfaec2fb5e24e.jpg',
-            }}
-            style={styles.profileImage}
-          />
+          <View style={styles.profileAvatar}>
+            <User size={40} color={Colors.primary} strokeWidth={1.5} />
+          </View>
           <Text style={styles.profileName}>
             {userData?.firstName} {userData?.lastName}
           </Text>
           <Text style={styles.profileEmail}>{user?.email}</Text>
           <Text style={styles.profileEmail}>
-            {formatUserId(userData?.customUserId, userData?.role || '')}
+            {userData?.patientId || formatUserId(userData?.customUserId, userData?.role || '')}
           </Text>
           {isSwitchedAccount && (
             <View style={styles.switchedAccountIndicator}>
@@ -225,7 +229,7 @@ export default function ProfileScreen() {
                         style={[
                           styles.linkedAccountAvatar,
                           account.type === 'parent' &&
-                            styles.parentAccountAvatar,
+                          styles.parentAccountAvatar,
                         ]}
                       >
                         <Text style={styles.linkedAccountInitials}>
@@ -241,7 +245,7 @@ export default function ProfileScreen() {
                           style={[
                             styles.linkedAccountType,
                             account.type === 'parent' &&
-                              styles.parentAccountType,
+                            styles.parentAccountType,
                           ]}
                         >
                           {account.type === 'parent'

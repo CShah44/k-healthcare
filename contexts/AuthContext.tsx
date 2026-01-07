@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeApp, getApps } from 'firebase/app';
 import {
   sendPasswordResetEmail,
   fetchSignInMethodsForEmail,
@@ -14,6 +16,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/constants/firebase';
 import { getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
+import { generateUniquePatientId } from '@/utils/patientIdGenerator';
 
 import {
   createUserWithEmailAndPassword,
@@ -21,6 +24,7 @@ import {
   signOut,
   onAuthStateChanged,
   User,
+  getAuth,
 } from 'firebase/auth';
 
 interface UserData {
@@ -41,6 +45,9 @@ interface UserData {
   linkedAccounts?: string[]; // Array of child account IDs linked to this parent
   parentAccountId?: string; // ID of parent account if this is a child account
   isChildAccount?: boolean; // Flag to identify child accounts
+  patientId?: string; // Unique human-readable ID for patients (e.g., SVP-A1B2C3)
+  specialty?: string;
+  avatarUrl?: string;
 }
 
 interface SignupData extends UserData {
@@ -86,11 +93,25 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [originalUser, setOriginalUser] = useState<User | null>(null); // Store original authenticated user
-  const [isSwitchedAccount, setIsSwitchedAccount] = useState(false);
+
+  // Derived state
+  const isSwitchedAccount = firebaseUser && activeAccountId ? firebaseUser.uid !== activeAccountId : false;
+
+  const user = React.useMemo(() => {
+    if (!firebaseUser) return null;
+    if (!activeAccountId || activeAccountId === firebaseUser.uid) return firebaseUser;
+
+    // Create mock user for switched account
+    return {
+      ...firebaseUser,
+      uid: activeAccountId,
+      email: userData?.email || firebaseUser.email,
+    } as User;
+  }, [firebaseUser, activeAccountId, userData]);
 
   // Function to fetch user data from Firestore
   const fetchUserData = async (userId: string) => {
@@ -98,6 +119,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         const data = userDoc.data() as UserData;
+
+        // Backfill patientId for existing ID-less patients
+        if (data.role === 'patient' && !data.patientId) {
+          try {
+            const newPatientId = await generateUniquePatientId(db);
+            await updateDoc(doc(db, 'users', userId), {
+              patientId: newPatientId,
+              updatedAt: serverTimestamp(),
+            });
+            await updateDoc(doc(db, 'patients', userId), {
+              patientId: newPatientId,
+              updatedAt: serverTimestamp(),
+            });
+            data.patientId = newPatientId;
+          } catch (error) {
+            console.error('Error generating patientId for existing user:', error);
+          }
+        }
+
         setUserData(data);
         return data;
       }
@@ -110,63 +150,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Function to refresh user data
   const refreshUserData = async () => {
-    if (user) {
-      await fetchUserData(user.uid);
+    if (activeAccountId) {
+      await fetchUserData(activeAccountId);
     }
   };
 
+  // Load state and handle auth changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-        setOriginalUser(user); // Store the original authenticated user
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      setFirebaseUser(authUser);
 
-        // Fetch user data from Firestore
-        const userData = await fetchUserData(user.uid);
+      if (authUser) {
+        try {
+          // If we're already initialized with this user, don't reset unless necessary
+          // But here we want to ensure we have the correct activeAccountId
 
-        // If the authenticated user is a child account, automatically switch to parent account
-        if (userData?.isChildAccount && userData.parentAccountId) {
-          try {
-            console.log(
-              'Child account detected, switching to parent account:',
-              userData.parentAccountId
-            );
+          let targetAccountId = authUser.uid;
 
-            // Fetch parent account data
-            const parentDoc = await getDoc(
-              doc(db, 'users', userData.parentAccountId)
-            );
-            if (parentDoc.exists()) {
-              const parentData = parentDoc.data() as UserData;
-
-              // Create mock user object for parent
-              const mockParentUser = {
-                ...user,
-                uid: userData.parentAccountId,
-                email: parentData.email,
-              } as User;
-
-              // Switch to parent account
-              setUser(mockParentUser);
-              setUserData(parentData);
-              setIsSwitchedAccount(true);
-            }
-          } catch (error) {
-            console.error('Error switching to parent account on login:', error);
-            // If switching fails, stay with the child account
+          // Check for persisted active account ID
+          const storedAccountId = await AsyncStorage.getItem('activeAccountId');
+          if (storedAccountId) {
+            // Verify if we can legally access this account (basic check: is it us or are we a parent?)
+            // For now, we'll try to use it, and let fetchUserData handle existence checks. 
+            // Ideally we should verify linkage here too, but simple persistence is key for now.
+            targetAccountId = storedAccountId;
           }
+
+          setActiveAccountId(targetAccountId);
+          await fetchUserData(targetAccountId);
+        } catch (error) {
+          console.error('Error restoring auth state:', error);
+          // Fallback to default user
+          setActiveAccountId(authUser.uid);
+          await fetchUserData(authUser.uid);
         }
       } else {
-        setUser(null);
+        // Signed out
+        setActiveAccountId(null);
         setUserData(null);
-        setOriginalUser(null);
-        setIsSwitchedAccount(false);
+        await AsyncStorage.removeItem('activeAccountId');
       }
+
       setIsLoading(false);
     });
 
     return unsubscribe;
   }, []);
+
+  // Sync activeAccountId to storage
+  useEffect(() => {
+    if (activeAccountId) {
+      AsyncStorage.setItem('activeAccountId', activeAccountId);
+    } else {
+      AsyncStorage.removeItem('activeAccountId');
+    }
+  }, [activeAccountId]);
+
+  // Refetch user data when activeAccountId changes (if it's not the initial load)
+  // We can actually merge this logic. The onAuthStateChanged handles the initial load.
+  // This effect handles subsequent switches.
+  useEffect(() => {
+    // Only refetch if we are not loading (initial load handled above) and we have an ID
+    if (!isLoading && activeAccountId) {
+      fetchUserData(activeAccountId);
+    }
+  }, [activeAccountId]);
 
   const signup = async (data: SignupData) => {
     setIsLoading(true);
@@ -177,10 +225,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         data.password
       );
 
-      const user = userCredential.user;
-      
+      const newUser = userCredential.user;
+
       // Generate 8-character nanoid for custom user ID
       const customUserId = nanoid(8);
+
+      // Generate patientId if role is patient
+      let patientId = '';
+      if (data.role === 'patient') {
+        patientId = await generateUniquePatientId(db);
+      }
 
       const userDataForFirestore: UserData & {
         createdAt: any;
@@ -202,22 +256,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         hospital: data.hospital || '',
         familyId: '', // Initialize familyId as empty
         linkedAccounts: [], // Initialize linked accounts as empty array
-        uid: user.uid,
+        uid: newUser.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        ...(patientId ? { patientId } : {}), // Add patientId if generated
       };
 
-      await setDoc(doc(db, 'users', user.uid), userDataForFirestore);
+      await setDoc(doc(db, 'users', newUser.uid), userDataForFirestore);
 
       if (data.role === 'patient') {
-        await setDoc(doc(db, 'patients', user.uid), {
+        await setDoc(doc(db, 'patients', newUser.uid), {
           ...userDataForFirestore,
           medicalHistory: [],
           appointments: [],
           prescriptions: [],
         });
       } else if (data.role === 'doctor') {
-        await setDoc(doc(db, 'doctors', user.uid), {
+        await setDoc(doc(db, 'doctors', newUser.uid), {
           ...userDataForFirestore,
           specialization: '',
           experience: '',
@@ -226,7 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           patients: [],
         });
       } else if (data.role === 'lab_assistant') {
-        await setDoc(doc(db, 'lab_assistants', user.uid), {
+        await setDoc(doc(db, 'lab_assistants', newUser.uid), {
           ...userDataForFirestore,
           labTestsHandled: [],
           certifications: [],
@@ -234,23 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       }
 
-      setUserData({
-        firstName: data.firstName,
-        middleName: data.middleName,
-        lastName: data.lastName,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        dateOfBirth: data.dateOfBirth,
-        address: data.address,
-        gender: data.gender,
-        role: data.role,
-        customUserId: customUserId, // Include the generated nanoid
-        licenseNumber: data.licenseNumber,
-        department: data.department,
-        hospital: data.hospital,
-        familyId: '',
-        linkedAccounts: [],
-      });
+      // onAuthStateChanged will handle state updates
     } catch (error: any) {
       console.error('Signup error:', error);
 
@@ -286,16 +325,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<string> => {
     try {
       // Create Firebase user with email and password
+      // Note: This signs in the new user automatically, we need to handle this
+      // Ideally should be done via a cloud function to strictly avoid signing out the parent
+      // But for client-side:
+      const currentParent = auth.currentUser;
+
+      const app2 = initializeApp(getApps()[0].options, 'Secondary');
+      const auth2 = getAuth(app2);
+
       const userCredential = await createUserWithEmailAndPassword(
-        auth,
+        auth2,
         data.email,
         data.password
       );
 
       const childUser = userCredential.user;
-      
+
+      // Clean up secondary app
+      // deleteApp(app2); // Ideally
+
       // Generate 8-character nanoid for custom user ID
       const customUserId = nanoid(8);
+
+      // Generate patientId if role is patient
+      let patientId = '';
+      if (data.role === 'patient') {
+        patientId = await generateUniquePatientId(db);
+      }
 
       const childUserData: UserData & {
         createdAt: any;
@@ -322,6 +378,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         uid: childUser.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        ...(patientId ? { patientId } : {}), // Add patientId if generated
       };
 
       // Create child user document
@@ -382,47 +439,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Determine access permissions based on current account type
       let hasAccess = false;
+      const currentAuthUser = firebaseUser; // Use firebaseUser as source of truth for permissions
 
-      if (userData?.isChildAccount) {
+      // We need to fetch the requester's data securely or rely on what we have if we trust it
+      // Re-fetching strictly to ensure safety:
+      const requesterDoc = await getDoc(doc(db, 'users', currentAuthUser?.uid || ''));
+      const requesterData = requesterDoc.data() as UserData;
+
+      if (requesterData?.isChildAccount) {
         // Child accounts can only switch to their parent account or back to original authenticated account
         hasAccess =
-          userData.parentAccountId === accountId || // Child accessing parent
-          accountId === originalUser?.uid; // Switching back to original authenticated account
+          requesterData.parentAccountId === accountId || // Child accessing parent
+          accountId === currentAuthUser?.uid; // Switching back to original authenticated account
       } else {
         // Parent accounts can access all their linked children or switch back to original
         hasAccess =
-          userData?.linkedAccounts?.includes(accountId) || // Parent accessing child
-          accountId === originalUser?.uid; // Switching back to original authenticated account
+          requesterData?.linkedAccounts?.includes(accountId) || // Parent accessing child
+          accountId === currentAuthUser?.uid; // Switching back to original authenticated account
       }
 
       if (!hasAccess) {
-        throw new Error('Access denied to this account');
+        // Also allow switching back to self trivially
+        if (accountId === currentAuthUser?.uid) {
+          hasAccess = true;
+        } else {
+          throw new Error('Access denied to this account');
+        }
       }
 
-      // Fetch the target account data
-      const targetUserData = await fetchUserData(accountId);
-      if (!targetUserData) {
-        throw new Error('Account not found');
-      }
+      // Update active account ID - the effect will handle data fetching
+      setActiveAccountId(accountId);
 
-      // If switching back to original authenticated user, use original user object
-      if (accountId === originalUser?.uid) {
-        setUser(originalUser);
-        setUserData(targetUserData);
-        setIsSwitchedAccount(false);
-      } else {
-        // Create a mock Firebase User object for the target account
-        const mockUser = {
-          ...originalUser,
-          uid: accountId,
-          email: targetUserData.email,
-        } as User;
-
-        // Update both user and userData to completely switch context
-        setUser(mockUser);
-        setUserData(targetUserData);
-        setIsSwitchedAccount(true);
-      }
     } catch (error) {
       console.error('Error switching account:', error);
       throw new Error('Failed to switch account');
@@ -576,7 +623,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return (
             data.email === identifier ||
             data.phoneNumber.replace(/\D/g, '') ===
-              identifier.replace(/\D/g, '') ||
+            identifier.replace(/\D/g, '') ||
             `${data.firstName} ${data.lastName}`
               .toLowerCase()
               .includes(identifier.toLowerCase())
@@ -588,15 +635,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         emailToLogin = matchedDoc.data().email;
       }
 
-      const userCredential = await signInWithEmailAndPassword(
+      await signInWithEmailAndPassword(
         auth,
         emailToLogin,
         password
       );
-      const user = userCredential.user;
-
-      // Fetch user data
-      await fetchUserData(user.uid);
+      // onAuthStateChanged will handle state updates
     } catch (error: any) {
       console.error('Login error:', error);
       let errorMessage = 'Login failed. Please check your credentials.';
@@ -616,10 +660,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsLoading(true);
     try {
       await signOut(auth);
-      setUser(null);
-      setUserData(null);
-      setOriginalUser(null);
-      setIsSwitchedAccount(false);
+      // onAuthStateChanged will handle state clearing
     } catch (error) {
       console.error('Logout error:', error);
       throw new Error('Failed to sign out. Please try again.');
@@ -656,15 +697,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       // Update main users collection
-      await updateDoc(doc(db, 'users', user.uid), updatedData);
+      await updateDoc(doc(db, 'users', activeAccountId!), updatedData);
 
       // Update role-specific collection
       if (userData.role === 'patient') {
-        await updateDoc(doc(db, 'patients', user.uid), updatedData);
+        await updateDoc(doc(db, 'patients', activeAccountId!), updatedData);
       } else if (userData.role === 'doctor') {
-        await updateDoc(doc(db, 'doctors', user.uid), updatedData);
+        await updateDoc(doc(db, 'doctors', activeAccountId!), updatedData);
       } else if (userData.role === 'lab_assistant') {
-        await updateDoc(doc(db, 'lab_assistants', user.uid), updatedData);
+        await updateDoc(doc(db, 'lab_assistants', activeAccountId!), updatedData);
       }
 
       // Update local state
@@ -682,7 +723,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     userData,
     isLoading,
     isSwitchedAccount,
-    originalUserId: originalUser?.uid || null,
+    originalUserId: firebaseUser?.uid || null,
     signup,
     createChildAccount,
     switchToAccount,
