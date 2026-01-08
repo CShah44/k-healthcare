@@ -65,35 +65,9 @@ export default function HealthcareDashboardScreen() {
       color: Colors.medical.blue,
       bgColor: 'rgba(59, 130, 246, 0.1)',
     },
-    {
-      icon: Calendar,
-      label: "Today's Appointments",
-      value: '0',
-      change: '0',
-      color: Colors.medical.green,
-      bgColor: 'rgba(34, 197, 94, 0.1)',
-    },
-    {
-      icon: FileText,
-      label: 'Pending Reports',
-      value: '0',
-      change: '0',
-      color: Colors.medical.orange,
-      bgColor: 'rgba(249, 115, 22, 0.1)',
-    },
-    {
-      icon: AlertTriangle,
-      label: 'Critical Cases',
-      value: '0',
-      change: '0',
-      color: Colors.medical.red,
-      bgColor: 'rgba(239, 68, 68, 0.1)',
-    },
   ];
 
   const recentPatients: any[] = [];
-
-  const todayAppointments: any[] = [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -164,7 +138,15 @@ export default function HealthcareDashboardScreen() {
               <Bell size={20} color={colors.text} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.profileButton}>
-              <View style={{ width: '100%', height: '100%', backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+              <View
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: colors.surfaceSecondary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 <User size={24} color={colors.textSecondary} />
               </View>
             </TouchableOpacity>
@@ -259,110 +241,7 @@ export default function HealthcareDashboardScreen() {
                 Add Patient
               </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.surface }]}
-            >
-              <View
-                style={[
-                  styles.actionIcon,
-                  { backgroundColor: 'rgba(249, 115, 22, 0.1)' },
-                ]}
-              >
-                <Calendar size={24} color={Colors.medical.orange} />
-              </View>
-              <Text style={[styles.actionText, { color: colors.text }]}>
-                Schedule
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.surface }]}
-            >
-              <View
-                style={[
-                  styles.actionIcon,
-                  { backgroundColor: 'rgba(139, 92, 246, 0.1)' },
-                ]}
-              >
-                <Activity size={24} color={Colors.medical.purple} />
-              </View>
-              <Text style={[styles.actionText, { color: colors.text }]}>
-                Lab Results
-              </Text>
-            </TouchableOpacity>
           </View>
-        </Animated.View>
-
-        {/* Today's Appointments */}
-        <Animated.View
-          entering={FadeInDown.delay(500).springify()}
-          style={styles.section}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Today's Appointments
-            </Text>
-            <TouchableOpacity>
-              <Text style={styles.sectionLink}>View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {todayAppointments.length > 0 ? (
-            todayAppointments.map((appointment, index) => (
-              <TouchableOpacity
-                key={appointment.id}
-                style={[
-                  styles.appointmentCard,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
-                <View style={styles.appointmentTime}>
-                  <Clock size={16} color={colors.textSecondary} />
-                  <Text
-                    style={[styles.timeText, { color: colors.textSecondary }]}
-                  >
-                    {appointment.time}
-                  </Text>
-                </View>
-                <View style={styles.appointmentInfo}>
-                  <Text style={[styles.patientName, { color: colors.text }]}>
-                    {appointment.patient}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.appointmentType,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {appointment.type}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusBackground(appointment.status) },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      { color: getStatusColor(appointment.status) },
-                    ]}
-                  >
-                    {appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={[styles.appointmentCard, { backgroundColor: colors.surface, justifyContent: 'center', padding: 24 }]}>
-              <Text style={{ color: colors.textSecondary, textAlign: 'center', fontFamily: 'Satoshi-Variable' }}>
-                No appointments for today
-              </Text>
-            </View>
-          )}
         </Animated.View>
 
         {/* Recent Patients */}
@@ -385,7 +264,10 @@ export default function HealthcareDashboardScreen() {
             recentPatients.map((patient) => (
               <TouchableOpacity
                 key={patient.id}
-                style={[styles.patientCard, { backgroundColor: colors.surface }]}
+                style={[
+                  styles.patientCard,
+                  { backgroundColor: colors.surface },
+                ]}
               >
                 <Image
                   source={{ uri: patient.avatar }}
@@ -406,7 +288,8 @@ export default function HealthcareDashboardScreen() {
                   <Text
                     style={[styles.lastVisit, { color: colors.textSecondary }]}
                   >
-                    Last visit: {new Date(patient.lastVisit).toLocaleDateString()}
+                    Last visit:{' '}
+                    {new Date(patient.lastVisit).toLocaleDateString()}
                   </Text>
                 </View>
                 <View
@@ -429,8 +312,23 @@ export default function HealthcareDashboardScreen() {
               </TouchableOpacity>
             ))
           ) : (
-            <View style={[styles.patientCard, { backgroundColor: colors.surface, justifyContent: 'center', padding: 24 }]}>
-              <Text style={{ color: colors.textSecondary, textAlign: 'center', fontFamily: 'Satoshi-Variable' }}>
+            <View
+              style={[
+                styles.patientCard,
+                {
+                  backgroundColor: colors.surface,
+                  justifyContent: 'center',
+                  padding: 24,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                  fontFamily: 'Satoshi-Variable',
+                }}
+              >
                 No recent patients
               </Text>
             </View>
@@ -599,42 +497,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  appointmentCard: {
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  appointmentTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    minWidth: 80,
-  },
   timeText: {
     fontSize: 14,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '600',
     marginLeft: 6,
   },
-  appointmentInfo: {
-    flex: 1,
-  },
   patientName: {
     fontSize: 16,
     fontFamily: 'Satoshi-Variable',
     fontWeight: '600',
     marginBottom: 2,
-  },
-  appointmentType: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
   },
   patientCard: {
     borderRadius: 16,

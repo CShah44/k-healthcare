@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   ArrowLeft,
   User,
@@ -29,7 +31,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function EditHealthcareProfileScreen() {
   const { userData: user, updateUserProfile, isLoading } = useAuth();
-  
+  const { colors } = useTheme();
+
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     middleName: user?.middleName || '',
@@ -47,7 +50,7 @@ export default function EditHealthcareProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -82,7 +85,7 @@ export default function EditHealthcareProfileScreen() {
       setIsSaving(true);
       await updateUserProfile(formData);
       Alert.alert('Success', 'Profile updated successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -151,7 +154,10 @@ export default function EditHealthcareProfileScreen() {
       icon: Award,
       label: 'License Number',
       field: 'licenseNumber',
-      placeholder: user?.role === 'doctor' ? 'Enter your medical license number' : 'Enter your license number',
+      placeholder:
+        user?.role === 'doctor'
+          ? 'Enter your medical license number'
+          : 'Enter your license number',
       required: user?.role === 'doctor',
     },
     {
@@ -173,26 +179,43 @@ export default function EditHealthcareProfileScreen() {
   const genderOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
   return (
-    <SafeAreaView style={[GlobalStyles.container, styles.container]}>
+    <SafeAreaView
+      style={[
+        GlobalStyles.container,
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+    >
+      <LinearGradient
+        colors={[
+          colors.background,
+          'rgba(59, 130, 246, 0.05)',
+          'rgba(59, 130, 246, 0.02)',
+          colors.background,
+        ]}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.surface }]}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={24} color={Colors.text} />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Edit Profile
+          </Text>
           <TouchableOpacity
             style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color={Colors.surface} />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
-              <Save size={20} color={Colors.surface} />
+              <Save size={20} color={colors.surface} />
             )}
           </TouchableOpacity>
         </View>
@@ -200,13 +223,15 @@ export default function EditHealthcareProfileScreen() {
         {/* Form */}
         <View style={styles.form}>
           {/* Personal Information Section */}
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Personal Information
+          </Text>
+
           {personalFields.map((field, index) => (
             <View key={index} style={styles.inputGroup}>
               <View style={styles.inputLabel}>
                 <field.icon size={18} color={Colors.primary} />
-                <Text style={styles.labelText}>
+                <Text style={[styles.labelText, { color: colors.text }]}>
                   {field.label}
                   {field.required && <Text style={styles.required}> *</Text>}
                 </Text>
@@ -215,11 +240,12 @@ export default function EditHealthcareProfileScreen() {
                 style={[
                   styles.input,
                   field.multiline && styles.multilineInput,
+                  { backgroundColor: colors.surface, color: colors.text },
                 ]}
                 value={formData[field.field as keyof typeof formData]}
                 onChangeText={(value) => handleInputChange(field.field, value)}
                 placeholder={field.placeholder}
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.text + '80'}
                 keyboardType={field.keyboardType || 'default'}
                 multiline={field.multiline}
                 numberOfLines={field.multiline ? 3 : 1}
@@ -231,7 +257,9 @@ export default function EditHealthcareProfileScreen() {
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
               <User size={18} color={Colors.primary} />
-              <Text style={styles.labelText}>Gender</Text>
+              <Text style={[styles.labelText, { color: colors.text }]}>
+                Gender
+              </Text>
             </View>
             <View style={styles.genderContainer}>
               {genderOptions.map((option) => (
@@ -239,6 +267,7 @@ export default function EditHealthcareProfileScreen() {
                   key={option}
                   style={[
                     styles.genderOption,
+                    { backgroundColor: colors.surface },
                     formData.gender === option && styles.genderOptionSelected,
                   ]}
                   onPress={() => handleInputChange('gender', option)}
@@ -246,7 +275,9 @@ export default function EditHealthcareProfileScreen() {
                   <Text
                     style={[
                       styles.genderOptionText,
-                      formData.gender === option && styles.genderOptionTextSelected,
+                      { color: colors.text },
+                      formData.gender === option &&
+                        styles.genderOptionTextSelected,
                     ]}
                   >
                     {option}
@@ -257,10 +288,16 @@ export default function EditHealthcareProfileScreen() {
           </View>
 
           {/* Professional Information Section */}
-          <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              styles.sectionTitleSpaced,
+              { color: colors.text },
+            ]}
+          >
             Professional Information
           </Text>
-          
+
           {professionalFields.map((field, index) => (
             <View key={index} style={styles.inputGroup}>
               <View style={styles.inputLabel}>
@@ -275,7 +312,7 @@ export default function EditHealthcareProfileScreen() {
                 value={formData[field.field as keyof typeof formData]}
                 onChangeText={(value) => handleInputChange(field.field, value)}
                 placeholder={field.placeholder}
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.text}
               />
             </View>
           ))}
@@ -284,15 +321,18 @@ export default function EditHealthcareProfileScreen() {
         {/* Save Button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.saveButtonLarge, isSaving && styles.saveButtonDisabled]}
+            style={[
+              styles.saveButtonLarge,
+              isSaving && styles.saveButtonDisabled,
+            ]}
             onPress={handleSave}
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color={Colors.surface} />
+              <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Save size={20} color={Colors.surface} />
+                <Save size={20} color="#fff" />
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}
@@ -305,7 +345,7 @@ export default function EditHealthcareProfileScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.background,
+    // backgroundColor handled inline
   },
 
   header: {
@@ -317,31 +357,41 @@ const styles = StyleSheet.create({
   },
 
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
 
   headerTitle: {
     fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '700',
   },
 
   saveButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   saveButtonDisabled: {
-    backgroundColor: Colors.textLight,
+    backgroundColor: Colors.light.textTertiary,
+    shadowOpacity: 0,
   },
 
   form: {
@@ -351,8 +401,8 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '700',
     marginBottom: 20,
   },
 
@@ -372,24 +422,29 @@ const styles = StyleSheet.create({
 
   labelText: {
     fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '600',
     marginLeft: 8,
+    opacity: 0.8,
   },
 
   required: {
-    color: Colors.error,
+    color: Colors.medical.red,
   },
 
   input: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
+    // backgroundColor and color handled inline
+    borderRadius: 16,
     padding: 16,
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'transparent', // Cleaner look, shadow provides depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03, // Very subtle shadow
+    shadowRadius: 5,
+    elevation: 1,
   },
 
   multilineInput: {
@@ -404,33 +459,42 @@ const styles = StyleSheet.create({
   },
 
   genderOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 5,
+    elevation: 1,
   },
 
   genderOptionSelected: {
     backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   genderOptionText: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: Colors.text,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '500',
   },
 
   genderOptionTextSelected: {
-    color: Colors.surface,
-    fontFamily: 'Inter-SemiBold',
+    color: '#fff',
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '700',
   },
 
   buttonContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
+    marginBottom: 20,
   },
 
   saveButtonLarge: {
@@ -438,14 +502,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
     gap: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
 
   saveButtonText: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.surface,
+    fontFamily: 'Satoshi-Variable',
+    fontWeight: '700',
+    color: '#fff',
   },
 });

@@ -60,15 +60,6 @@ export default function HealthcareTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="records"
-        options={{
-          title: 'Records',
-          tabBarIcon: ({ color, size }) => (
-            <FileText size={size} color={color} strokeWidth={2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
@@ -84,6 +75,18 @@ export default function HealthcareTabsLayout() {
         options={{
           href: null,
           tabBarStyle: { display: 'none' }, // Hide tab bar on this screen if desired, or keep it. Patient app hides tabs on sub-screens often.
+        }}
+      />
+      <Tabs.Screen
+        name="records"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="edit-profile"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

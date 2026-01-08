@@ -41,7 +41,10 @@ export default function PatientTabsLayout() {
             borderTopColor: colors.border,
             shadowColor: colors.shadow,
           },
-          tabBarLabelStyle: { ...layoutStyles.tabBarLabelStyle, fontFamily: 'Satoshi-Variable' },
+          tabBarLabelStyle: {
+            ...layoutStyles.tabBarLabelStyle,
+            fontFamily: 'Satoshi-Variable',
+          },
           tabBarIconStyle: layoutStyles.tabBarIconStyle,
         }}
       >
@@ -83,12 +86,6 @@ export default function PatientTabsLayout() {
         />
 
         {/* Hidden routes - these won't appear in the tab bar */}
-        <Tabs.Screen
-          name="appointments"
-          options={{
-            href: null,
-          }}
-        />
         <Tabs.Screen
           name="member-records"
           options={{

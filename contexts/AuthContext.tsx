@@ -99,11 +99,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   // Derived state
-  const isSwitchedAccount = firebaseUser && activeAccountId ? firebaseUser.uid !== activeAccountId : false;
+  const isSwitchedAccount =
+    firebaseUser && activeAccountId
+      ? firebaseUser.uid !== activeAccountId
+      : false;
 
   const user = React.useMemo(() => {
     if (!firebaseUser) return null;
-    if (!activeAccountId || activeAccountId === firebaseUser.uid) return firebaseUser;
+    if (!activeAccountId || activeAccountId === firebaseUser.uid)
+      return firebaseUser;
 
     // Create mock user for switched account
     return {
@@ -134,7 +138,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             });
             data.patientId = newPatientId;
           } catch (error) {
-            console.error('Error generating patientId for existing user:', error);
+            console.error(
+              'Error generating patientId for existing user:',
+              error
+            );
           }
         }
 
@@ -171,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           const storedAccountId = await AsyncStorage.getItem('activeAccountId');
           if (storedAccountId) {
             // Verify if we can legally access this account (basic check: is it us or are we a parent?)
-            // For now, we'll try to use it, and let fetchUserData handle existence checks. 
+            // For now, we'll try to use it, and let fetchUserData handle existence checks.
             // Ideally we should verify linkage here too, but simple persistence is key for now.
             targetAccountId = storedAccountId;
           }
@@ -268,7 +275,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await setDoc(doc(db, 'patients', newUser.uid), {
           ...userDataForFirestore,
           medicalHistory: [],
-          appointments: [],
           prescriptions: [],
         });
       } else if (data.role === 'doctor') {
@@ -389,7 +395,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await setDoc(doc(db, 'patients', childUser.uid), {
           ...childUserData,
           medicalHistory: [],
-          appointments: [],
           prescriptions: [],
         });
       }
@@ -443,7 +448,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // We need to fetch the requester's data securely or rely on what we have if we trust it
       // Re-fetching strictly to ensure safety:
-      const requesterDoc = await getDoc(doc(db, 'users', currentAuthUser?.uid || ''));
+      const requesterDoc = await getDoc(
+        doc(db, 'users', currentAuthUser?.uid || '')
+      );
       const requesterData = requesterDoc.data() as UserData;
 
       if (requesterData?.isChildAccount) {
@@ -469,7 +476,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Update active account ID - the effect will handle data fetching
       setActiveAccountId(accountId);
-
     } catch (error) {
       console.error('Error switching account:', error);
       throw new Error('Failed to switch account');
@@ -623,7 +629,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return (
             data.email === identifier ||
             data.phoneNumber.replace(/\D/g, '') ===
-            identifier.replace(/\D/g, '') ||
+              identifier.replace(/\D/g, '') ||
             `${data.firstName} ${data.lastName}`
               .toLowerCase()
               .includes(identifier.toLowerCase())
@@ -635,11 +641,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         emailToLogin = matchedDoc.data().email;
       }
 
-      await signInWithEmailAndPassword(
-        auth,
-        emailToLogin,
-        password
-      );
+      await signInWithEmailAndPassword(auth, emailToLogin, password);
       // onAuthStateChanged will handle state updates
     } catch (error: any) {
       console.error('Login error:', error);
@@ -705,7 +707,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       } else if (userData.role === 'doctor') {
         await updateDoc(doc(db, 'doctors', activeAccountId!), updatedData);
       } else if (userData.role === 'lab_assistant') {
-        await updateDoc(doc(db, 'lab_assistants', activeAccountId!), updatedData);
+        await updateDoc(
+          doc(db, 'lab_assistants', activeAccountId!),
+          updatedData
+        );
       }
 
       // Update local state

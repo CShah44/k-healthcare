@@ -42,16 +42,3 @@ export interface Attachment {
   fileUrl: string;
   uploadedAt: string;
 }
-
-export interface Appointment {
-  id: string;
-  patientId: string;
-  doctorId: string;
-  date: string;
-  time: string;
-  duration: number;
-  type: 'consultation' | 'follow_up' | 'emergency';
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
-  notes?: string;
-  createdAt: string;
-}
