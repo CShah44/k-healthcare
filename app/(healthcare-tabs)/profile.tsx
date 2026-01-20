@@ -137,10 +137,19 @@ export default function HealthcareProfileScreen() {
                   backgroundColor: colors.surfaceSecondary,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  overflow: 'hidden',
                 },
               ]}
             >
-              <User size={40} color={colors.textSecondary} />
+              {user?.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <User size={40} color={colors.textSecondary} />
+              )}
             </View>
             <TouchableOpacity
               style={[
@@ -162,6 +171,31 @@ export default function HealthcareProfileScreen() {
           <Text style={[styles.hospital, { color: colors.textTertiary }]}>
             {user?.hospital || 'Healthcare Institution'}
           </Text>
+
+          {/* Letterhead Preview */}
+          {user?.letterheadUrl && (
+            <View style={{ marginTop: 24, width: '100%' }}>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: colors.text, fontSize: 14, marginBottom: 8 },
+                ]}
+              >
+                Letterhead Preview
+              </Text>
+              <Image
+                source={{ uri: user.letterheadUrl }}
+                style={{
+                  width: '100%',
+                  height: 80,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                resizeMode="cover"
+              />
+            </View>
+          )}
         </View>
 
         {/* Profile Information */}

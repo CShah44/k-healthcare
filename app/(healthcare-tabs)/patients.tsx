@@ -29,7 +29,18 @@ import {
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, onSnapshot, getDocs, where, addDoc, serverTimestamp, Timestamp, writeBatch, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  onSnapshot,
+  getDocs,
+  where,
+  addDoc,
+  serverTimestamp,
+  Timestamp,
+  writeBatch,
+  updateDoc,
+} from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { db } from '@/constants/firebase';
 
@@ -55,7 +66,7 @@ export default function PatientsScreen() {
 
     const q = query(
       collection(db, 'doctorAccess'),
-      where('doctorId', '==', user.uid)
+      where('doctorId', '==', user.uid),
     );
 
     const unsubscribe = onSnapshot(
@@ -64,17 +75,26 @@ export default function PatientsScreen() {
         const patientsPromises = querySnapshot.docs.map(async (accessDoc) => {
           const accessData = accessDoc.data();
           const patientUid = accessData.patientUid;
-          const expiresAt = accessData.expiresAt instanceof Timestamp ? accessData.expiresAt.toDate() : new Date(accessData.expiresAt);
+          const expiresAt =
+            accessData.expiresAt instanceof Timestamp
+              ? accessData.expiresAt.toDate()
+              : new Date(accessData.expiresAt);
 
           const isExpired = expiresAt < new Date();
           const accessStatus = isExpired ? 'Expired' : 'Active';
 
           try {
-            const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', patientUid)));
+            const userDoc = await getDocs(
+              query(collection(db, 'users'), where('uid', '==', patientUid)),
+            );
             if (!userDoc.empty) {
               const userData = userDoc.docs[0].data();
-              const dob = userData.dateOfBirth ? new Date(userData.dateOfBirth) : null;
-              const age = dob ? new Date().getFullYear() - dob.getFullYear() : 'N/A';
+              const dob = userData.dateOfBirth
+                ? new Date(userData.dateOfBirth)
+                : null;
+              const age = dob
+                ? new Date().getFullYear() - dob.getFullYear()
+                : 'N/A';
 
               return {
                 id: userDoc.docs[0].id, // Use actual user ID as the key
@@ -84,24 +104,26 @@ export default function PatientsScreen() {
                 patientId: userData.patientId || userData.customUserId || 'N/A',
                 accessStatus: accessStatus,
                 avatar: userData.avatarUrl || null,
-                accessExpiresAt: expiresAt
+                accessExpiresAt: expiresAt,
               };
             }
           } catch (err) {
-            console.error("Error fetching user details for", patientUid, err);
+            console.error('Error fetching user details for', patientUid, err);
           }
 
           return null;
         });
 
-        const activePatients = (await Promise.all(patientsPromises)).filter(p => p !== null);
+        const activePatients = (await Promise.all(patientsPromises)).filter(
+          (p) => p !== null,
+        );
         setPatients(activePatients);
         setLoading(false);
       },
       (error) => {
         console.error('Error fetching patients:', error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -129,8 +151,14 @@ export default function PatientsScreen() {
       // 1. Find the patient by patientId OR customUserId
       const usersRef = collection(db, 'users');
       // Create two queries to check both potential ID fields
-      const q1 = query(usersRef, where('patientId', '==', requestPatientId.trim()));
-      const q2 = query(usersRef, where('customUserId', '==', requestPatientId.trim()));
+      const q1 = query(
+        usersRef,
+        where('patientId', '==', requestPatientId.trim()),
+      );
+      const q2 = query(
+        usersRef,
+        where('customUserId', '==', requestPatientId.trim()),
+      );
 
       const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
@@ -139,7 +167,10 @@ export default function PatientsScreen() {
       else if (!snap2.empty) patientDoc = snap2.docs[0];
 
       if (!patientDoc) {
-        Alert.alert('Error', 'Patient not found. Please check the ID and try again.');
+        Alert.alert(
+          'Error',
+          'Patient not found. Please check the ID and try again.',
+        );
         setRequestLoading(false);
         return;
       }
@@ -153,12 +184,15 @@ export default function PatientsScreen() {
         requestsRef,
         where('patientUid', '==', patientUid),
         where('doctorId', '==', user?.uid),
-        where('status', '==', 'pending')
+        where('status', '==', 'pending'),
       );
 
       const duplicateSnap = await getDocs(duplicateQuery);
       if (!duplicateSnap.empty) {
-        Alert.alert('Request Pending', 'You already have a pending request for this patient.');
+        Alert.alert(
+          'Request Pending',
+          'You already have a pending request for this patient.',
+        );
         setRequestLoading(false);
         return;
       }
@@ -182,10 +216,12 @@ export default function PatientsScreen() {
         expiresAt: Timestamp.fromDate(expiresAt),
       });
 
-      Alert.alert('Success', 'Access request sent. Waiting for patient approval.');
+      Alert.alert(
+        'Success',
+        'Access request sent. Waiting for patient approval.',
+      );
       setShowRequestModal(false);
       setRequestPatientId('');
-
     } catch (error) {
       console.error('Error sending request:', error);
       Alert.alert('Error', 'Failed to send request. Please try again.');
@@ -194,7 +230,10 @@ export default function PatientsScreen() {
     }
   };
 
-  const handleRemovePatient = async (patientUid: string, patientName: string) => {
+  const handleRemovePatient = async (
+    patientUid: string,
+    patientName: string,
+  ) => {
     Alert.alert(
       'Remove Patient',
       `Are you sure you want to remove ${patientName}? You will no longer be able to view their records.`,
@@ -210,7 +249,7 @@ export default function PatientsScreen() {
                 collection(db, 'doctorAccess'),
                 where('doctorId', '==', user?.uid),
                 where('patientUid', '==', patientUid),
-                where('active', '==', true)
+                where('active', '==', true),
               );
 
               const snapshot = await getDocs(accessQuery);
@@ -220,7 +259,7 @@ export default function PatientsScreen() {
                 await updateDoc(docRef, { active: false });
 
                 // Optimistically update state
-                setPatients(prev => prev.filter(p => p.id !== patientUid));
+                setPatients((prev) => prev.filter((p) => p.id !== patientUid));
                 Alert.alert('Success', 'Patient removed successfully');
               } else {
                 Alert.alert('Error', 'Could not find active access record.');
@@ -229,9 +268,9 @@ export default function PatientsScreen() {
               console.error('Error removing patient:', error);
               Alert.alert('Error', 'Failed to remove patient');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -320,9 +359,23 @@ export default function PatientsScreen() {
           ))}
         </ScrollView>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 12, gap: 8 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            marginTop: 12,
+            gap: 8,
+          }}
+        >
           <AlertTriangle size={14} color={colors.textSecondary} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Satoshi-Variable' }}>
+          <Text
+            style={{
+              fontSize: 13,
+              color: colors.textSecondary,
+              fontFamily: 'Satoshi-Variable',
+            }}
+          >
             Patients appear here only after they approve access
           </Text>
         </View>
@@ -342,7 +395,10 @@ export default function PatientsScreen() {
             filteredPatients.map((patient) => (
               <View
                 key={patient.id}
-                style={[styles.patientCard, { backgroundColor: colors.surface }]}
+                style={[
+                  styles.patientCard,
+                  { backgroundColor: colors.surface },
+                ]}
               >
                 <View style={[styles.patientHeader, { marginBottom: 12 }]}>
                   {patient.avatar ? (
@@ -351,7 +407,16 @@ export default function PatientsScreen() {
                       style={styles.patientAvatar}
                     />
                   ) : (
-                    <View style={[styles.patientAvatar, { backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }]}>
+                    <View
+                      style={[
+                        styles.patientAvatar,
+                        {
+                          backgroundColor: colors.surfaceSecondary,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        },
+                      ]}
+                    >
                       <User size={24} color={colors.textSecondary} />
                     </View>
                   )}
@@ -372,9 +437,10 @@ export default function PatientsScreen() {
                     style={[
                       styles.statusBadge,
                       {
-                        backgroundColor: patient.accessStatus === 'Active'
-                          ? 'rgba(34, 197, 94, 0.1)'
-                          : 'rgba(239, 68, 68, 0.1)'
+                        backgroundColor:
+                          patient.accessStatus === 'Active'
+                            ? 'rgba(34, 197, 94, 0.1)'
+                            : 'rgba(239, 68, 68, 0.1)',
                       },
                     ]}
                   >
@@ -382,9 +448,10 @@ export default function PatientsScreen() {
                       style={[
                         styles.statusText,
                         {
-                          color: patient.accessStatus === 'Active'
-                            ? Colors.medical.green
-                            : Colors.medical.red
+                          color:
+                            patient.accessStatus === 'Active'
+                              ? Colors.medical.green
+                              : Colors.medical.red,
                         },
                       ]}
                     >
@@ -394,7 +461,12 @@ export default function PatientsScreen() {
                 </View>
 
                 {/* Actions */}
-                <View style={[styles.patientActions, { borderTopColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.patientActions,
+                    { borderTopColor: colors.border },
+                  ]}
+                >
                   <TouchableOpacity
                     style={[
                       styles.viewButton,
@@ -404,13 +476,23 @@ export default function PatientsScreen() {
                       },
                     ]}
                     disabled={patient.accessStatus !== 'Active'}
-                    onPress={() => router.push({
-                      pathname: '/(healthcare-tabs)/records',
-                      params: { patientUid: patient.id, patientName: patient.name }
-                    })}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(healthcare-tabs)/records',
+                        params: {
+                          patientUid: patient.id,
+                          patientName: patient.name,
+                        },
+                      })
+                    }
                   >
                     <FileText size={16} color={colors.textSecondary} />
-                    <Text style={[styles.viewButtonText, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.viewButtonText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       View Records
                     </Text>
                   </TouchableOpacity>
@@ -421,9 +503,11 @@ export default function PatientsScreen() {
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         maxWidth: 44,
                         paddingHorizontal: 0,
-                      }
+                      },
                     ]}
-                    onPress={() => handleRemovePatient(patient.id, patient.name)}
+                    onPress={() =>
+                      handleRemovePatient(patient.id, patient.name)
+                    }
                   >
                     <Trash2 size={20} color={Colors.medical.red} />
                   </TouchableOpacity>
@@ -431,35 +515,48 @@ export default function PatientsScreen() {
               </View>
             ))
           ) : (
-            <View style={{ alignItems: 'center', justifyContent: 'center', padding: 40, marginTop: 40 }}>
-              <View style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: colors.surface,
+            <View
+              style={{
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: 16
-              }}>
+                padding: 40,
+                marginTop: 40,
+              }}
+            >
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: colors.surface,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}
+              >
                 <Users size={40} color={colors.textSecondary} />
               </View>
-              <Text style={{
-                fontSize: 18,
-                fontFamily: 'Satoshi-Variable',
-                fontWeight: '600',
-                color: colors.text,
-                marginBottom: 8
-              }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontFamily: 'Satoshi-Variable',
+                  fontWeight: '600',
+                  color: colors.text,
+                  marginBottom: 8,
+                }}
+              >
                 No patients yet
               </Text>
-              <Text style={{
-                textAlign: 'center',
-                color: colors.textSecondary,
-                fontFamily: 'Satoshi-Variable',
-                lineHeight: 22,
-                maxWidth: 260,
-                marginBottom: 24
-              }}>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  color: colors.textSecondary,
+                  fontFamily: 'Satoshi-Variable',
+                  lineHeight: 22,
+                  maxWidth: 260,
+                  marginBottom: 24,
+                }}
+              >
                 Request access using Patient ID to view patient records
               </Text>
               <TouchableOpacity
@@ -475,7 +572,14 @@ export default function PatientsScreen() {
                 onPress={() => setShowRequestModal(true)}
               >
                 <Plus size={18} color="white" />
-                <Text style={{ color: 'white', fontFamily: 'Satoshi-Variable', fontWeight: '600', fontSize: 16 }}>
+                <Text
+                  style={{
+                    color: 'white',
+                    fontFamily: 'Satoshi-Variable',
+                    fontWeight: '600',
+                    fontSize: 16,
+                  }}
+                >
                   Request Patient Access
                 </Text>
               </TouchableOpacity>
@@ -491,22 +595,68 @@ export default function PatientsScreen() {
         animationType="fade"
         onRequestClose={() => setShowRequestModal(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 24 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 20, fontFamily: 'Satoshi-Variable', fontWeight: '700', color: colors.text }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 24,
+              padding: 24,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontFamily: 'Satoshi-Variable',
+                  fontWeight: '700',
+                  color: colors.text,
+                }}
+              >
                 Request Patient Access
               </Text>
               <TouchableOpacity onPress={() => setShowRequestModal(false)}>
-                <Plus size={24} color={colors.textSecondary} style={{ transform: [{ rotate: '45deg' }] }} />
+                <Plus
+                  size={24}
+                  color={colors.textSecondary}
+                  style={{ transform: [{ rotate: '45deg' }] }}
+                />
               </TouchableOpacity>
             </View>
 
-            <Text style={{ color: colors.textSecondary, fontFamily: 'Satoshi-Variable', marginBottom: 24 }}>
-              Enter the Patient ID to request access to their medical records. The patient will need to approve this request.
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontFamily: 'Satoshi-Variable',
+                marginBottom: 24,
+              }}
+            >
+              Enter the Patient ID to request access to their medical records.
+              The patient will need to approve this request.
             </Text>
 
-            <Text style={{ fontSize: 14, fontFamily: 'Satoshi-Variable', fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: 'Satoshi-Variable',
+                fontWeight: '600',
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
               Patient ID
             </Text>
             <TextInput
@@ -539,7 +689,14 @@ export default function PatientsScreen() {
               {requestLoading ? (
                 <ActivityIndicator color="white" size="small" />
               ) : (
-                <Text style={{ color: 'white', fontFamily: 'Satoshi-Variable', fontWeight: '600', fontSize: 16 }}>
+                <Text
+                  style={{
+                    color: 'white',
+                    fontFamily: 'Satoshi-Variable',
+                    fontWeight: '600',
+                    fontSize: 16,
+                  }}
+                >
                   Send Request
                 </Text>
               )}

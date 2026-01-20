@@ -86,7 +86,7 @@ function getUserEncryptionKey(uid: string): string {
 async function decryptFileFromUrl(
   url: string,
   record: any,
-  uid: string // Use the patient's UID specifically
+  uid: string, // Use the patient's UID specifically
 ): Promise<string> {
   // Download encrypted file
   const response = await fetch(url);
@@ -106,21 +106,24 @@ async function decryptFileFromUrl(
         (word >> 24) & 0xff,
         (word >> 16) & 0xff,
         (word >> 8) & 0xff,
-        (word >> 1) & 0xff // Fixed: was & 0xff, likely copy-paste error in original or just safety
+        (word >> 1) & 0xff, // Fixed: was & 0xff, likely copy-paste error in original or just safety
       );
       return arr;
     },
-    []
+    [],
   );
 
   // Correct byte extraction using sigBytes
   const decryptedUint8 = new Uint8Array(decrypted.sigBytes);
   for (let i = 0; i < decrypted.sigBytes; i++) {
-    decryptedUint8[i] = (decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+    decryptedUint8[i] =
+      (decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
   }
 
   if (Platform.OS === 'web') {
-    const blob = new Blob([decryptedUint8], { type: record.fileType || 'application/pdf' });
+    const blob = new Blob([decryptedUint8], {
+      type: record.fileType || 'application/pdf',
+    });
     if (decryptedUint8.length === 0) {
       throw new Error('Decryption failed or empty content');
     }
@@ -167,22 +170,28 @@ export default function HealthcareRecordsScreen() {
       Platform.OS === 'web' &&
       showPdfPreview &&
       pdfPreviewUri &&
-      (selectedRecord?.fileType === 'application/pdf' || selectedRecord?.fileUrl?.toLowerCase().endsWith('.pdf'))
+      (selectedRecord?.fileType === 'application/pdf' ||
+        selectedRecord?.fileUrl?.toLowerCase().endsWith('.pdf'))
     ) {
       const newWindow = window.open(pdfPreviewUri, '_blank');
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      if (
+        !newWindow ||
+        newWindow.closed ||
+        typeof newWindow.closed === 'undefined'
+      ) {
         alert('Popup blocked! Please allow popups for this site.');
       }
       setShowPdfPreview(false);
     }
   }, [showPdfPreview, pdfPreviewUri, selectedRecord]);
 
-
-
   // Dummy data for prescriptions to ensure they appear
   const dummyRecords: any[] = [];
 
-  const { patientUid, patientName } = useLocalSearchParams<{ patientUid: string, patientName: string }>();
+  const { patientUid, patientName } = useLocalSearchParams<{
+    patientUid: string;
+    patientName: string;
+  }>();
 
   // Real-time Firebase syncing for medical records
   useEffect(() => {
@@ -205,7 +214,7 @@ export default function HealthcareRecordsScreen() {
           // Note: Patient records use 'uploadedAt', while global records use 'createdAt'
           q = query(
             collection(db, 'patients', patientUid, 'records'),
-            orderBy('uploadedAt', 'desc')
+            orderBy('uploadedAt', 'desc'),
           );
         }
         // Scenario 2: Default doctor view (All records assigned to this doctor)
@@ -213,7 +222,7 @@ export default function HealthcareRecordsScreen() {
           q = query(
             collection(db, 'medical_records'),
             where('assignedDoctor', '==', user.uid),
-            orderBy('createdAt', 'desc')
+            orderBy('createdAt', 'desc'),
           );
         }
 
@@ -224,17 +233,19 @@ export default function HealthcareRecordsScreen() {
               id: doc.id,
               ...doc.data(),
             }));
-            // If viewing a specific patient, map the data to match expected shape if needed, 
+            // If viewing a specific patient, map the data to match expected shape if needed,
             // or ensure the subcollection data structure matches 'medical_records' structure.
             // Assuming unified schema.
 
             // For patient-specific view, we might need to inject the patientName if stored differently
             const recordsWithMeta = records.map((r: any) => ({
               ...r,
-              patientName: patientUid ? (patientName || r.patientName) : r.patientName,
-              patientId: patientUid ? (r.patientId || 'N/A') : r.patientId,
+              patientName: patientUid
+                ? patientName || r.patientName
+                : r.patientName,
+              patientId: patientUid ? r.patientId || 'N/A' : r.patientId,
               // Map uploadedAt to createdAt for display consistency if createdAt is missing
-              createdAt: r.createdAt || r.uploadedAt
+              createdAt: r.createdAt || r.uploadedAt,
             }));
 
             setMedicalRecords(recordsWithMeta);
@@ -244,10 +255,10 @@ export default function HealthcareRecordsScreen() {
             console.error('Failed to fetch records:', error);
             setMedicalRecords([]);
             setLoading(false);
-          }
+          },
         );
       } catch (err) {
-        console.error("Error setting up records listener:", err);
+        console.error('Error setting up records listener:', err);
         setLoading(false);
       }
     };
@@ -324,7 +335,7 @@ export default function HealthcareRecordsScreen() {
     if (!canEditRecord(record)) {
       Alert.alert(
         'Permission Denied',
-        'You can only edit records assigned to you.'
+        'You can only edit records assigned to you.',
       );
       return;
     }
@@ -369,7 +380,7 @@ export default function HealthcareRecordsScreen() {
     if (!canEditRecord(record)) {
       Alert.alert(
         'Permission Denied',
-        'You can only delete records assigned to you.'
+        'You can only delete records assigned to you.',
       );
       return;
     }
@@ -395,7 +406,7 @@ export default function HealthcareRecordsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -450,7 +461,10 @@ export default function HealthcareRecordsScreen() {
           <TouchableOpacity
             style={styles.addButton}
             onPress={() =>
-              router.push('/(healthcare-tabs)/create-prescription')
+              router.push({
+                pathname: '/(healthcare-tabs)/create-prescription',
+                params: { patientUid, patientName },
+              })
             }
           >
             <Plus size={20} color={Colors.light.surface} />
@@ -485,217 +499,237 @@ export default function HealthcareRecordsScreen() {
         </View>
       )}
 
-
-
       {/* Loading State */}
-      {
-        loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading medical records...
-            </Text>
-          </View>
-        ) : (
-          /* Records List */
-          <ScrollView
-            style={styles.recordsList}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.recordsContainer}>
-              {filteredRecords.length > 0 ? (
-                filteredRecords.map((record) => {
-                  const IconComponent = getRecordIcon(record.type);
-                  const canEdit = canEditRecord(record);
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Loading medical records...
+          </Text>
+        </View>
+      ) : (
+        /* Records List */
+        <ScrollView
+          style={styles.recordsList}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.recordsContainer}>
+            {filteredRecords.length > 0 ? (
+              filteredRecords.map((record) => {
+                const IconComponent = getRecordIcon(record.type);
+                const canEdit = canEditRecord(record);
 
-                  return (
-                    <TouchableOpacity
-                      key={record.id}
-                      style={[
-                        styles.recordCard,
-                        { backgroundColor: colors.surface },
-                      ]}
-                      onPress={() => {
-                        setSelectedRecord(record);
-                        setShowPreviewModal(true);
-                      }}
-                    >
-                      <View style={styles.recordCardContent}>
-                        <View style={styles.recordMain}>
-                          <View style={styles.recordLeft}>
-                            <View
+                return (
+                  <TouchableOpacity
+                    key={record.id}
+                    style={[
+                      styles.recordCard,
+                      { backgroundColor: colors.surface },
+                    ]}
+                    onPress={() => {
+                      setSelectedRecord(record);
+                      setShowPreviewModal(true);
+                    }}
+                  >
+                    <View style={styles.recordCardContent}>
+                      <View style={styles.recordMain}>
+                        <View style={styles.recordLeft}>
+                          <View
+                            style={[
+                              styles.recordIconContainer,
+                              { backgroundColor: `${Colors.medical.blue}15` },
+                            ]}
+                          >
+                            <IconComponent
+                              size={20}
+                              color={Colors.medical.blue}
+                              strokeWidth={2}
+                            />
+                          </View>
+                          <View style={styles.recordInfo}>
+                            <Text
                               style={[
-                                styles.recordIconContainer,
-                                { backgroundColor: `${Colors.medical.blue}15` },
+                                styles.recordTitle,
+                                { color: colors.text },
                               ]}
+                              numberOfLines={1}
                             >
-                              <IconComponent
-                                size={20}
-                                color={Colors.medical.blue}
-                                strokeWidth={2}
-                              />
-                            </View>
-                            <View style={styles.recordInfo}>
-                              <Text
-                                style={[styles.recordTitle, { color: colors.text }]}
-                                numberOfLines={1}
-                              >
-                                {record.title}
+                              {record.title}
+                            </Text>
+
+                            <View style={styles.recordMeta}>
+                              <Text style={styles.patientName}>
+                                {record.patientName} • {record.patientId}
                               </Text>
+                              <View style={styles.metaDot} />
 
-                              <View style={styles.recordMeta}>
-                                <Text style={styles.patientName}>
-                                  {record.patientName} • {record.patientId}
-                                </Text>
-                                <View style={styles.metaDot} />
-
-                                <Text
-                                  style={[
-                                    styles.recordDateText,
-                                    { color: colors.textSecondary },
-                                  ]}
-                                >
-                                  {record.createdAt?.toDate
-                                    ? record.createdAt
+                              <Text
+                                style={[
+                                  styles.recordDateText,
+                                  { color: colors.textSecondary },
+                                ]}
+                              >
+                                {record.createdAt?.toDate
+                                  ? record.createdAt
                                       .toDate()
                                       .toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                       })
-                                    : record.createdAt?.seconds
-                                      ? new Date(
-                                        record.createdAt.seconds * 1000
+                                  : record.createdAt?.seconds
+                                    ? new Date(
+                                        record.createdAt.seconds * 1000,
                                       ).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                       })
-                                      : 'N/A'}
-                                </Text>
-                              </View>
+                                    : 'N/A'}
+                              </Text>
+                            </View>
 
-                              <View style={styles.recordBadges}>
-                                {record.priority && (
-                                  <View
+                            <View style={styles.recordBadges}>
+                              {record.priority && (
+                                <View
+                                  style={[
+                                    styles.priorityBadge,
+                                    {
+                                      borderColor: getPriorityColor(
+                                        record.priority,
+                                      ),
+                                    },
+                                  ]}
+                                >
+                                  <Text
                                     style={[
-                                      styles.priorityBadge,
+                                      styles.priorityText,
                                       {
-                                        borderColor: getPriorityColor(record.priority),
-                                      },
-                                    ]}
-                                  >
-                                    <Text
-                                      style={[
-                                        styles.priorityText,
-                                        { color: getPriorityColor(record.priority) },
-                                      ]}
-                                    >
-                                      {record.priority.toUpperCase()}
-                                    </Text>
-                                  </View>
-                                )}
-                                {record.status && (
-                                  <View
-                                    style={[
-                                      styles.statusBadge,
-                                      {
-                                        backgroundColor: getStatusBackground(
-                                          record.status
+                                        color: getPriorityColor(
+                                          record.priority,
                                         ),
                                       },
                                     ]}
                                   >
-                                    <Text
-                                      style={[
-                                        styles.statusText,
-                                        { color: getStatusColor(record.status) },
-                                      ]}
-                                    >
-                                      {record.status
-                                        .replace('_', ' ')
-                                        .charAt(0)
-                                        .toUpperCase() +
-                                        record.status.replace('_', ' ').slice(1)}
-                                    </Text>
-                                  </View>
-                                )}
-                              </View>
+                                    {record.priority.toUpperCase()}
+                                  </Text>
+                                </View>
+                              )}
+                              {record.status && (
+                                <View
+                                  style={[
+                                    styles.statusBadge,
+                                    {
+                                      backgroundColor: getStatusBackground(
+                                        record.status,
+                                      ),
+                                    },
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.statusText,
+                                      { color: getStatusColor(record.status) },
+                                    ]}
+                                  >
+                                    {record.status
+                                      .replace('_', ' ')
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                      record.status.replace('_', ' ').slice(1)}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
                           </View>
+                        </View>
 
-                          <View style={styles.recordActions}>
-                            <TouchableOpacity
-                              style={styles.viewButton}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                setSelectedRecord(record);
-                                setShowPreviewModal(true);
-                              }}
-                            >
-                              <Eye size={18} color={Colors.primary} strokeWidth={2} />
-                            </TouchableOpacity>
+                        <View style={styles.recordActions}>
+                          <TouchableOpacity
+                            style={styles.viewButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setSelectedRecord(record);
+                              setShowPreviewModal(true);
+                            }}
+                          >
+                            <Eye
+                              size={18}
+                              color={Colors.primary}
+                              strokeWidth={2}
+                            />
+                          </TouchableOpacity>
 
-                            {canEdit && (
-                              <>
-                                <TouchableOpacity
-                                  style={styles.editButton}
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    handleEditRecord(record);
-                                  }}
-                                >
-                                  <Edit3 size={18} color={Colors.medical.blue} strokeWidth={2} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={styles.deleteButton}
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteRecord(record);
-                                  }}
-                                  disabled={deletingId === record.id}
-                                >
-                                  {deletingId === record.id ? (
-                                    <ActivityIndicator size="small" color={Colors.medical.red} />
-                                  ) : (
-                                    <Trash2 size={18} color={Colors.medical.red} strokeWidth={2} />
-                                  )}
-                                </TouchableOpacity>
-                              </>
-                            )}
-                          </View>
+                          {canEdit && (
+                            <>
+                              <TouchableOpacity
+                                style={styles.editButton}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleEditRecord(record);
+                                }}
+                              >
+                                <Edit3
+                                  size={18}
+                                  color={Colors.medical.blue}
+                                  strokeWidth={2}
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRecord(record);
+                                }}
+                                disabled={deletingId === record.id}
+                              >
+                                {deletingId === record.id ? (
+                                  <ActivityIndicator
+                                    size="small"
+                                    color={Colors.medical.red}
+                                  />
+                                ) : (
+                                  <Trash2
+                                    size={18}
+                                    color={Colors.medical.red}
+                                    strokeWidth={2}
+                                  />
+                                )}
+                              </TouchableOpacity>
+                            </>
+                          )}
                         </View>
                       </View>
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                /* Empty State */
-                <View style={styles.emptyState}>
-                  <FolderOpen
-                    size={64}
-                    color={colors.textSecondary}
-                    strokeWidth={1}
-                  />
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                    {searchQuery || selectedFilter !== 'all'
-                      ? 'No matching records found'
-                      : 'No medical records yet'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.emptySubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {searchQuery || selectedFilter !== 'all'
-                      ? 'Try adjusting your search or filters'
-                      : 'Medical records will appear here when patients upload documents or when you create new records'}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        )
-      }
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              /* Empty State */
+              <View style={styles.emptyState}>
+                <FolderOpen
+                  size={64}
+                  color={colors.textSecondary}
+                  strokeWidth={1}
+                />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  {searchQuery || selectedFilter !== 'all'
+                    ? 'No matching records found'
+                    : 'No medical records yet'}
+                </Text>
+                <Text
+                  style={[
+                    styles.emptySubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {searchQuery || selectedFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Medical records will appear here when patients upload documents or when you create new records'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
 
       {/* Preview Modal */}
       <Modal
@@ -757,8 +791,8 @@ export default function HealthcareRecordsScreen() {
                       ? selectedRecord.createdAt.toDate().toLocaleString()
                       : selectedRecord.createdAt?.seconds
                         ? new Date(
-                          selectedRecord.createdAt.seconds * 1000
-                        ).toLocaleString()
+                            selectedRecord.createdAt.seconds * 1000,
+                          ).toLocaleString()
                         : 'N/A'}
                   </Text>
                   {selectedRecord.status && (
@@ -793,8 +827,8 @@ export default function HealthcareRecordsScreen() {
                 {selectedRecord.fileUrl && (
                   <View style={styles.previewFileContainer}>
                     {/* Try to show image preview if it looks like an image */}
-                    {(selectedRecord.fileType?.startsWith('image/') ||
-                      selectedRecord.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) ? (
+                    {selectedRecord.fileType?.startsWith('image/') ||
+                    selectedRecord.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i) ? (
                       <Image
                         source={{ uri: selectedRecord.fileUrl }}
                         style={styles.previewImage}
@@ -803,13 +837,31 @@ export default function HealthcareRecordsScreen() {
                     ) : null}
 
                     <TouchableOpacity
-                      style={[styles.viewDocumentButton, { backgroundColor: Colors.primary }]}
+                      style={[
+                        styles.viewDocumentButton,
+                        { backgroundColor: Colors.primary },
+                      ]}
                       onPress={async () => {
-                        if (selectedRecord.fileType === 'application/pdf' || selectedRecord.fileUrl.toLowerCase().endsWith('.pdf')) {
+                        if (
+                          selectedRecord.fileType === 'application/pdf' ||
+                          selectedRecord.fileUrl.toLowerCase().endsWith('.pdf')
+                        ) {
                           try {
-                            const uidToUse = (Array.isArray(patientUid) ? patientUid[0] : patientUid) || user?.uid || '';
-                            if (!uidToUse) throw new Error("No user ID available for decryption");
-                            const uri = await decryptFileFromUrl(selectedRecord.fileUrl, selectedRecord, uidToUse);
+                            const uidToUse =
+                              (Array.isArray(patientUid)
+                                ? patientUid[0]
+                                : patientUid) ||
+                              user?.uid ||
+                              '';
+                            if (!uidToUse)
+                              throw new Error(
+                                'No user ID available for decryption',
+                              );
+                            const uri = await decryptFileFromUrl(
+                              selectedRecord.fileUrl,
+                              selectedRecord,
+                              uidToUse,
+                            );
                             setPdfPreviewUri(uri);
                             setShowPdfPreview(true);
                           } catch (e) {
@@ -823,7 +875,8 @@ export default function HealthcareRecordsScreen() {
                     >
                       <FileText size={20} color="#fff" />
                       <Text style={styles.viewDocumentText}>
-                        {selectedRecord.fileType === 'application/pdf' || selectedRecord.fileUrl.toLowerCase().endsWith('.pdf')
+                        {selectedRecord.fileType === 'application/pdf' ||
+                        selectedRecord.fileUrl.toLowerCase().endsWith('.pdf')
                           ? 'View PDF'
                           : 'Open Document'}
                       </Text>
@@ -844,8 +897,19 @@ export default function HealthcareRecordsScreen() {
         onRequestClose={() => setShowPdfPreview(false)}
       >
         <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#000' }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>PDF Preview</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              backgroundColor: '#000',
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+              PDF Preview
+            </Text>
             <TouchableOpacity
               onPress={() => setShowPdfPreview(false)}
               style={{ padding: 8 }}
@@ -856,8 +920,16 @@ export default function HealthcareRecordsScreen() {
 
           {pdfPreviewUri ? (
             Platform.OS === 'web' ? (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: '#fff', marginBottom: 16 }}>Opening PDF in new tab...</Text>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#fff', marginBottom: 16 }}>
+                  Opening PDF in new tab...
+                </Text>
               </View>
             ) : (
               <WebView
@@ -865,16 +937,35 @@ export default function HealthcareRecordsScreen() {
                 style={{ flex: 1 }}
                 startInLoadingState
                 renderLoading={() => (
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: '#000',
+                    }}
+                  >
                     <ActivityIndicator size="large" color={Colors.primary} />
                   </View>
                 )}
               />
             )
           ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={{ color: '#fff', marginTop: 10 }}>Decrypting document...</Text>
+              <Text style={{ color: '#fff', marginTop: 10 }}>
+                Decrypting document...
+              </Text>
             </View>
           )}
         </SafeAreaView>
@@ -983,7 +1074,7 @@ export default function HealthcareRecordsScreen() {
                           status.replace('_', ' ').slice(1)}
                       </Text>
                     </TouchableOpacity>
-                  )
+                  ),
                 )}
               </View>
 
@@ -1058,7 +1149,7 @@ export default function HealthcareRecordsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView >
+    </SafeAreaView>
   );
 }
 

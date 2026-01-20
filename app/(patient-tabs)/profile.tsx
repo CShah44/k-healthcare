@@ -133,9 +133,15 @@ export default function ProfileScreen() {
       console.error('Delete account error', error);
 
       if (error.code === 'auth/requires-recent-login') {
-        showAlert('Security Check', 'For your security, please sign out and sign back in before deleting your account.');
+        showAlert(
+          'Security Check',
+          'For your security, please sign out and sign back in before deleting your account.',
+        );
       } else {
-        showAlert('Error', error.message || 'Failed to delete account. Please try again.');
+        showAlert(
+          'Error',
+          error.message || 'Failed to delete account. Please try again.',
+        );
       }
     }
   };
@@ -204,15 +210,24 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.profileSection}>
-          <View style={styles.profileAvatar}>
-            <User size={40} color={Colors.primary} strokeWidth={1.5} />
+          <View style={[styles.profileAvatar, { overflow: 'hidden' }]}>
+            {userData?.avatarUrl ? (
+              <Image
+                source={{ uri: userData.avatarUrl }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+            ) : (
+              <User size={40} color={Colors.primary} strokeWidth={1.5} />
+            )}
           </View>
           <Text style={styles.profileName}>
             {userData?.firstName} {userData?.lastName}
           </Text>
           <Text style={styles.profileEmail}>{user?.email}</Text>
           <Text style={styles.profileEmail}>
-            {userData?.patientId || formatUserId(userData?.customUserId, userData?.role || '')}
+            {userData?.patientId ||
+              formatUserId(userData?.customUserId, userData?.role || '')}
           </Text>
           {isSwitchedAccount && (
             <View style={styles.switchedAccountIndicator}>
@@ -254,7 +269,7 @@ export default function ProfileScreen() {
                         style={[
                           styles.linkedAccountAvatar,
                           account.type === 'parent' &&
-                          styles.parentAccountAvatar,
+                            styles.parentAccountAvatar,
                         ]}
                       >
                         <Text style={styles.linkedAccountInitials}>
@@ -270,7 +285,7 @@ export default function ProfileScreen() {
                           style={[
                             styles.linkedAccountType,
                             account.type === 'parent' &&
-                            styles.parentAccountType,
+                              styles.parentAccountType,
                           ]}
                         >
                           {account.type === 'parent'
@@ -324,69 +339,82 @@ export default function ProfileScreen() {
             if (!isDeleting) setShowDeleteModal(false);
           }}
         >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20
-          }}>
-            <View style={{
-              backgroundColor: colors.surface,
-              borderRadius: 20,
-              padding: 24,
-              width: '100%',
-              maxWidth: 340,
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: "#000",
-              shadowOffset: {
-                width: 0,
-                height: 2,
-              },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
-            }}>
-              <View style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                justifyContent: 'center',
+              padding: 20,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 20,
+                padding: 24,
+                width: '100%',
+                maxWidth: 340,
                 alignItems: 'center',
-                marginBottom: 16
-              }}>
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+                elevation: 5,
+              }}
+            >
+              <View
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+              >
                 <Shield size={32} color={Colors.medical.red} />
               </View>
 
-              <Text style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                color: colors.text,
-                marginBottom: 8,
-                textAlign: 'center'
-              }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: colors.text,
+                  marginBottom: 8,
+                  textAlign: 'center',
+                }}
+              >
                 Delete Account?
               </Text>
 
-              <Text style={{
-                fontSize: 14,
-                color: colors.textSecondary,
-                textAlign: 'center',
-                marginBottom: 24,
-                lineHeight: 20
-              }}>
-                This will permanently delete your account and all your data. This action cannot be undone.
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                  marginBottom: 24,
+                  lineHeight: 20,
+                }}
+              >
+                This will permanently delete your account and all your data.
+                This action cannot be undone.
               </Text>
 
               {isDeleting ? (
                 <View style={{ padding: 20 }}>
                   <ActivityIndicator size="large" color={Colors.medical.red} />
-                  <Text style={{
-                    marginTop: 10,
-                    color: colors.textSecondary,
-                    textAlign: 'center'
-                  }}>
+                  <Text
+                    style={{
+                      marginTop: 10,
+                      color: colors.textSecondary,
+                      textAlign: 'center',
+                    }}
+                  >
                     Deleting account...
                   </Text>
                 </View>
@@ -398,15 +426,19 @@ export default function ProfileScreen() {
                       paddingVertical: 12,
                       borderRadius: 12,
                       backgroundColor: colors.surfaceSecondary,
-                      alignItems: 'center'
+                      alignItems: 'center',
                     }}
                     onPress={() => setShowDeleteModal(false)}
                   >
-                    <Text style={{
-                      fontSize: 16,
-                      fontWeight: '600',
-                      color: colors.text
-                    }}>Cancel</Text>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '600',
+                        color: colors.text,
+                      }}
+                    >
+                      Cancel
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -415,15 +447,19 @@ export default function ProfileScreen() {
                       paddingVertical: 12,
                       borderRadius: 12,
                       backgroundColor: Colors.medical.red,
-                      alignItems: 'center'
+                      alignItems: 'center',
                     }}
                     onPress={handleDeleteAccount}
                   >
-                    <Text style={{
-                      fontSize: 16,
-                      fontWeight: '600',
-                      color: 'white'
-                    }}>Yes, Delete</Text>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '600',
+                        color: 'white',
+                      }}
+                    >
+                      Yes, Delete
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}

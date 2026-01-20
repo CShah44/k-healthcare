@@ -18,19 +18,28 @@ import {
   User,
   Mail,
   Phone,
+  AwardIcon,
   Calendar,
   MapPin,
   Save,
-  Award,
   Building,
   Stethoscope,
+  Camera,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { GlobalStyles } from '@/constants/Styles';
 import { useAuth } from '@/contexts/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadProfileAsset } from '@/app/(patient-tabs)/services/uploadHelpers';
+import { Image } from 'react-native';
 
 export default function EditHealthcareProfileScreen() {
-  const { userData: user, updateUserProfile, isLoading } = useAuth();
+  const {
+    userData: user,
+    user: authUser,
+    updateUserProfile,
+    isLoading,
+  } = useAuth();
   const { colors } = useTheme();
 
   const [formData, setFormData] = useState({
@@ -45,6 +54,8 @@ export default function EditHealthcareProfileScreen() {
     licenseNumber: user?.licenseNumber || '',
     department: user?.department || '',
     hospital: user?.hospital || '',
+    letterheadUrl: user?.letterheadUrl || '',
+    avatarUrl: user?.avatarUrl || '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -151,7 +162,7 @@ export default function EditHealthcareProfileScreen() {
 
   const professionalFields = [
     {
-      icon: Award,
+      icon: AwardIcon,
       label: 'License Number',
       field: 'licenseNumber',
       placeholder:
@@ -177,6 +188,86 @@ export default function EditHealthcareProfileScreen() {
   ];
 
   const genderOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
+
+  // Image picker handler
+  const handlePickLetterhead = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9], // Letterhead aspect ratio
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setIsSaving(true);
+        const asset = result.assets[0];
+
+        // Upload immediately
+        try {
+          // Determine file name from URI
+          const fileName = asset.uri.split('/').pop() || 'letterhead.jpg';
+
+          if (!authUser?.uid) throw new Error('User not authenticated');
+
+          const publicUrl = await uploadProfileAsset(
+            asset.uri,
+            fileName,
+            authUser.uid,
+            'letterheads',
+          );
+
+          setFormData((prev) => ({ ...prev, letterheadUrl: publicUrl }));
+          Alert.alert('Success', 'Letterhead uploaded successfully!');
+        } catch (error: any) {
+          Alert.alert('Upload Failed', error.message);
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const handlePickAvatar = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1], // Square aspect ratio for avatar
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setIsSaving(true);
+        const asset = result.assets[0];
+
+        try {
+          const fileName = asset.uri.split('/').pop() || 'avatar.jpg';
+          if (!authUser?.uid) throw new Error('User not authenticated');
+
+          const publicUrl = await uploadProfileAsset(
+            asset.uri,
+            fileName,
+            authUser.uid,
+            'avatars', // Upload to avatars folder
+          );
+
+          setFormData((prev) => ({ ...prev, avatarUrl: publicUrl }));
+          Alert.alert('Success', 'Profile picture uploaded successfully!');
+        } catch (error: any) {
+          Alert.alert('Upload Failed', error.message);
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error picking avatar:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
 
   return (
     <SafeAreaView
@@ -222,6 +313,97 @@ export default function EditHealthcareProfileScreen() {
 
         {/* Form */}
         <View style={styles.form}>
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              onPress={handlePickAvatar}
+              style={styles.avatarContainer}
+            >
+              {formData.avatarUrl ? (
+                <Image
+                  source={{ uri: formData.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.avatarPlaceholder,
+                    { backgroundColor: colors.surfaceSecondary },
+                  ]}
+                >
+                  <User size={40} color={colors.textSecondary} />
+                </View>
+              )}
+              <View
+                style={[
+                  styles.cameraBadge,
+                  { backgroundColor: Colors.primary },
+                ]}
+              >
+                <Camera size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>
+              Tap to change profile picture
+            </Text>
+          </View>
+
+          {/* Doctor Letterhead Section */}
+          {user?.role === 'doctor' && (
+            <View style={[styles.inputGroup, { marginBottom: 30 }]}>
+              <View style={styles.inputLabel}>
+                <Building size={18} color={Colors.primary} />
+                <Text style={[styles.labelText, { color: colors.text }]}>
+                  Prescription Letterhead
+                </Text>
+              </View>
+
+              {formData.letterheadUrl ? (
+                <View style={styles.letterheadPreview}>
+                  <Image
+                    source={{ uri: formData.letterheadUrl }}
+                    style={styles.letterheadImage}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.changeLetterheadButton}
+                    onPress={handlePickLetterhead}
+                  >
+                    <Text style={styles.changeLetterheadText}>
+                      Change Letterhead
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.uploadButton,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                    },
+                  ]}
+                  onPress={handlePickLetterhead}
+                >
+                  <Building size={24} color={colors.textSecondary} />
+                  <Text
+                    style={[styles.uploadText, { color: colors.textSecondary }]}
+                  >
+                    Upload Letterhead Header
+                  </Text>
+                  <Text
+                    style={[
+                      styles.uploadSubText,
+                      { color: colors.textTertiary },
+                    ]}
+                  >
+                    Recommended size: 800x200px
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* Personal Information Section */}
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Personal Information
@@ -517,5 +699,85 @@ const styles = StyleSheet.create({
     fontFamily: 'Satoshi-Variable',
     fontWeight: '700',
     color: '#fff',
+  },
+
+  // Letterhead styles
+  letterheadPreview: {
+    width: '100%',
+    height: 120,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  letterheadImage: {
+    width: '100%',
+    height: '100%',
+  },
+  changeLetterheadButton: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 8,
+    alignItems: 'center',
+  },
+  changeLetterheadText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  uploadButton: {
+    width: '100%',
+    height: 120,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  uploadText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  uploadSubText: {
+    fontSize: 12,
+  },
+  // Avatar Styles
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  avatarHint: {
+    fontSize: 14,
+    fontFamily: 'Satoshi-Variable',
   },
 });

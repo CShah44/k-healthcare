@@ -48,6 +48,7 @@ interface UserData {
   patientId?: string; // Unique human-readable ID for patients (e.g., SVP-A1B2C3)
   specialty?: string;
   avatarUrl?: string;
+  letterheadUrl?: string;
 }
 
 interface SignupData extends UserData {
@@ -64,7 +65,7 @@ interface AuthContextType {
   signup: (data: SignupData) => Promise<void>;
   createChildAccount: (
     data: Omit<SignupData, 'confirmPassword'>,
-    parentId: string
+    parentId: string,
   ) => Promise<string>;
   switchToAccount: (accountId: string) => Promise<void>;
   getAccessibleAccounts: () => Promise<any[]>;
@@ -72,7 +73,7 @@ interface AuthContextType {
   login: (
     identifier: string,
     password: string,
-    role: 'patient' | 'doctor' | 'lab_assistant'
+    role: 'patient' | 'doctor' | 'lab_assistant',
   ) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -140,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           } catch (error) {
             console.error(
               'Error generating patientId for existing user:',
-              error
+              error,
             );
           }
         }
@@ -229,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         data.email,
-        data.password
+        data.password,
       );
 
       const newUser = userCredential.user;
@@ -327,7 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Create child account with Firebase authentication
   const createChildAccount = async (
     data: Omit<SignupData, 'confirmPassword'>,
-    parentId: string
+    parentId: string,
   ): Promise<string> => {
     try {
       // Create Firebase user with email and password
@@ -342,7 +343,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const userCredential = await createUserWithEmailAndPassword(
         auth2,
         data.email,
-        data.password
+        data.password,
       );
 
       const childUser = userCredential.user;
@@ -449,7 +450,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // We need to fetch the requester's data securely or rely on what we have if we trust it
       // Re-fetching strictly to ensure safety:
       const requesterDoc = await getDoc(
-        doc(db, 'users', currentAuthUser?.uid || '')
+        doc(db, 'users', currentAuthUser?.uid || ''),
       );
       const requesterData = requesterDoc.data() as UserData;
 
@@ -495,7 +496,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Child accounts can only see their parent account
         if (userData.parentAccountId) {
           const parentDoc = await getDoc(
-            doc(db, 'users', userData.parentAccountId)
+            doc(db, 'users', userData.parentAccountId),
           );
           if (parentDoc.exists()) {
             accounts.push({
@@ -515,11 +516,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 return { id: accountId, ...accountDoc.data(), type: 'child' };
               }
               return null;
-            }
+            },
           );
           const linkedAccounts = await Promise.all(linkedAccountPromises);
           accounts.push(
-            ...linkedAccounts.filter((account) => account !== null)
+            ...linkedAccounts.filter((account) => account !== null),
           );
         }
       }
@@ -557,7 +558,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (age < 16) {
         throw new Error(
-          'You must be at least 16 years old to remove parent link'
+          'You must be at least 16 years old to remove parent link',
         );
       }
     }
@@ -570,7 +571,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Remove child from parent's linked accounts
       if (userData.parentAccountId) {
         const parentDoc = await getDoc(
-          doc(db, 'users', userData.parentAccountId)
+          doc(db, 'users', userData.parentAccountId),
         );
         if (parentDoc.exists()) {
           const parentData = parentDoc.data();
@@ -608,7 +609,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (
     identifier: string,
     password: string,
-    role: 'patient' | 'doctor' | 'lab_assistant'
+    role: 'patient' | 'doctor' | 'lab_assistant',
   ) => {
     // setIsLoading(true); // Removed to allow local loading state
     try {
@@ -620,7 +621,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const q = query(
           usersRef,
           where('role', '==', role),
-          where('email', '!=', '')
+          where('email', '!=', ''),
         );
 
         const snapshot = await getDocs(q);
@@ -629,7 +630,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return (
             data.email === identifier ||
             data.phoneNumber.replace(/\D/g, '') ===
-            identifier.replace(/\D/g, '') ||
+              identifier.replace(/\D/g, '') ||
             `${data.firstName} ${data.lastName}`
               .toLowerCase()
               .includes(identifier.toLowerCase())
@@ -709,7 +710,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       } else if (userData.role === 'lab_assistant') {
         await updateDoc(
           doc(db, 'lab_assistants', activeAccountId!),
-          updatedData
+          updatedData,
         );
       }
 

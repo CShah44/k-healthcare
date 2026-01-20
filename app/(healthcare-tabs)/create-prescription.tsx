@@ -11,12 +11,17 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { uploadFile } from '@/app/(patient-tabs)/services/uploadHelpers';
+import { generatePrescriptionPdf } from '@/utils/pdfGenerator';
+import { useAuth } from '@/contexts/AuthContext';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/constants/firebase';
+import * as FileSystem from 'expo-file-system';
 import {
   ArrowLeft,
   Pill,
   Save,
-  Download,
   Plus,
   Trash2,
   FileText,
@@ -29,8 +34,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function CreatePrescriptionScreen() {
   const { colors } = useTheme();
+  const { patientUid, patientName: initialPatientName } = useLocalSearchParams<{
+    patientUid: string;
+    patientName: string;
+  }>();
 
-  const [patientName, setPatientName] = useState('');
+  const [patientName, setPatientName] = useState(initialPatientName || '');
   const [patientAge, setPatientAge] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
@@ -53,24 +62,128 @@ export default function CreatePrescriptionScreen() {
 
   const updateMedication = (id: number, field: string, value: string) => {
     setMedications(
-      medications.map((m) => (m.id === id ? { ...m, [field]: value } : m))
+      medications.map((m) => (m.id === id ? { ...m, [field]: value } : m)),
     );
   };
 
-  const handleSave = () => {
+  const { userData: doctorData, user: authUser } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // ... (keep state)
+
+  const fetchImageToBase64 = async (url: string) => {
+    try {
+      if (Platform.OS === 'web') {
+        // On Web, fetching from another domain might fail due to CORS.
+        // We'll try, but if it fails, we might need a proxy or backend.
+        // However, if the image is from Supabase and configured correctly, it might work.
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        // Native
+        const { uri } = await FileSystem.downloadAsync(
+          url,
+          FileSystem.cacheDirectory + 'letterhead_temp.jpg',
+        );
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        return `data:image/jpeg;base64,${base64}`;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch image base64:', e);
+      return undefined;
+    }
+  };
+
+  const handleSave = async () => {
     if (!patientName.trim()) {
       Alert.alert('Error', 'Please enter patient name');
       return;
     }
-    Alert.alert('Success', 'Prescription saved to records (Dummy)');
-    router.back();
-  };
 
-  const handleDownload = () => {
-    Alert.alert(
-      'Coming Soon',
-      'PDF Download will be available in the next update.'
-    );
+    if (!patientUid) {
+      Alert.alert(
+        'Error',
+        'Patient ID is missing. Please select a patient from the list.',
+      );
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const fileName = `Prescription_${new Date().toISOString().split('T')[0]}_${Date.now()}.pdf`;
+
+      // Pre-fetch letterhead if exists
+      let letterheadBase64: string | undefined;
+      if (doctorData?.letterheadUrl) {
+        letterheadBase64 = await fetchImageToBase64(doctorData.letterheadUrl);
+      }
+
+      // 1. Generate PDF
+      const { uri, blob } = await generatePrescriptionPdf({
+        doctor: { ...doctorData, letterheadBase64 },
+        patient: {
+          name: patientName,
+          age: patientAge,
+          uid: patientUid,
+        },
+        diagnosis,
+        medications,
+        notes,
+        date: new Date().toLocaleDateString(),
+      } as any);
+
+      // 2. Upload
+      const uploadResult = await uploadFile(
+        uri,
+        fileName,
+        'application/pdf',
+        patientUid,
+        `Prescription - ${diagnosis}`,
+        ['prescriptions'],
+        blob, // Pass blob if available (Web), otherwise undefined (Native uses uri)
+      );
+
+      // 3. Save Record Metadata (Write to Patient's Subcollection to ensure visibility)
+      await addDoc(collection(db, 'patients', patientUid, 'records'), {
+        patientId: patientUid,
+        doctorId: authUser?.uid,
+        assignedDoctor: authUser?.uid, // For doctor's global view
+        doctorName: `Dr. ${doctorData?.firstName} ${doctorData?.lastName}`,
+        type: 'prescription',
+        title: `Prescription for ${diagnosis}`,
+        // Use both date fields to satisfy different queries
+        date: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        uploadedAt: serverTimestamp(), // Critical for records.tsx query
+        fileUrl: uploadResult.url,
+        fileType: 'application/pdf',
+        fileName: fileName,
+        tags: ['prescriptions'],
+        diagnosis,
+        medications,
+        notes,
+        patientName, // Denormalize patient name
+      });
+      // Optionally write to global if needed, but subcollection is primary for patient view.
+      // If the app relies on 'medical_records' for the doctor's dashboard, we might need a trigger or dual write.
+      // For now, let's Stick to the patient subcollection logic as that's what records.tsx uses for the patient view.
+
+      Alert.alert('Success', 'Prescription saved and sent to patient records.');
+      router.back();
+    } catch (error: any) {
+      console.error('Save error:', error);
+      Alert.alert('Error', 'Failed to save prescription: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -297,16 +410,6 @@ export default function CreatePrescriptionScreen() {
           {/* Actions */}
           <View style={styles.actions}>
             <TouchableOpacity
-              style={[styles.button, styles.downloadButton]}
-              onPress={handleDownload}
-            >
-              <Download size={20} color={Colors.primary} />
-              <Text style={[styles.buttonText, { color: Colors.primary }]}>
-                Download PDF
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={[styles.button, styles.saveButton]}
               onPress={handleSave}
             >
@@ -436,9 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  downloadButton: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
-  },
+
   saveButton: {
     backgroundColor: Colors.primary,
   },
