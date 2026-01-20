@@ -24,11 +24,12 @@ import {
   ChevronRight,
   TriangleAlert as AlertTriangle,
   FileText,
+  Trash2,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, onSnapshot, getDocs, where, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, getDocs, where, addDoc, serverTimestamp, Timestamp, writeBatch, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { db } from '@/constants/firebase';
 
@@ -193,6 +194,47 @@ export default function PatientsScreen() {
     }
   };
 
+  const handleRemovePatient = async (patientUid: string, patientName: string) => {
+    Alert.alert(
+      'Remove Patient',
+      `Are you sure you want to remove ${patientName}? You will no longer be able to view their records.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Find the active access document
+              const accessQuery = query(
+                collection(db, 'doctorAccess'),
+                where('doctorId', '==', user?.uid),
+                where('patientUid', '==', patientUid),
+                where('active', '==', true)
+              );
+
+              const snapshot = await getDocs(accessQuery);
+
+              if (!snapshot.empty) {
+                const docRef = snapshot.docs[0].ref;
+                await updateDoc(docRef, { active: false });
+
+                // Optimistically update state
+                setPatients(prev => prev.filter(p => p.id !== patientUid));
+                Alert.alert('Success', 'Patient removed successfully');
+              } else {
+                Alert.alert('Error', 'Could not find active access record.');
+              }
+            } catch (error) {
+              console.error('Error removing patient:', error);
+              Alert.alert('Error', 'Failed to remove patient');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -292,7 +334,11 @@ export default function PatientsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.patientsContainer}>
-          {filteredPatients.length > 0 ? (
+          {loading ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          ) : filteredPatients.length > 0 ? (
             filteredPatients.map((patient) => (
               <View
                 key={patient.id}
@@ -367,6 +413,19 @@ export default function PatientsScreen() {
                     <Text style={[styles.viewButtonText, { color: colors.textSecondary }]}>
                       View Records
                     </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewButton,
+                      {
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        maxWidth: 44,
+                        paddingHorizontal: 0,
+                      }
+                    ]}
+                    onPress={() => handleRemovePatient(patient.id, patient.name)}
+                  >
+                    <Trash2 size={20} color={Colors.medical.red} />
                   </TouchableOpacity>
                 </View>
               </View>

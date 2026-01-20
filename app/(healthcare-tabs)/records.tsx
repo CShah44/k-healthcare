@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import CryptoJS from 'crypto-js';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -159,7 +159,7 @@ export default function HealthcareRecordsScreen() {
   const [editStatus, setEditStatus] = useState('');
   const [editPriority, setEditPriority] = useState('');
   const [updating, setUpdating] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -384,14 +384,14 @@ export default function HealthcareRecordsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              setDeleting(true);
+              setDeletingId(record.id);
               await deleteDoc(doc(db, 'medical_records', record.id));
               Alert.alert('Success', 'Record deleted successfully');
             } catch (error) {
               console.error('Error deleting record:', error);
               Alert.alert('Error', 'Failed to delete record');
             } finally {
-              setDeleting(false);
+              setDeletingId(null);
             }
           },
         },
@@ -651,8 +651,13 @@ export default function HealthcareRecordsScreen() {
                                     e.stopPropagation();
                                     handleDeleteRecord(record);
                                   }}
+                                  disabled={deletingId === record.id}
                                 >
-                                  <Trash2 size={18} color={Colors.medical.red} strokeWidth={2} />
+                                  {deletingId === record.id ? (
+                                    <ActivityIndicator size="small" color={Colors.medical.red} />
+                                  ) : (
+                                    <Trash2 size={18} color={Colors.medical.red} strokeWidth={2} />
+                                  )}
                                 </TouchableOpacity>
                               </>
                             )}

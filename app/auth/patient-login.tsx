@@ -32,7 +32,7 @@ export default function PatientLoginScreen() {
     identifier?: string;
     password?: string;
   }>({});
-   const { showAlert, AlertComponent } = useCustomAlert();
+  const { showAlert, AlertComponent } = useCustomAlert();
   const { login, isLoading, forgotPassword } = useAuth()!;
   const { colors } = useTheme();
   const [showForgot, setShowForgot] = useState(false);
@@ -47,13 +47,21 @@ export default function PatientLoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleLogin = async () => {
     if (!validateForm()) return;
+    setIsSubmitting(true);
     try {
       await login(identifier, password, 'patient');
       router.replace('/(patient-tabs)');
     } catch (error: any) {
       showAlert('Login Failed', error.message || 'Invalid credentials. Please try again.');
+      setIsSubmitting(false);
+    } finally {
+      // We don't set submitting to false on success because we're redirecting
+      // and we want to keep the loader until unmount/redirect to prevent flash
+      if (errors) setIsSubmitting(false); // Fallback safe
     }
   };
 
@@ -82,23 +90,23 @@ export default function PatientLoginScreen() {
           <View style={[styles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
           <View style={[styles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
           <View style={[styles.loadingDecorativeCircle3, { backgroundColor: `${Colors.medical.blue}05` }]} />
-          
+
           {/* Main Loading Content */}
           <View style={styles.loadingContent}>
             {/* Logo/Icon */}
-            <View style={[styles.loadingIconWrapper, { 
-              backgroundColor: `${Colors.primary}15`, 
+            <View style={[styles.loadingIconWrapper, {
+              backgroundColor: `${Colors.primary}15`,
               borderColor: `${Colors.primary}30`,
-              shadowColor: colors.shadow 
+              shadowColor: colors.shadow
             }]}>
               <Heart size={48} color={Colors.primary} strokeWidth={2} />
             </View>
-            
+
             {/* Loading Spinner */}
             <View style={styles.spinnerContainer}>
               <LoadingSpinner size={48} />
             </View>
-            
+
             {/* Loading Text */}
             <Text style={[styles.loadingTitle, { color: colors.text }]}>
               Signing you in...
@@ -106,7 +114,7 @@ export default function PatientLoginScreen() {
             <Text style={[styles.loadingSubtitle, { color: colors.textSecondary }]}>
               Please wait while we verify your credentials
             </Text>
-            
+
             {/* Loading Progress Indicator */}
             <View style={styles.progressContainer}>
               <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
@@ -146,6 +154,7 @@ export default function PatientLoginScreen() {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
             onPress={() => router.replace('/auth/role-selection')}
+            disabled={isSubmitting}
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
@@ -184,6 +193,7 @@ export default function PatientLoginScreen() {
                   value={identifier}
                   onChangeText={setIdentifier}
                   autoCapitalize="none"
+                  editable={!isSubmitting}
                   style={[
                     styles.input,
                     {
@@ -209,6 +219,7 @@ export default function PatientLoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  editable={!isSubmitting}
                   style={[
                     styles.input,
                     {
@@ -237,16 +248,25 @@ export default function PatientLoginScreen() {
             <TouchableOpacity
               style={styles.forgotPassword}
               onPress={() => setShowForgot(true)}
+              disabled={isSubmitting}
             >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleLogin} activeOpacity={0.8}>
+            <TouchableOpacity
+              onPress={handleLogin}
+              activeOpacity={0.8}
+              disabled={isSubmitting}
+            >
               <LinearGradient
                 colors={Colors.gradients.primary}
                 style={styles.signInButton}
               >
-                <Text style={styles.signInButtonText}>Log In</Text>
+                {isSubmitting ? (
+                  <LoadingSpinner size={24} color="white" />
+                ) : (
+                  <Text style={styles.signInButtonText}>Log In</Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -265,7 +285,7 @@ export default function PatientLoginScreen() {
         </View>
       </LinearGradient>
 
-        <AlertComponent/>
+      <AlertComponent />
       <Modal
         visible={showForgot}
         transparent
@@ -499,7 +519,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontFamily: 'Satoshi-Variable',
   },
-  
+
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -521,13 +541,13 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  
+
   forgotTitle: {
     fontSize: 20,
     fontFamily: 'IvyMode-Regular',
     marginBottom: 8,
   },
-  
+
   forgotDescription: {
     fontSize: 14,
     fontFamily: 'Satoshi-Variable',
@@ -603,7 +623,7 @@ const styles = StyleSheet.create({
   },
 
   spinnerContainer: {
-   marginBottom: 32,
+    marginBottom: 32,
     transform: [{ scale: 1.5 }], // scale should be a number
   },
 

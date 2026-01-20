@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
+import { Colors } from '@/constants/Colors';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -60,7 +61,7 @@ function RootLayoutNav() {
       </Stack>
       {isLoading && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', zIndex: 9999 }}>
-          <ActivityIndicator size="large" color="#0000ff" />
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
     </ThemeProvider>

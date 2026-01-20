@@ -59,6 +59,8 @@ export default function PatientSignupScreen() {
   const [otpError, setOtpError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const genderOptions = [
     { label: 'Male', value: 'male' },
     { label: 'Female', value: 'female' },
@@ -71,6 +73,8 @@ export default function PatientSignupScreen() {
       setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
+
+
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -242,20 +246,27 @@ export default function PatientSignupScreen() {
       if (data.success) {
         setShowOtpModal(false);
         // Proceed with actual signup
-        await signup({
-          ...formData,
-          role: 'patient',
-        });
-        Alert.alert(
-          'Account Created Successfully! 🎉',
-          'Welcome to Svastheya! Your account has been created and you are now signed in.',
-          [
-            {
-              text: 'Get Started',
-              onPress: () => router.replace('/(patient-tabs)'),
-            },
-          ]
-        );
+        setIsSubmitting(true);
+        try {
+          await signup({
+            ...formData,
+            role: 'patient',
+          });
+          Alert.alert(
+            'Account Created Successfully! 🎉',
+            'Welcome to Svastheya! Your account has been created and you are now signed in.',
+            [
+              {
+                text: 'Get Started',
+                onPress: () => router.replace('/(patient-tabs)'),
+              },
+            ]
+          );
+        } catch (error) {
+          // If signup fails, stop loading.
+          setIsSubmitting(false);
+          Alert.alert('Signup Failed', 'Failed to create account. Please try again.');
+        }
       } else {
         setOtpError(data.message || 'Invalid OTP. Please try again.');
       }
@@ -263,10 +274,14 @@ export default function PatientSignupScreen() {
       setOtpError('Failed to verify OTP. Please try again.');
     } finally {
       setOtpLoading(false);
+      // We don't set isSubmitting(false) here on success because we want to keep the loader
+      // But if there was an error in catch block it is set to false.
+      // Ideally we should track success state.
+      // But since we redirect on success, it's fine.
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isSubmitting) {
     return (
       <View style={styles.fullscreenLoadingContainer}>
         <LinearGradient
@@ -631,8 +646,8 @@ export default function PatientSignupScreen() {
                     >
                       {formData.gender
                         ? genderOptions.find(
-                            (opt) => opt.value === formData.gender
-                          )?.label
+                          (opt) => opt.value === formData.gender
+                        )?.label
                         : 'Select gender'}
                     </Text>
                     <Text

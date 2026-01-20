@@ -180,22 +180,22 @@ async function decryptFileFromUrl(
   // Decrypt
   const decrypted = CryptoJS.AES.decrypt(encryptedBase64, key);
   const decryptedBytes = decrypted.words.reduce(
-      (arr: number[], word: number) => {
-        arr.push(
-            (word >> 24) & 0xff,
-            (word >> 16) & 0xff,
-            (word >> 8) & 0xff,
-            word & 0xff
-        );
-        return arr;
-      },
-      []
+    (arr: number[], word: number) => {
+      arr.push(
+        (word >> 24) & 0xff,
+        (word >> 16) & 0xff,
+        (word >> 8) & 0xff,
+        word & 0xff
+      );
+      return arr;
+    },
+    []
   );
   const decryptedUint8 = new Uint8Array(decryptedBytes).slice(0, decrypted.sigBytes);
   if (Platform.OS === 'web') {
     const blob = new Blob([decryptedUint8], { type: record.fileType });
     if (decryptedUint8.length === 0) {
-        throw new Error('Decryption failed or empty content');
+      throw new Error('Decryption failed or empty content');
     }
     const blobUrl = URL.createObjectURL(blob);
     return blobUrl;
@@ -237,7 +237,7 @@ export default function MedicalRecordsScreen() {
   const [editTitle, setEditTitle] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
 
   // Add state for PDF preview
   const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
@@ -592,9 +592,8 @@ export default function MedicalRecordsScreen() {
 
   // Edit and Delete functions
   const canEditRecord = (record: any): boolean => {
-    // Users can edit/delete their own records
-    // Also allow editing of self-uploaded records
-    return record.type === 'uploaded' || record.source !== 'lab_uploaded';
+    // Users can only edit/delete their own uploaded records
+    return record.source === 'user_uploaded';
   };
 
   const handleEditRecord = (record: any) => {
@@ -642,8 +641,6 @@ export default function MedicalRecordsScreen() {
   };
 
   const handleDeleteRecord = (record: any) => {
-    console.log('🗑️ Delete clicked for record:', record);
-
     if (!canEditRecord(record)) {
       showAlert(
         'Permission Denied',
@@ -662,7 +659,7 @@ export default function MedicalRecordsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              setDeleting(true);
+              setDeletingRecordId(record.id);
 
               // Extract file path from Supabase URL
               const fileUrl = record.fileUrl;
@@ -681,7 +678,7 @@ export default function MedicalRecordsScreen() {
                     publicIndex !== -1 &&
                     publicIndex + 1 < pathParts.length
                   ) {
-                    const bucket = pathParts[publicIndex + 1]; // Should be 'svastheya'
+                    const bucket = pathParts.slice(publicIndex + 1)[0]; // Should be 'svastheya'
                     const filePath = pathParts.slice(publicIndex + 2).join('/'); // Everything after bucket name
 
                     console.log('🗑️ Deleting from Supabase:', {
@@ -705,15 +702,9 @@ export default function MedicalRecordsScreen() {
                         '✅ Successfully deleted from Supabase storage'
                       );
                     }
-                  } else {
-                    console.error(
-                      'Could not parse Supabase URL structure:',
-                      fileUrl
-                    );
                   }
                 } catch (urlError) {
                   console.error('Error parsing Supabase URL:', urlError);
-                  // Continue with Firestore deletion even if URL parsing fails
                 }
               }
 
@@ -727,7 +718,7 @@ export default function MedicalRecordsScreen() {
               console.error('Error deleting record:', error);
               showAlert('Error', 'Failed to delete record');
             } finally {
-              setDeleting(false);
+              setDeletingRecordId(null);
             }
           },
         },
@@ -1013,19 +1004,19 @@ export default function MedicalRecordsScreen() {
                                 <Text style={styles.recordDate}>
                                   {record.uploadedAt?.toDate
                                     ? record.uploadedAt
-                                        .toDate()
-                                        .toLocaleDateString('en-US', {
-                                          month: 'short',
-                                          day: 'numeric',
-                                        })
+                                      .toDate()
+                                      .toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
                                     : record.uploadedAt?.seconds
-                                    ? new Date(
+                                      ? new Date(
                                         record.uploadedAt.seconds * 1000
                                       ).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                       })
-                                    : 'N/A'}
+                                      : 'N/A'}
                                 </Text>
                               </View>
 
@@ -1112,12 +1103,20 @@ export default function MedicalRecordsScreen() {
                                 <TouchableOpacity
                                   style={styles.actionButton}
                                   onPress={() => handleDeleteRecord(record)}
+                                  disabled={deletingRecordId === record.id}
                                 >
-                                  <Trash2
-                                    size={16}
-                                    color={medicalColors.red}
-                                    strokeWidth={2}
-                                  />
+                                  {deletingRecordId === record.id ? (
+                                    <ActivityIndicator
+                                      size="small"
+                                      color={medicalColors.red}
+                                    />
+                                  ) : (
+                                    <Trash2
+                                      size={16}
+                                      color={medicalColors.red}
+                                      strokeWidth={2}
+                                    />
+                                  )}
                                 </TouchableOpacity>
                               </>
                             )}
@@ -1236,7 +1235,7 @@ export default function MedicalRecordsScreen() {
                       style={[
                         styles.tagOption,
                         selectedTags.includes(tag.id) &&
-                          styles.tagOptionSelected,
+                        styles.tagOptionSelected,
                       ]}
                       onPress={() => toggleTag(tag.id)}
                     >
@@ -1343,7 +1342,7 @@ export default function MedicalRecordsScreen() {
                   style={[
                     styles.addCustomTagConfirmButton,
                     (!newTagInput.trim() || addingTag) &&
-                      styles.addCustomTagConfirmButtonDisabled,
+                    styles.addCustomTagConfirmButtonDisabled,
                   ]}
                   onPress={addCustomTag}
                   disabled={!newTagInput.trim() || addingTag}
@@ -1389,10 +1388,10 @@ export default function MedicalRecordsScreen() {
                     {selectedRecord.uploadedAt?.toDate
                       ? selectedRecord.uploadedAt.toDate().toLocaleString()
                       : selectedRecord.uploadedAt?.seconds
-                      ? new Date(
+                        ? new Date(
                           selectedRecord.uploadedAt.seconds * 1000
                         ).toLocaleString()
-                      : 'N/A'}
+                        : 'N/A'}
                   </Text>
 
                   {/* Tag Management */}
@@ -1505,83 +1504,83 @@ export default function MedicalRecordsScreen() {
 
         {/* PDF Preview Modal */}
         <Modal
-  visible={showPdfPreview}
-  animationType="slide"
-  transparent={false}
-  onRequestClose={() => setShowPdfPreview(false)}
->
-  <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-    <TouchableOpacity
-      style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
-      onPress={() => setShowPdfPreview(false)}
-    >
-      <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
-    </TouchableOpacity>
-    {pdfPreviewUri ? (
-  selectedRecord?.fileType?.startsWith('image') ? (
-    <Image
-      source={{ uri: pdfPreviewUri }}
-      style={{
-        width: '100%',
-        height: 300,
-        borderRadius: 12,
-        marginTop: 60,
-      }}
-      resizeMode="contain"
-    />
-  ) : selectedRecord?.fileType === 'application/pdf' ? (
-    Platform.OS === 'web' ? (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ color: '#fff', marginTop: 16 }}>
-          Opening PDF in new tab...
-        </Text>
-      </View>
-    ) : (
-      <WebView
-        source={{ uri: pdfPreviewUri }}
-        style={{ flex: 1, marginTop: 60 }}
-        useWebKit
-        originWhitelist={['*']}
-        javaScriptEnabled
-        scalesPageToFit
-      />
-    )
-  ) : (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      <Text style={{ color: '#fff', marginTop: 16 }}>
-        File type not supported for preview.
-      </Text>
-    </View>
-  )
-) : (
-  <View
-    style={{
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    }}
-  >
-    <ActivityIndicator size="large" color="#fff" />
-    <Text style={{ color: '#fff', marginTop: 16 }}>
-      Decrypting file...
-    </Text>
-  </View>
-)}
+          visible={showPdfPreview}
+          animationType="slide"
+          transparent={false}
+          onRequestClose={() => setShowPdfPreview(false)}
+        >
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
+              onPress={() => setShowPdfPreview(false)}
+            >
+              <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
+            </TouchableOpacity>
+            {pdfPreviewUri ? (
+              selectedRecord?.fileType?.startsWith('image') ? (
+                <Image
+                  source={{ uri: pdfPreviewUri }}
+                  style={{
+                    width: '100%',
+                    height: 300,
+                    borderRadius: 12,
+                    marginTop: 60,
+                  }}
+                  resizeMode="contain"
+                />
+              ) : selectedRecord?.fileType === 'application/pdf' ? (
+                Platform.OS === 'web' ? (
+                  <View
+                    style={{
+                      flex: 1,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#fff', marginTop: 16 }}>
+                      Opening PDF in new tab...
+                    </Text>
+                  </View>
+                ) : (
+                  <WebView
+                    source={{ uri: pdfPreviewUri }}
+                    style={{ flex: 1, marginTop: 60 }}
+                    useWebKit
+                    originWhitelist={['*']}
+                    javaScriptEnabled
+                    scalesPageToFit
+                  />
+                )
+              ) : (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#fff', marginTop: 16 }}>
+                    File type not supported for preview.
+                  </Text>
+                </View>
+              )
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ActivityIndicator size="large" color="#fff" />
+                <Text style={{ color: '#fff', marginTop: 16 }}>
+                  Decrypting file...
+                </Text>
+              </View>
+            )}
 
-  </SafeAreaView>
-</Modal>
+          </SafeAreaView>
+        </Modal>
 
 
         {/* Edit Modal */}
@@ -1645,7 +1644,7 @@ export default function MedicalRecordsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View> 
+              </View>
 
               <View style={styles.editModalActions}>
                 <TouchableOpacity
@@ -1673,7 +1672,7 @@ export default function MedicalRecordsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View> 
+          </View>
         </Modal>
 
         <AlertComponent />

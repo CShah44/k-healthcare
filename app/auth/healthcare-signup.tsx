@@ -182,7 +182,7 @@ export default function HealthcareSignupScreen() {
         setDoctorVerificationStatus('failed');
         setVerificationError(
           result.message ||
-            'Doctor credentials could not be verified. Please check your details.'
+          'Doctor credentials could not be verified. Please check your details.'
         );
       }
     } catch (error) {
@@ -472,7 +472,7 @@ export default function HealthcareSignupScreen() {
   });
 
   // Show loading state
-  if (isLoading) {
+  if (isLoading || isSubmitting) {
     return (
       <SafeAreaView style={[GlobalStyles.container, styles.container]}>
         <LinearGradient
@@ -614,7 +614,7 @@ export default function HealthcareSignupScreen() {
                       style={[
                         themedStyles.roleButtonText,
                         formData.role === 'doctor' &&
-                          styles.roleButtonTextActive,
+                        styles.roleButtonTextActive,
                       ]}
                     >
                       Doctor
@@ -624,7 +624,7 @@ export default function HealthcareSignupScreen() {
                     style={[
                       themedStyles.roleButton,
                       formData.role === 'lab_assistant' &&
-                        styles.roleButtonActive,
+                      styles.roleButtonActive,
                     ]}
                     onPress={() => updateFormData('role', 'lab_assistant')}
                     activeOpacity={0.7}
@@ -633,7 +633,7 @@ export default function HealthcareSignupScreen() {
                       style={[
                         themedStyles.roleButtonText,
                         formData.role === 'lab_assistant' &&
-                          styles.roleButtonTextActive,
+                        styles.roleButtonTextActive,
                       ]}
                     >
                       Lab Assistant
@@ -829,7 +829,7 @@ export default function HealthcareSignupScreen() {
                                     themedStyles.councilItemText,
                                     { color: colors.text },
                                     doctorVerificationData.councilName ===
-                                      council && {
+                                    council && {
                                       color: Colors.primary,
                                       fontWeight: '600',
                                     },
@@ -839,11 +839,11 @@ export default function HealthcareSignupScreen() {
                                 </Text>
                                 {doctorVerificationData.councilName ===
                                   council && (
-                                  <CheckCircle
-                                    size={20}
-                                    color={Colors.primary}
-                                  />
-                                )}
+                                    <CheckCircle
+                                      size={20}
+                                      color={Colors.primary}
+                                    />
+                                  )}
                               </TouchableOpacity>
                             ))}
                           </ScrollView>
@@ -875,12 +875,12 @@ export default function HealthcareSignupScreen() {
                         colors={
                           doctorVerificationStatus === 'verified'
                             ? ([Colors.light.success, Colors.light.success] as [
-                                string,
-                                string
-                              ])
+                              string,
+                              string
+                            ])
                             : isVerifyingDoctor
-                            ? (['#9ca3af', '#6b7280'] as [string, string])
-                            : (Colors.gradients.primary as [string, string])
+                              ? (['#9ca3af', '#6b7280'] as [string, string])
+                              : (Colors.gradients.primary as [string, string])
                         }
                         style={styles.verifyButtonGradient}
                       >
@@ -896,8 +896,8 @@ export default function HealthcareSignupScreen() {
                             {isVerifyingDoctor
                               ? 'Verifying...'
                               : doctorVerificationStatus === 'verified'
-                              ? 'Verified'
-                              : 'Verify Credentials'}
+                                ? 'Verified'
+                                : 'Verify Credentials'}
                           </Text>
                         </View>
                       </LinearGradient>

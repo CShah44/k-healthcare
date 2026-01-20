@@ -224,7 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [activeAccountId]);
 
   const signup = async (data: SignupData) => {
-    setIsLoading(true);
+    // setIsLoading(true); // Removed to allow local loading state
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -610,7 +610,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     password: string,
     role: 'patient' | 'doctor' | 'lab_assistant'
   ) => {
-    setIsLoading(true);
+    // setIsLoading(true); // Removed to allow local loading state
     try {
       let emailToLogin = identifier;
 
@@ -629,7 +629,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return (
             data.email === identifier ||
             data.phoneNumber.replace(/\D/g, '') ===
-              identifier.replace(/\D/g, '') ||
+            identifier.replace(/\D/g, '') ||
             `${data.firstName} ${data.lastName}`
               .toLowerCase()
               .includes(identifier.toLowerCase())

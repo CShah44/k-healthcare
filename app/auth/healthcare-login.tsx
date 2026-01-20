@@ -47,13 +47,19 @@ export default function HealthcareLoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleLogin = async () => {
     if (!validateForm()) return;
+    setIsSubmitting(true);
     try {
       await login(identifier, password, role);
       router.replace('/(healthcare-tabs)');
     } catch (error) {
       Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
+      setIsSubmitting(false);
+    } finally {
+      if (errors) setIsSubmitting(false); // Fallback safe
     }
   };
 
@@ -151,6 +157,7 @@ export default function HealthcareLoginScreen() {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
             onPress={() => router.back()}
+            disabled={isSubmitting}
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
@@ -189,6 +196,7 @@ export default function HealthcareLoginScreen() {
                   value={identifier}
                   onChangeText={setIdentifier}
                   autoCapitalize="none"
+                  editable={!isSubmitting}
                   style={[
                     styles.input,
                     {
@@ -215,6 +223,7 @@ export default function HealthcareLoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  editable={!isSubmitting}
                   style={[
                     styles.input,
                     {
@@ -244,6 +253,7 @@ export default function HealthcareLoginScreen() {
             <TouchableOpacity
               style={styles.forgotPassword}
               onPress={() => setShowForgot(true)}
+              disabled={isSubmitting}
             >
               <Text
                 style={[styles.forgotPasswordText, { color: Colors.primary }]}
@@ -256,12 +266,17 @@ export default function HealthcareLoginScreen() {
               onPress={handleLogin}
               activeOpacity={0.8}
               style={styles.signInButtonContainer}
+              disabled={isSubmitting}
             >
               <LinearGradient
                 colors={[Colors.primary, Colors.medical.green]}
                 style={styles.signInButton}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                {isSubmitting ? (
+                  <LoadingSpinner size={24} color="white" />
+                ) : (
+                  <Text style={styles.signInButtonText}>Sign In</Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>

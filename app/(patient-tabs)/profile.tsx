@@ -29,6 +29,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { createProfileStyles } from '../../styles/profile';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useCustomAlert } from '@/components/CustomAlert';
+import { deletePatientAccount } from './services/accountDeletion';
+import { Modal } from 'react-native';
 
 export default function ProfileScreen() {
   const {
@@ -115,6 +117,29 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await deletePatientAccount(user?.uid || '');
+      // Auth state change will handle navigation to login
+      // But we can force it just in case or if auth state update is slow
+      router.replace('/auth/patient-login');
+    } catch (error: any) {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      console.error('Delete account error', error);
+
+      if (error.code === 'auth/requires-recent-login') {
+        showAlert('Security Check', 'For your security, please sign out and sign back in before deleting your account.');
+      } else {
+        showAlert('Error', error.message || 'Failed to delete account. Please try again.');
+      }
+    }
+  };
+
   const menuItems = [
     {
       id: 'edit',
@@ -130,7 +155,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'access-requests',
-      title: 'Access Requests',
+      title: 'Shared Access',
       icon: Shield,
       onPress: () => router.push('/(patient-tabs)/access-requests'),
     },
@@ -282,6 +307,129 @@ export default function ProfileScreen() {
           <LogOut size={20} color={Colors.medical.red} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.signOutButton, { marginTop: 12, opacity: 0.8 }]}
+          onPress={() => setShowDeleteModal(true)}
+        >
+          <User size={20} color={Colors.medical.red} />
+          <Text style={styles.signOutText}>Delete Account</Text>
+        </TouchableOpacity>
+
+        <Modal
+          visible={showDeleteModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            if (!isDeleting) setShowDeleteModal(false);
+          }}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20
+          }}>
+            <View style={{
+              backgroundColor: colors.surface,
+              borderRadius: 20,
+              padding: 24,
+              width: '100%',
+              maxWidth: 340,
+              alignItems: 'center',
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}>
+              <View style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 16
+              }}>
+                <Shield size={32} color={Colors.medical.red} />
+              </View>
+
+              <Text style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: colors.text,
+                marginBottom: 8,
+                textAlign: 'center'
+              }}>
+                Delete Account?
+              </Text>
+
+              <Text style={{
+                fontSize: 14,
+                color: colors.textSecondary,
+                textAlign: 'center',
+                marginBottom: 24,
+                lineHeight: 20
+              }}>
+                This will permanently delete your account and all your data. This action cannot be undone.
+              </Text>
+
+              {isDeleting ? (
+                <View style={{ padding: 20 }}>
+                  <ActivityIndicator size="large" color={Colors.medical.red} />
+                  <Text style={{
+                    marginTop: 10,
+                    color: colors.textSecondary,
+                    textAlign: 'center'
+                  }}>
+                    Deleting account...
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      backgroundColor: colors.surfaceSecondary,
+                      alignItems: 'center'
+                    }}
+                    onPress={() => setShowDeleteModal(false)}
+                  >
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: colors.text
+                    }}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      backgroundColor: Colors.medical.red,
+                      alignItems: 'center'
+                    }}
+                    onPress={handleDeleteAccount}
+                  >
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: 'white'
+                    }}>Yes, Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
       <AlertComponent />
     </SafeAreaView>
