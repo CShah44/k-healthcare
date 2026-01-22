@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Alert,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Modal,
   TextInput,
   KeyboardAvoidingView,
@@ -22,20 +20,34 @@ import {
   Shield,
   CheckCircle,
   User,
+  X,
+  Mail,
+  Phone,
+  Briefcase,
+  Building,
+  Lock,
+  Award,
 } from 'lucide-react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import Constants from 'expo-constants';
 import { nanoid } from 'nanoid';
 import { MEDICAL_COUNCILS } from '../constants/medical-councils';
+import { authStyles } from '@/styles/auth';
 
-const { width } = Dimensions.get('window');
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 interface UserData {
   firstName: string;
@@ -64,8 +76,7 @@ interface SignupData extends UserData {
 }
 
 export default function HealthcareSignupScreen() {
-  const { colors, isDarkMode } = useTheme();
-
+  const colors = Colors.light;
   const [formData, setFormData] = useState<SignupData>({
     firstName: '',
     middleName: '',
@@ -103,16 +114,37 @@ export default function HealthcareSignupScreen() {
   const [doctorVerificationStatus, setDoctorVerificationStatus] = useState<
     'pending' | 'verified' | 'failed' | null
   >(null);
-
   const [verificationError, setVerificationError] = useState('');
   const [showCouncilModal, setShowCouncilModal] = useState(false);
 
-  // Get auth context with fallback
   const authContext = useAuth();
   const { signup, isLoading } = authContext || {
     signup: null,
     isLoading: false,
   };
+
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(20);
+  const formOpacity = useSharedValue(0);
+  const formTranslateY = useSharedValue(30);
+
+  useEffect(() => {
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
+    formOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+    formTranslateY.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 100 }));
+  }, []);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const formStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+    transform: [{ translateY: formTranslateY.value }],
+  }));
 
   const updateFormData = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -148,12 +180,8 @@ export default function HealthcareSignupScreen() {
     setDoctorVerificationStatus('pending');
 
     try {
-      // Generate unique task_id and group_id using nanoid
-      const taskId = nanoid(16); // 16-character unique task ID
-      const groupId = nanoid(16); // 16-character unique group ID
-
-      console.log('Generated task_id:', taskId);
-      console.log('Generated group_id:', groupId);
+      const taskId = nanoid(16);
+      const groupId = nanoid(16);
 
       const response = await fetch('http://localhost:3001/verify-doctor', {
         method: 'POST',
@@ -174,7 +202,6 @@ export default function HealthcareSignupScreen() {
       }
 
       const result = await response.json();
-      console.log('Doctor verification result:', result);
 
       if (result.success && result.verified === true) {
         setDoctorVerificationStatus('verified');
@@ -250,23 +277,18 @@ export default function HealthcareSignupScreen() {
   };
 
   const handleSignup = async () => {
-    console.log('Sign up button pressed'); // Debug log
-
-    // Prevent multiple submissions
-    if (isSubmitting || isLoading) {
-      console.log('Already submitting or loading');
+    if (!validateForm()) {
       return;
     }
 
-    if (!validateForm()) {
-      console.log('Form validation failed', errors);
+    if (formData.role === 'doctor' && doctorVerificationStatus !== 'verified') {
+      Alert.alert('Verification Required', 'Please verify your doctor credentials before signing up.');
       return;
     }
 
     setOtpLoading(true);
     setOtpError('');
     try {
-      // Send OTP to email
       const response = await fetch('http://localhost:3001/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,9 +321,10 @@ export default function HealthcareSignupScreen() {
       if (data.success) {
         setShowOtpModal(false);
         setIsSubmitting(true);
-        // Proceed with actual signup
-        await signup(formData);
-        router.replace('/(healthcare-tabs)');
+        if (signup) {
+          await signup(formData);
+          router.replace('/(healthcare-tabs)');
+        }
       } else {
         setOtpError(data.message || 'Invalid OTP. Please try again.');
       }
@@ -313,390 +336,420 @@ export default function HealthcareSignupScreen() {
     }
   };
 
-  // Create theme-aware styles
-  const themedStyles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    backgroundGradient: {
-      flex: 1,
-    },
-    backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    iconWrapper: {
-      width: 64,
-      height: 64,
-      backgroundColor: `${Colors.primary}15`,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 20,
-      borderWidth: 1,
-      borderColor: `${Colors.primary}30`,
-    },
-    title: {
-      fontSize: 28,
-      fontFamily: 'Satoshi-Variable',
-      color: colors.text,
-      marginBottom: 8,
-      textAlign: 'center',
-      letterSpacing: -0.5,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      fontFamily: 'Satoshi-Variable',
-      textAlign: 'center',
-    },
-    inputLabel: {
-      fontSize: 14,
-      fontFamily: 'Satoshi-Variable',
-      color: colors.text,
-      marginBottom: 8,
-    },
-    input: {
-      backgroundColor: colors.surface,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      fontSize: 16,
-      fontFamily: 'Satoshi-Variable',
-      color: colors.text,
-    },
-    roleButton: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-    },
-    roleButtonText: {
-      fontSize: 14,
-      fontFamily: 'Satoshi-Variable',
-      color: colors.text,
-    },
-    verificationSection: {
-      backgroundColor: `${Colors.primary}08`,
-      borderRadius: 16,
-      padding: 20,
-      marginBottom: 20,
-      borderWidth: 1,
-      borderColor: `${Colors.primary}20`,
-    },
-    verificationSubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontFamily: 'Satoshi-Variable',
-      marginBottom: 20,
-      lineHeight: 20,
-    },
-    footerText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontFamily: 'Satoshi-Variable',
-    },
-    loadingText: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      marginTop: 16,
-      fontFamily: 'Satoshi-Variable',
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'flex-end',
-    },
-    modalContent: {
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingTop: 20,
-      maxHeight: '80%',
-      paddingBottom: 40,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: -4,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 12,
-      elevation: 5,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      marginBottom: 20,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: '600',
-      fontFamily: 'Satoshi-Variable',
-    },
-    closeButton: {
-      padding: 8,
-    },
-    councilList: {
-      paddingHorizontal: 20,
-    },
-    councilItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-    },
-    councilItemText: {
-      fontSize: 16,
-      fontFamily: 'Satoshi-Variable',
-    },
-  });
-
-  // Show loading state
   if (isLoading || isSubmitting) {
     return (
-      <SafeAreaView style={[GlobalStyles.container, styles.container]}>
+      <View style={authStyles.fullscreenLoadingContainer}>
         <LinearGradient
-          colors={
-            isDarkMode
-              ? [colors.background, colors.surface]
-              : [colors.surface, colors.surfaceSecondary]
-          }
-          style={styles.loadingGradient}
+          colors={[colors.background, colors.surface, colors.card]}
+          style={authStyles.loadingGradient}
         >
-          <LoadingSpinner size={32} />
-          <Text style={themedStyles.loadingText}>
-            Creating your professional account...
-          </Text>
+          <View style={[authStyles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
+          <View style={[authStyles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
+          <View style={authStyles.loadingContent}>
+            <View style={[authStyles.loadingIconWrapper, {
+              backgroundColor: `${Colors.primary}15`,
+              borderColor: `${Colors.primary}30`,
+              shadowColor: colors.shadow,
+            }]}>
+              <Stethoscope size={48} color={Colors.primary} strokeWidth={2} />
+            </View>
+            <View style={authStyles.spinnerContainer}>
+              <LoadingSpinner size={48} />
+            </View>
+            <Text style={[authStyles.loadingTitle, { color: colors.text }]}>
+              Creating your professional account...
+            </Text>
+            <Text style={[authStyles.loadingSubtitle, { color: colors.textSecondary }]}>
+              Please wait while we set up your profile
+            </Text>
+          </View>
         </LinearGradient>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={themedStyles.container}>
+    <SafeAreaView style={[authStyles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={
-          isDarkMode
-            ? [colors.background, colors.surface]
-            : [colors.surface, colors.surfaceSecondary]
-        }
-        style={themedStyles.backgroundGradient}
+        colors={[colors.background, colors.surface]}
+        style={authStyles.backgroundGradient}
       >
-        {/* Header */}
-        <View style={styles.header}>
+        <View style={[authStyles.decorativeCircle, { backgroundColor: `${Colors.primary}04` }]} />
+
+        <AnimatedView style={[authStyles.header, headerStyle]}>
           <TouchableOpacity
-            style={themedStyles.backButton}
+            style={[
+              authStyles.backButton,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
             onPress={() => router.back()}
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
-        </View>
+        </AnimatedView>
 
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={authStyles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
-            <View style={styles.logoContainer}>
-              <View style={themedStyles.iconWrapper}>
-                <Stethoscope size={32} color={Colors.primary} strokeWidth={2} />
-              </View>
-              <Text style={themedStyles.title}>Professional Registration</Text>
-              <Text style={themedStyles.subtitle}>
-                Join Svastheya Healthcare Network
-              </Text>
-            </View>
-
-            <View style={styles.formContainer}>
-              <View style={styles.nameRow}>
-                <View style={styles.nameInputContainer}>
-                  <Text style={themedStyles.inputLabel}>First Name</Text>
-                  <Input
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChangeText={(value) => updateFormData('firstName', value)}
-                    style={themedStyles.input}
-                  />
-                  {errors.firstName && (
-                    <Text style={styles.errorText}>{errors.firstName}</Text>
-                  )}
+          <ScrollView
+            style={authStyles.scrollView}
+            contentContainerStyle={[authStyles.scrollContent, { paddingHorizontal: 24 }]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <AnimatedView style={formStyle}>
+              {/* Header Section */}
+              <AnimatedView
+                entering={FadeInDown.delay(100).springify()}
+                style={[authStyles.logoContainer, { marginTop: 8, marginBottom: 40 }]}
+              >
+                <View
+                  style={[
+                    authStyles.iconWrapper,
+                    {
+                      backgroundColor: `${Colors.primary}12`,
+                      borderColor: `${Colors.primary}25`,
+                    },
+                  ]}
+                >
+                  <Stethoscope size={32} color={Colors.primary} strokeWidth={2.5} />
                 </View>
-                <View style={styles.nameInputContainer}>
-                  <Text style={themedStyles.inputLabel}>Middle Name</Text>
-                  <Input
-                    placeholder="Middle name"
-                    value={formData.middleName}
-                    onChangeText={(value) =>
-                      updateFormData('middleName', value)
-                    }
-                    style={themedStyles.input}
-                  />
-                  {errors.middleName && (
-                    <Text style={styles.errorText}>{errors.middleName}</Text>
-                  )}
+                <AnimatedText
+                  entering={FadeInDown.delay(200).springify()}
+                  style={[authStyles.title, { color: colors.text, fontSize: 32, marginBottom: 8 }]}
+                >
+                  Professional Registration
+                </AnimatedText>
+                <AnimatedText
+                  entering={FadeInDown.delay(300).springify()}
+                  style={[authStyles.subtitle, { color: colors.textSecondary, fontSize: 15, lineHeight: 22 }]}
+                >
+                  Join the Svastheya Healthcare Network
+                </AnimatedText>
+              </AnimatedView>
+
+              <AnimatedView
+                entering={FadeInDown.delay(400).springify()}
+                style={authStyles.formContainer}
+              >
+                {/* Personal Details Section */}
+                <View style={[authStyles.sectionHeader, { marginBottom: 24 }]}>
+                  <View style={{ width: 3, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 12 }} />
+                  <User size={18} color={Colors.primary} strokeWidth={2} />
+                  <Text style={[authStyles.sectionTitle, { color: colors.text, fontSize: 20, marginLeft: 8 }]}>
+                    Personal Details
+                  </Text>
                 </View>
-                <View style={styles.nameInputContainer}>
-                  <Text style={themedStyles.inputLabel}>Last Name</Text>
-                  <Input
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChangeText={(value) => updateFormData('lastName', value)}
-                    style={themedStyles.input}
-                  />
-                  {errors.lastName && (
-                    <Text style={styles.errorText}>{errors.lastName}</Text>
-                  )}
-                </View>
-              </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Professional Email</Text>
-                <Input
-                  placeholder="Enter your work email"
-                  value={formData.email}
-                  onChangeText={(value) => updateFormData('email', value)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  style={themedStyles.input}
-                />
-                {errors.email && (
-                  <Text style={styles.errorText}>{errors.email}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Phone Number</Text>
-                <Input
-                  placeholder="Enter your phone number"
-                  value={formData.phoneNumber}
-                  onChangeText={(value) => updateFormData('phoneNumber', value)}
-                  keyboardType="phone-pad"
-                  style={themedStyles.input}
-                />
-                {errors.phoneNumber && (
-                  <Text style={styles.errorText}>{errors.phoneNumber}</Text>
-                )}
-              </View>
-
-              <View style={styles.roleSelection}>
-                <Text style={themedStyles.inputLabel}>Professional Role</Text>
-                <View style={styles.roleButtons}>
-                  <TouchableOpacity
-                    style={[
-                      themedStyles.roleButton,
-                      formData.role === 'doctor' && styles.roleButtonActive,
-                    ]}
-                    onPress={() => updateFormData('role', 'doctor')}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        themedStyles.roleButtonText,
-                        formData.role === 'doctor' &&
-                        styles.roleButtonTextActive,
-                      ]}
-                    >
-                      Doctor
+                <View style={[authStyles.nameRow, { marginBottom: 24 }]}>
+                  <View style={authStyles.nameInputContainer}>
+                    <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                      First Name
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      themedStyles.roleButton,
-                      formData.role === 'lab_assistant' &&
-                      styles.roleButtonActive,
-                    ]}
-                    onPress={() => updateFormData('role', 'lab_assistant')}
-                    activeOpacity={0.7}
-                  >
-                    <Text
+                    <Input
+                      placeholder="First name"
+                      value={formData.firstName}
+                      onChangeText={(value) => updateFormData('firstName', value)}
                       style={[
-                        themedStyles.roleButtonText,
-                        formData.role === 'lab_assistant' &&
-                        styles.roleButtonTextActive,
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.firstName ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
                       ]}
-                    >
-                      Lab Assistant
+                    />
+                    {errors.firstName && (
+                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.firstName}</Text>
+                    )}
+                  </View>
+                  <View style={authStyles.nameInputContainer}>
+                    <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                      Middle Name
                     </Text>
-                  </TouchableOpacity>
+                    <Input
+                      placeholder="Middle name"
+                      value={formData.middleName}
+                      onChangeText={(value) => updateFormData('middleName', value)}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.middleName ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    {errors.middleName && (
+                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.middleName}</Text>
+                    )}
+                  </View>
+                  <View style={authStyles.nameInputContainer}>
+                    <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                      Last Name
+                    </Text>
+                    <Input
+                      placeholder="Last name"
+                      value={formData.lastName}
+                      onChangeText={(value) => updateFormData('lastName', value)}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.lastName ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    {errors.lastName && (
+                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.lastName}</Text>
+                    )}
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>License Number</Text>
-                <Input
-                  placeholder="Enter your license number"
-                  value={formData.licenseNumber}
-                  onChangeText={(value) =>
-                    updateFormData('licenseNumber', value)
-                  }
-                  style={themedStyles.input}
-                />
-                {errors.licenseNumber && (
-                  <Text style={styles.errorText}>{errors.licenseNumber}</Text>
-                )}
-              </View>
+                <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Professional Email
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your work email"
+                      value={formData.email}
+                      onChangeText={(value) => updateFormData('email', value)}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.email ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <Mail
+                      size={18}
+                      color={colors.textSecondary}
+                      style={authStyles.inputIcon}
+                    />
+                  </View>
+                  <Text style={[authStyles.passwordHint, { color: colors.textSecondary, marginTop: 6 }]}>
+                    Use your professional or institutional email address
+                  </Text>
+                  {errors.email && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.email}</Text>
+                  )}
+                </View>
 
-              {/* Doctor Verification Section */}
-              {formData.role === 'doctor' && (
-                <>
+                <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Phone Number
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your phone number"
+                      value={formData.phoneNumber}
+                      onChangeText={(value) => updateFormData('phoneNumber', value)}
+                      keyboardType="phone-pad"
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.phoneNumber ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <Phone
+                      size={18}
+                      color={colors.textSecondary}
+                      style={authStyles.inputIcon}
+                    />
+                  </View>
+                  {errors.phoneNumber && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.phoneNumber}</Text>
+                  )}
+                </View>
+
+                <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Gender
+                  </Text>
+                  <Input
+                    placeholder="Gender (male, female, other)"
+                    value={formData.gender}
+                    onChangeText={(value) => updateFormData('gender', value)}
+                    style={[
+                      authStyles.input,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: errors.gender ? Colors.light.error : colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                  />
+                  {errors.gender && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.gender}</Text>
+                  )}
+                </View>
+
+                <View style={[authStyles.inputContainer, { marginBottom: 32 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Address
+                  </Text>
+                  <Input
+                    placeholder="Enter your address"
+                    value={formData.address}
+                    onChangeText={(value) => updateFormData('address', value)}
+                    multiline
+                    numberOfLines={2}
+                    style={[
+                      authStyles.input,
+                      authStyles.multilineInput,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: errors.address ? Colors.light.error : colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                  />
+                  {errors.address && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.address}</Text>
+                  )}
+                </View>
+
+                {/* Professional Details Section */}
+                <View style={[authStyles.sectionHeader, { marginTop: 8, marginBottom: 24 }]}>
+                  <View style={{ width: 3, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 12 }} />
+                  <Briefcase size={18} color={Colors.primary} strokeWidth={2} />
+                  <Text style={[authStyles.sectionTitle, { color: colors.text, fontSize: 20, marginLeft: 8 }]}>
+                    Professional Details
+                  </Text>
+                </View>
+
+                {/* Role Selection */}
+                <View style={[authStyles.roleSelection, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 12 }]}>
+                    Professional Role
+                  </Text>
+                  <View style={authStyles.roleButtons}>
+                    <TouchableOpacity
+                      style={[
+                        authStyles.roleButton,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: formData.role === 'doctor' ? Colors.primary : colors.border,
+                        },
+                        formData.role === 'doctor' && authStyles.roleButtonActive,
+                      ]}
+                      onPress={() => updateFormData('role', 'doctor')}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          authStyles.roleButtonText,
+                          {
+                            color: formData.role === 'doctor' ? '#ffffff' : colors.text,
+                          },
+                        ]}
+                      >
+                        Doctor
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        authStyles.roleButton,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: formData.role === 'lab_assistant' ? Colors.primary : colors.border,
+                        },
+                        formData.role === 'lab_assistant' && authStyles.roleButtonActive,
+                      ]}
+                      onPress={() => updateFormData('role', 'lab_assistant')}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          authStyles.roleButtonText,
+                          {
+                            color: formData.role === 'lab_assistant' ? '#ffffff' : colors.text,
+                          },
+                        ]}
+                      >
+                        Lab Assistant
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    License Number
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your license number"
+                      value={formData.licenseNumber}
+                      onChangeText={(value) => updateFormData('licenseNumber', value)}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.licenseNumber ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <Award
+                      size={18}
+                      color={colors.textSecondary}
+                      style={authStyles.inputIcon}
+                    />
+                  </View>
+                  <Text style={[authStyles.passwordHint, { color: colors.textSecondary, marginTop: 6 }]}>
+                    Your professional license or registration number
+                  </Text>
+                  {errors.licenseNumber && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.licenseNumber}</Text>
+                  )}
+                </View>
+
+                {/* Doctor Verification Section */}
+                {formData.role === 'doctor' && (
                   <View
                     style={[
-                      styles.verificationSection,
+                      authStyles.verificationSection,
                       {
-                        backgroundColor: isDarkMode
-                          ? `${Colors.primary}12`
-                          : `${Colors.primary}08`,
-                        borderColor: isDarkMode
-                          ? `${Colors.primary}30`
-                          : `${Colors.primary}20`,
+                        backgroundColor: `${Colors.primary}08`,
+                        borderColor: `${Colors.primary}20`,
+                        marginBottom: 24,
                       },
                     ]}
                   >
-                    <View style={styles.verificationHeader}>
-                      <Shield size={20} color={Colors.primary} />
+                    <View style={authStyles.verificationHeader}>
+                      <Shield size={20} color={Colors.primary} strokeWidth={2} />
                       <Text
                         style={[
-                          styles.verificationTitle,
+                          authStyles.verificationTitle,
                           { color: Colors.primary },
                         ]}
                       >
-                        Doctor Verification
+                        Medical Council Verification
                       </Text>
                     </View>
                     <Text
                       style={[
-                        styles.verificationSubtitle,
+                        authStyles.verificationSubtitle,
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Please provide your medical council registration details
-                      for verification
+                      To ensure patient safety and maintain professional standards, we verify all doctor credentials through official medical council databases. This process typically takes 1-2 minutes.
                     </Text>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={[styles.inputLabel, { color: colors.text }]}>
-                        Registration Number *
+                    <View style={[authStyles.inputContainer, { marginBottom: 20 }]}>
+                      <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                        Registration Number
                       </Text>
                       <Input
                         placeholder="Enter your medical registration number"
@@ -705,7 +758,7 @@ export default function HealthcareSignupScreen() {
                           updateDoctorVerificationData('registrationNo', value)
                         }
                         style={[
-                          styles.input,
+                          authStyles.input,
                           {
                             backgroundColor: colors.card,
                             borderColor: colors.border,
@@ -715,23 +768,20 @@ export default function HealthcareSignupScreen() {
                       />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={[styles.inputLabel, { color: colors.text }]}>
-                        Year of Registration *
+                    <View style={[authStyles.inputContainer, { marginBottom: 20 }]}>
+                      <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                        Year of Registration
                       </Text>
                       <Input
                         placeholder="YYYY"
                         value={doctorVerificationData.yearOfRegistration}
                         onChangeText={(value) =>
-                          updateDoctorVerificationData(
-                            'yearOfRegistration',
-                            value
-                          )
+                          updateDoctorVerificationData('yearOfRegistration', value)
                         }
                         keyboardType="numeric"
                         maxLength={4}
                         style={[
-                          styles.input,
+                          authStyles.input,
                           {
                             backgroundColor: colors.card,
                             borderColor: colors.border,
@@ -741,131 +791,70 @@ export default function HealthcareSignupScreen() {
                       />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={[styles.inputLabel, { color: colors.text }]}>
-                        Medical Council Name *
+                    <View style={[authStyles.inputContainer, { marginBottom: 20 }]}>
+                      <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                        Medical Council Name
                       </Text>
                       <TouchableOpacity
                         onPress={() => setShowCouncilModal(true)}
                         style={[
-                          styles.input,
+                          authStyles.dropdownButton,
                           {
                             backgroundColor: colors.card,
                             borderColor: colors.border,
-                            justifyContent: 'center',
                           },
                         ]}
                       >
                         <Text
-                          style={{
-                            color: doctorVerificationData.councilName
-                              ? colors.text
-                              : colors.textSecondary,
-                            fontSize: 16,
-                            fontFamily: 'Satoshi-Variable',
-                          }}
+                          style={[
+                            authStyles.dropdownText,
+                            {
+                              color: doctorVerificationData.councilName
+                                ? colors.text
+                                : colors.textSecondary,
+                            },
+                          ]}
                         >
                           {doctorVerificationData.councilName ||
                             'Select Medical Council'}
                         </Text>
+                        <Text style={[authStyles.dropdownArrow, { color: colors.textSecondary }]}>
+                          ▼
+                        </Text>
                       </TouchableOpacity>
                     </View>
 
-                    <Modal
-                      visible={showCouncilModal}
-                      animationType="slide"
-                      transparent={true}
-                      onRequestClose={() => setShowCouncilModal(false)}
-                    >
-                      <View style={themedStyles.modalOverlay}>
-                        <View
-                          style={[
-                            themedStyles.modalContent,
-                            { backgroundColor: colors.surface },
-                          ]}
-                        >
-                          <View style={themedStyles.modalHeader}>
-                            <Text
-                              style={[
-                                themedStyles.modalTitle,
-                                { color: colors.text },
-                              ]}
-                            >
-                              Select Medical Council
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() => setShowCouncilModal(false)}
-                              style={themedStyles.closeButton}
-                            >
-                              <Text
-                                style={{
-                                  color: colors.textSecondary,
-                                  fontSize: 24,
-                                }}
-                              >
-                                ×
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-
-                          <ScrollView style={themedStyles.councilList}>
-                            {MEDICAL_COUNCILS.map((council, index) => (
-                              <TouchableOpacity
-                                key={index}
-                                style={[
-                                  themedStyles.councilItem,
-                                  { borderBottomColor: colors.border },
-                                ]}
-                                onPress={() => {
-                                  updateDoctorVerificationData(
-                                    'councilName',
-                                    council
-                                  );
-                                  setShowCouncilModal(false);
-                                }}
-                              >
-                                <Text
-                                  style={[
-                                    themedStyles.councilItemText,
-                                    { color: colors.text },
-                                    doctorVerificationData.councilName ===
-                                    council && {
-                                      color: Colors.primary,
-                                      fontWeight: '600',
-                                    },
-                                  ]}
-                                >
-                                  {council}
-                                </Text>
-                                {doctorVerificationData.councilName ===
-                                  council && (
-                                    <CheckCircle
-                                      size={20}
-                                      color={Colors.primary}
-                                    />
-                                  )}
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      </View>
-                    </Modal>
-
                     {verificationError && (
-                      <Text style={styles.errorText}>{verificationError}</Text>
+                      <Text style={[authStyles.errorText, { marginBottom: 16 }]}>{verificationError}</Text>
+                    )}
+
+                    {doctorVerificationStatus === 'verified' && (
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: `${Colors.light.success}15`,
+                        padding: 12,
+                        borderRadius: 12,
+                        marginBottom: 16,
+                        borderWidth: 1,
+                        borderColor: `${Colors.light.success}30`,
+                      }}>
+                        <CheckCircle size={20} color={Colors.light.success} />
+                        <Text style={{
+                          marginLeft: 10,
+                          fontSize: 14,
+                          fontFamily: 'Satoshi-Variable',
+                          color: Colors.light.success,
+                          fontWeight: '600',
+                        }}>
+                          Credentials verified successfully
+                        </Text>
+                      </View>
                     )}
 
                     <TouchableOpacity
                       onPress={verifyDoctorCredentials}
                       activeOpacity={0.8}
-                      style={[
-                        styles.verifyButton,
-                        isVerifyingDoctor && styles.buttonDisabled,
-                        doctorVerificationStatus === 'verified' && [
-                          styles.verifiedButton,
-                          { backgroundColor: Colors.light.success },
-                        ],
-                      ]}
                       disabled={
                         isVerifyingDoctor ||
                         doctorVerificationStatus === 'verified'
@@ -874,17 +863,18 @@ export default function HealthcareSignupScreen() {
                       <LinearGradient
                         colors={
                           doctorVerificationStatus === 'verified'
-                            ? ([Colors.light.success, Colors.light.success] as [
-                              string,
-                              string
-                            ])
+                            ? [Colors.light.success, Colors.light.success]
                             : isVerifyingDoctor
-                              ? (['#9ca3af', '#6b7280'] as [string, string])
-                              : (Colors.gradients.primary as [string, string])
+                              ? ['#9ca3af', '#6b7280']
+                              : [Colors.primary, '#1e40af']
                         }
-                        style={styles.verifyButtonGradient}
+                        style={[
+                          authStyles.verifyButton,
+                          (isVerifyingDoctor || doctorVerificationStatus === 'verified') &&
+                          authStyles.buttonDisabled,
+                        ]}
                       >
-                        <View style={styles.verifyButtonContent}>
+                        <View style={authStyles.verifyButtonContent}>
                           {isVerifyingDoctor ? (
                             <LoadingSpinner size={20} color="#ffffff" />
                           ) : doctorVerificationStatus === 'verified' ? (
@@ -892,7 +882,7 @@ export default function HealthcareSignupScreen() {
                           ) : (
                             <Shield size={20} color="#ffffff" />
                           )}
-                          <Text style={styles.verifyButtonText}>
+                          <Text style={authStyles.verifyButtonText}>
                             {isVerifyingDoctor
                               ? 'Verifying...'
                               : doctorVerificationStatus === 'verified'
@@ -903,680 +893,310 @@ export default function HealthcareSignupScreen() {
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-                </>
-              )}
-
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Department</Text>
-                <Input
-                  placeholder="e.g., Cardiology, Emergency, Laboratory"
-                  value={formData.department}
-                  onChangeText={(value) => updateFormData('department', value)}
-                  style={themedStyles.input}
-                />
-                {errors.department && (
-                  <Text style={styles.errorText}>{errors.department}</Text>
                 )}
-              </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Hospital/Clinic</Text>
-                <Input
-                  placeholder="Enter your workplace name"
-                  value={formData.hospital}
-                  onChangeText={(value) => updateFormData('hospital', value)}
-                  style={themedStyles.input}
-                />
-                {errors.hospital && (
-                  <Text style={styles.errorText}>{errors.hospital}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Address</Text>
-                <Input
-                  placeholder="Enter your address"
-                  value={formData.address}
-                  onChangeText={(value) => updateFormData('address', value)}
-                  style={themedStyles.input}
-                />
-                {errors.address && (
-                  <Text style={styles.errorText}>{errors.address}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Gender</Text>
-                <Input
-                  placeholder="Gender (male, female, other)"
-                  value={formData.gender}
-                  onChangeText={(value) => updateFormData('gender', value)}
-                  style={themedStyles.input}
-                />
-                {errors.gender && (
-                  <Text style={styles.errorText}>{errors.gender}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Input
-                    placeholder="Create a password"
-                    value={formData.password}
-                    onChangeText={(value) => updateFormData('password', value)}
-                    secureTextEntry={!showPassword}
-                    style={themedStyles.input}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeIcon}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color={colors.textSecondary} />
-                    ) : (
-                      <Eye size={20} color={colors.textSecondary} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {errors.password && (
-                  <Text style={styles.errorText}>{errors.password}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={themedStyles.inputLabel}>Confirm Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Input
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChangeText={(value) =>
-                      updateFormData('confirmPassword', value)
-                    }
-                    secureTextEntry={!showConfirmPassword}
-                    style={themedStyles.input}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeIcon}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={20} color={colors.textSecondary} />
-                    ) : (
-                      <Eye size={20} color={colors.textSecondary} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {errors.confirmPassword && (
-                  <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-                )}
-              </View>
-
-              <TouchableOpacity
-                onPress={handleSignup}
-                activeOpacity={0.8}
-                style={[
-                  styles.signUpButtonContainer,
-                  (isSubmitting || isLoading) && styles.buttonDisabled,
-                ]}
-                disabled={isSubmitting || isLoading}
-              >
-                <LinearGradient
-                  colors={
-                    isSubmitting || isLoading
-                      ? ['#9ca3af', '#6b7280']
-                      : [Colors.primary, '#1e40af']
-                  }
-                  style={styles.signUpButton}
-                >
-                  <Text style={styles.signUpButtonText}>
-                    {isSubmitting
-                      ? 'Creating Account...'
-                      : 'Create Professional Account'}
+                <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Department / Specialty
                   </Text>
-                </LinearGradient>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="e.g., Cardiology, Emergency, Laboratory"
+                      value={formData.department}
+                      onChangeText={(value) => updateFormData('department', value)}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.department ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <Briefcase
+                      size={18}
+                      color={colors.textSecondary}
+                      style={authStyles.inputIcon}
+                    />
+                  </View>
+                  {errors.department && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.department}</Text>
+                  )}
+                </View>
+
+                <View style={[authStyles.inputContainer, { marginBottom: 32 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Hospital / Clinic Name
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your workplace name"
+                      value={formData.hospital}
+                      onChangeText={(value) => updateFormData('hospital', value)}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.hospital ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <Building
+                      size={18}
+                      color={colors.textSecondary}
+                      style={authStyles.inputIcon}
+                    />
+                  </View>
+                  {errors.hospital && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.hospital}</Text>
+                  )}
+                </View>
+
+                {/* Security Section */}
+                <View style={[authStyles.sectionHeader, { marginTop: 8, marginBottom: 24 }]}>
+                  <View style={{ width: 3, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 12 }} />
+                  <Lock size={18} color={Colors.primary} strokeWidth={2} />
+                  <Text style={[authStyles.sectionTitle, { color: colors.text, fontSize: 20, marginLeft: 8 }]}>
+                    Account Security
+                  </Text>
+                </View>
+
+                <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Password
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Create a secure password"
+                      value={formData.password}
+                      onChangeText={(value) => updateFormData('password', value)}
+                      secureTextEntry={!showPassword}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.password ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <TouchableOpacity
+                      style={authStyles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color={colors.textSecondary} />
+                      ) : (
+                        <Eye size={20} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={[authStyles.passwordHint, { color: colors.textSecondary, marginTop: 6 }]}>
+                    Minimum 6 characters recommended for security
+                  </Text>
+                  {errors.password && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.password}</Text>
+                  )}
+                </View>
+
+                <View style={[authStyles.inputContainer, { marginBottom: 32 }]}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    Confirm Password
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Re-enter your password"
+                      value={formData.confirmPassword}
+                      onChangeText={(value) => updateFormData('confirmPassword', value)}
+                      secureTextEntry={!showConfirmPassword}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.confirmPassword ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <TouchableOpacity
+                      style={authStyles.eyeIcon}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={20} color={colors.textSecondary} />
+                      ) : (
+                        <Eye size={20} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {errors.confirmPassword && (
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.confirmPassword}</Text>
+                  )}
+                </View>
+
+                {/* Primary CTA */}
+                <TouchableOpacity
+                  onPress={handleSignup}
+                  activeOpacity={0.8}
+                  disabled={isSubmitting || isLoading || otpLoading}
+                >
+                  <LinearGradient
+                    colors={[Colors.primary, '#1e40af']}
+                    style={[
+                      authStyles.primaryButton,
+                      (isSubmitting || isLoading || otpLoading) && authStyles.buttonDisabled,
+                    ]}
+                  >
+                    {isSubmitting || isLoading || otpLoading ? (
+                      <LoadingSpinner size={24} color="white" />
+                    ) : (
+                      <Text style={authStyles.primaryButtonText}>
+                        Create Doctor Account
+                      </Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </AnimatedView>
+
+              {/* Footer */}
+              <AnimatedView
+                entering={FadeInDown.delay(500).springify()}
+                style={[authStyles.footer, { marginTop: 24, marginBottom: 32 }]}
+              >
+                <Text style={[authStyles.footerText, { color: colors.textSecondary, fontSize: 15 }]}>
+                  Already registered?{' '}
+                  <Text
+                    style={[authStyles.linkText, { fontSize: 15, fontWeight: '600' }]}
+                    onPress={() => router.push('/auth/healthcare-login')}
+                  >
+                    Login
+                  </Text>
+                </Text>
+              </AnimatedView>
+            </AnimatedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+
+      {/* Council Selection Modal */}
+      <Modal
+        visible={showCouncilModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCouncilModal(false)}
+      >
+        <View style={authStyles.councilModalOverlay}>
+          <AnimatedView
+            entering={FadeInDown.springify()}
+            style={[
+              authStyles.councilModalContent,
+              { backgroundColor: colors.surface },
+            ]}
+          >
+            <View style={authStyles.councilModalHeader}>
+              <Text
+                style={[
+                  authStyles.councilModalTitle,
+                  { color: colors.text },
+                ]}
+              >
+                Select Medical Council
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCouncilModal(false)}
+                style={authStyles.closeButton}
+              >
+                <X size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.footer}>
-              <Text style={themedStyles.footerText}>
-                Already registered?{' '}
-                <Text
-                  style={styles.signInLink}
-                  onPress={() => router.push('/auth/healthcare-login')}
+            <ScrollView style={authStyles.councilList}>
+              {MEDICAL_COUNCILS.map((council, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    authStyles.councilItem,
+                    { borderBottomColor: colors.border },
+                  ]}
+                  onPress={() => {
+                    updateDoctorVerificationData('councilName', council);
+                    setShowCouncilModal(false);
+                  }}
                 >
-                  Sign In
-                </Text>
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-      </LinearGradient>
+                  <Text
+                    style={[
+                      authStyles.councilItemText,
+                      { color: colors.text },
+                      doctorVerificationData.councilName === council && {
+                        color: Colors.primary,
+                        fontWeight: '600',
+                      },
+                    ]}
+                  >
+                    {council}
+                  </Text>
+                  {doctorVerificationData.councilName === council && (
+                    <CheckCircle size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </AnimatedView>
+        </View>
+      </Modal>
+
+      {/* OTP Modal */}
       <Modal
         visible={showOtpModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowOtpModal(false)}
       >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.3)',
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: 'white',
-              padding: 24,
-              borderRadius: 12,
-              width: '80%',
-            }}
+        <View style={authStyles.modalOverlay}>
+          <AnimatedView
+            entering={FadeInDown.springify()}
+            style={[authStyles.modalContent, { backgroundColor: colors.card }]}
           >
-            <Text
-              style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}
-            >
-              Enter OTP
+            <Text style={[authStyles.modalTitle, { color: colors.text }]}>
+              Verify Your Email
             </Text>
-            <Text style={{ marginBottom: 8 }}>
-              An OTP has been sent to your email. Please enter it below to
-              verify your email address.
+            <Text style={[authStyles.modalDescription, { color: colors.textSecondary }]}>
+              We've sent a verification code to {formData.email}. Please enter it below to complete your professional registration.
             </Text>
             <TextInput
               value={otp}
               onChangeText={setOtp}
-              placeholder="Enter OTP"
+              placeholder="Enter 6-digit code"
+              placeholderTextColor={colors.textSecondary}
               keyboardType="numeric"
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                borderRadius: 8,
-                padding: 8,
-                marginBottom: 12,
-              }}
+              style={[
+                authStyles.otpInput,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               maxLength={6}
             />
             {otpError ? (
-              <Text style={{ color: 'red', marginBottom: 8 }}>{otpError}</Text>
+              <Text style={authStyles.otpError}>{otpError}</Text>
             ) : null}
             <Button
-              title={otpLoading ? 'Verifying...' : 'Verify OTP'}
+              title={otpLoading ? 'Verifying...' : 'Verify & Continue'}
               onPress={handleVerifyOtp}
               disabled={otpLoading || otp.length !== 6}
             />
             <Button
               title="Cancel"
               onPress={() => setShowOtpModal(false)}
-              style={{ marginTop: 8 }}
+              style={{ marginTop: 12 }}
               variant="secondary"
             />
-          </View>
+          </AnimatedView>
         </View>
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  roleSelection: {
-    marginBottom: 20,
-  },
-
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  scrollView: {
-    flex: 1,
-  },
-
-  content: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-
-  logoContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-  },
-
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-
-  title: {
-    fontSize: 32,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-
-  subtitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-
-  formContainer: {
-    marginBottom: 30,
-  },
-
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 8,
-  },
-
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-
-  nameRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-
-  nameInputContainer: {
-    flex: 1,
-  },
-
-  inputContainer: {
-    marginBottom: 20,
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-
-  inputWrapper: {
-    position: 'relative',
-  },
-
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  inputError: {
-    borderColor: Colors.light.error,
-    borderWidth: 2,
-  },
-
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
-    padding: 4,
-  },
-
-  errorText: {
-    fontSize: 12,
-    color: Colors.light.error,
-    marginTop: 4,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  roleButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  roleButton: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-
-  roleButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  roleButtonText: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '500',
-  },
-
-  roleButtonTextActive: {
-    color: '#ffffff',
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-  },
-
-  signUpButtonContainer: {
-    marginTop: 8,
-  },
-
-  signUpButton: {
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  disabledButton: {
-    opacity: 0.7,
-  },
-
-  signUpButtonText: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
-
-  footer: {
-    alignItems: 'center',
-  },
-
-  footerText: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  signInLink: {
-    color: Colors.primary,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-  },
-
-  // Verification Section Styles
-  verificationSection: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-
-  verificationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  verificationTitle: {
-    fontSize: 18,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-
-  verificationSubtitle: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-
-  verifyButton: {
-    borderRadius: 12,
-    marginTop: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  verifyButtonGradient: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-
-  verifiedButton: {
-    backgroundColor: Colors.light.success,
-  },
-
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-
-  verifyButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  verifyButtonText: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-    color: '#ffffff',
-    marginLeft: 8,
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-
-  modalContent: {
-    padding: 24,
-    borderRadius: 16,
-    width: '80%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 8,
-  },
-
-  modalDescription: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 16,
-  },
-
-  otpInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-  },
-
-  otpError: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-
-  // Enhanced Loading Screen Styles
-  fullscreenLoadingContainer: {
-    flex: 1,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
-
-  loadingGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  loadingDecorativeCircle1: {
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-  },
-
-  loadingDecorativeCircle2: {
-    position: 'absolute',
-    bottom: -80,
-    left: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-
-  loadingDecorativeCircle3: {
-    position: 'absolute',
-    top: '40%',
-    right: -60,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-  },
-
-  loadingContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-
-  loadingIconWrapper: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-    borderWidth: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-
-  spinnerContainer: {
-    marginBottom: 32,
-    transform: [{ scale: 1.5 }],
-  },
-
-  loadingTitle: {
-    fontSize: 28,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-
-  loadingSubtitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 24,
-  },
-
-  progressContainer: {
-    width: '100%',
-    maxWidth: 280,
-    marginTop: 20,
-  },
-
-  progressBar: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-
-  progressFill: {
-    height: '100%',
-    width: '70%',
-    borderRadius: 2,
-  },
-});

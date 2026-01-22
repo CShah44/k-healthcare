@@ -1,30 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Alert,
   TouchableOpacity,
-  Dimensions,
   Modal,
   TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Stethoscope, Eye, EyeOff } from 'lucide-react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/ui/Button';
+import { authStyles } from '@/styles/auth';
 
-const { width } = Dimensions.get('window');
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export default function HealthcareLoginScreen() {
-  const { colors, isDarkMode } = useTheme();
+  const colors = Colors.light;
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +46,30 @@ export default function HealthcareLoginScreen() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [role, setRole] = useState<'doctor' | 'lab_assistant'>('doctor');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(20);
+  const formOpacity = useSharedValue(0);
+  const formTranslateY = useSharedValue(30);
+
+  useEffect(() => {
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
+    formOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+    formTranslateY.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 100 }));
+  }, []);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const formStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+    transform: [{ translateY: formTranslateY.value }],
+  }));
 
   const validateForm = () => {
     const newErrors: { identifier?: string; password?: string } = {};
@@ -47,8 +80,6 @@ export default function HealthcareLoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleLogin = async () => {
     if (!validateForm()) return;
     setIsSubmitting(true);
@@ -56,10 +87,7 @@ export default function HealthcareLoginScreen() {
       await login(identifier, password, role);
       router.replace('/(healthcare-tabs)');
     } catch (error) {
-      Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
       setIsSubmitting(false);
-    } finally {
-      if (errors) setIsSubmitting(false); // Fallback safe
     }
   };
 
@@ -78,53 +106,28 @@ export default function HealthcareLoginScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.fullscreenLoadingContainer}>
+      <View style={authStyles.fullscreenLoadingContainer}>
         <LinearGradient
           colors={[colors.background, colors.surface, colors.card]}
-          style={styles.loadingGradient}
+          style={authStyles.loadingGradient}
         >
-          {/* Decorative Elements */}
-          <View
-            style={[
-              styles.loadingDecorativeCircle1,
-              { backgroundColor: `${Colors.primary}08` },
-            ]}
-          />
-          <View
-            style={[
-              styles.loadingDecorativeCircle2,
-              { backgroundColor: `${Colors.medical.green}06` },
-            ]}
-          />
-
-          {/* Main Loading Content */}
-          <View style={styles.loadingContent}>
-            {/* Logo/Icon */}
-            <View
-              style={[
-                styles.loadingIconWrapper,
-                {
-                  backgroundColor: `${Colors.primary}15`,
-                  borderColor: `${Colors.primary}30`,
-                  shadowColor: colors.shadow,
-                },
-              ]}
-            >
+          <View style={[authStyles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
+          <View style={[authStyles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
+          <View style={authStyles.loadingContent}>
+            <View style={[authStyles.loadingIconWrapper, {
+              backgroundColor: `${Colors.primary}15`,
+              borderColor: `${Colors.primary}30`,
+              shadowColor: colors.shadow,
+            }]}>
               <Stethoscope size={48} color={Colors.primary} strokeWidth={2} />
             </View>
-
-            {/* Loading Spinner */}
-            <View style={styles.spinnerContainer}>
+            <View style={authStyles.spinnerContainer}>
               <LoadingSpinner size={48} />
             </View>
-
-            {/* Loading Text */}
-            <Text style={[styles.loadingTitle, { color: colors.text }]}>
+            <Text style={[authStyles.loadingTitle, { color: colors.text }]}>
               Signing you in...
             </Text>
-            <Text
-              style={[styles.loadingSubtitle, { color: colors.textSecondary }]}
-            >
+            <Text style={[authStyles.loadingSubtitle, { color: colors.textSecondary }]}>
               Please wait while we authenticate your credentials
             </Text>
           </View>
@@ -134,26 +137,17 @@ export default function HealthcareLoginScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView style={[authStyles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
         colors={[colors.background, colors.surface]}
-        style={styles.backgroundGradient}
+        style={authStyles.backgroundGradient}
       >
-        {/* Decorative Elements */}
-        <View
-          style={[
-            styles.decorativeCircle,
-            { backgroundColor: `${Colors.primary}05` },
-          ]}
-        />
+        <View style={[authStyles.decorativeCircle, { backgroundColor: `${Colors.primary}05` }]} />
 
-        {/* Header */}
-        <View style={styles.header}>
+        <AnimatedView style={[authStyles.header, headerStyle]}>
           <TouchableOpacity
             style={[
-              styles.backButton,
+              authStyles.backButton,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
             onPress={() => router.back()}
@@ -161,170 +155,187 @@ export default function HealthcareLoginScreen() {
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
-        </View>
+        </AnimatedView>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <View
-              style={[
-                styles.iconWrapper,
-                {
-                  backgroundColor: `${Colors.primary}15`,
-                  borderColor: `${Colors.primary}30`,
-                },
-              ]}
-            >
-              <Stethoscope size={32} color={Colors.primary} strokeWidth={2} />
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Welcome Back
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Healthcare Professional Portal
-            </Text>
-          </View>
-
-          <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>
-                Username / Email / Phone *
-              </Text>
-              <View style={styles.inputWrapper}>
-                <Input
-                  placeholder="Enter your username, email, or phone"
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  autoCapitalize="none"
-                  editable={!isSubmitting}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={authStyles.keyboardAvoidingView}
+        >
+          <ScrollView
+            style={authStyles.scrollView}
+            contentContainerStyle={authStyles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <AnimatedView style={[authStyles.content, formStyle]}>
+              <AnimatedView
+                entering={FadeInDown.delay(100).springify()}
+                style={authStyles.logoContainer}
+              >
+                <View
                   style={[
-                    styles.input,
+                    authStyles.iconWrapper,
                     {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
+                      backgroundColor: `${Colors.primary}15`,
+                      borderColor: `${Colors.primary}30`,
                     },
-                    errors.identifier && styles.inputError,
                   ]}
-                />
-              </View>
-              {errors.identifier && (
-                <Text style={styles.errorText}>{errors.identifier}</Text>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>
-                Password *
-              </Text>
-              <View style={styles.inputWrapper}>
-                <Input
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  editable={!isSubmitting}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                    errors.password && styles.inputError,
-                  ]}
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff size={20} color={colors.textSecondary} />
-                  ) : (
-                    <Eye size={20} color={colors.textSecondary} />
+                  <Stethoscope size={36} color={Colors.primary} strokeWidth={2.5} />
+                </View>
+                <AnimatedText
+                  entering={FadeInDown.delay(200).springify()}
+                  style={[authStyles.title, { color: colors.text }]}
+                >
+                  Welcome Back
+                </AnimatedText>
+                <AnimatedText
+                  entering={FadeInDown.delay(300).springify()}
+                  style={[authStyles.subtitle, { color: colors.textSecondary }]}
+                >
+                  Healthcare Professional Portal
+                </AnimatedText>
+              </AnimatedView>
+
+              <AnimatedView
+                entering={FadeInDown.delay(400).springify()}
+                style={authStyles.formContainer}
+              >
+                <View style={authStyles.inputContainer}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text }]}>
+                    Username / Email / Phone
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your username, email, or phone"
+                      value={identifier}
+                      onChangeText={setIdentifier}
+                      autoCapitalize="none"
+                      editable={!isSubmitting}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.identifier ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                  </View>
+                  {errors.identifier && (
+                    <Text style={authStyles.errorText}>{errors.identifier}</Text>
                   )}
+                </View>
+
+                <View style={authStyles.inputContainer}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text }]}>
+                    Password
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      editable={!isSubmitting}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.password ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <TouchableOpacity
+                      style={authStyles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color={colors.textSecondary} />
+                      ) : (
+                        <Eye size={20} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {errors.password && (
+                    <Text style={authStyles.errorText}>{errors.password}</Text>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={authStyles.forgotPassword}
+                  onPress={() => setShowForgot(true)}
+                  disabled={isSubmitting}
+                >
+                  <Text style={authStyles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
-              </View>
-              {errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              )}
-            </View>
 
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => setShowForgot(true)}
-              disabled={isSubmitting}
-            >
-              <Text
-                style={[styles.forgotPasswordText, { color: Colors.primary }]}
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  activeOpacity={0.8}
+                  disabled={isSubmitting}
+                >
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.medical.green]}
+                    style={[
+                      authStyles.primaryButton,
+                      isSubmitting && authStyles.buttonDisabled,
+                    ]}
+                  >
+                    {isSubmitting ? (
+                      <LoadingSpinner size={24} color="white" />
+                    ) : (
+                      <Text style={authStyles.primaryButtonText}>Sign In</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </AnimatedView>
+
+              <AnimatedView
+                entering={FadeInDown.delay(500).springify()}
+                style={authStyles.footer}
               >
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
+                <Text style={[authStyles.footerText, { color: colors.textSecondary }]}>
+                  Need an account?{' '}
+                  <Text
+                    style={authStyles.linkText}
+                    onPress={() => router.push('/auth/healthcare-signup')}
+                  >
+                    Register
+                  </Text>
+                </Text>
+              </AnimatedView>
+            </AnimatedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-            <TouchableOpacity
-              onPress={handleLogin}
-              activeOpacity={0.8}
-              style={styles.signInButtonContainer}
-              disabled={isSubmitting}
-            >
-              <LinearGradient
-                colors={[Colors.primary, Colors.medical.green]}
-                style={styles.signInButton}
-              >
-                {isSubmitting ? (
-                  <LoadingSpinner size={24} color="white" />
-                ) : (
-                  <Text style={styles.signInButtonText}>Sign In</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              Need an account?{' '}
-              <Text
-                style={styles.signUpLink}
-                onPress={() => router.push('/auth/healthcare-signup')}
-              >
-                Register
-              </Text>
-            </Text>
-          </View>
-        </View>
-
-        {/* Forgot Password Modal */}
         <Modal
           visible={showForgot}
           transparent
-          animationType="slide"
+          animationType="fade"
           onRequestClose={() => setShowForgot(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View
-              style={[styles.modalContent, { backgroundColor: colors.card }]}
+          <View style={authStyles.modalOverlay}>
+            <AnimatedView
+              entering={FadeInDown.springify()}
+              style={[authStyles.modalContent, { backgroundColor: colors.card }]}
             >
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
+              <Text style={[authStyles.modalTitle, { color: colors.text }]}>
                 Reset Password
               </Text>
-              <Text
-                style={[
-                  styles.modalDescription,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                Enter your email address and we'll send you a link to reset your
-                password.
+              <Text style={[authStyles.modalDescription, { color: colors.textSecondary }]}>
+                Enter your email address and we'll send you a link to reset your password.
               </Text>
               <TextInput
                 value={resetEmail}
                 onChangeText={setResetEmail}
                 placeholder="Email address"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 style={[
-                  styles.resetInput,
+                  authStyles.resetInput,
                   {
                     backgroundColor: colors.surface,
                     borderColor: colors.border,
@@ -335,7 +346,7 @@ export default function HealthcareLoginScreen() {
               {resetMessage ? (
                 <Text
                   style={[
-                    styles.resetMessage,
+                    authStyles.resetMessage,
                     {
                       color: resetMessage.includes('sent')
                         ? Colors.light.success
@@ -350,320 +361,13 @@ export default function HealthcareLoginScreen() {
               <Button
                 title="Cancel"
                 onPress={() => setShowForgot(false)}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 12 }}
                 variant="secondary"
               />
-            </View>
+            </AnimatedView>
           </View>
         </Modal>
       </LinearGradient>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  decorativeCircle: {
-    position: 'absolute',
-    top: -80,
-    right: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-  },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
-
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 50,
-  },
-
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-
-  title: {
-    fontSize: 32,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-
-  subtitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-
-  formContainer: {
-    marginBottom: 30,
-  },
-
-  inputContainer: {
-    marginBottom: 20,
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-
-  inputWrapper: {
-    position: 'relative',
-  },
-
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  inputError: {
-    borderColor: Colors.light.error,
-    borderWidth: 2,
-  },
-
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
-    padding: 4,
-  },
-
-  errorText: {
-    fontSize: 12,
-    color: Colors.light.error,
-    marginTop: 4,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 32,
-  },
-
-  forgotPasswordText: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '500',
-  },
-
-  signInButtonContainer: {
-    marginTop: 8,
-  },
-
-  signInButton: {
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  signInButtonText: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
-
-  footer: {
-    alignItems: 'center',
-  },
-
-  footerText: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  signUpLink: {
-    color: Colors.primary,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-
-  modalContent: {
-    padding: 24,
-    borderRadius: 16,
-    width: '80%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 8,
-  },
-
-  modalDescription: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-
-  resetInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  resetMessage: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-
-  // Enhanced Loading Screen Styles
-  fullscreenLoadingContainer: {
-    flex: 1,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
-
-  loadingGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  loadingDecorativeCircle1: {
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-  },
-
-  loadingDecorativeCircle2: {
-    position: 'absolute',
-    bottom: -80,
-    left: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-
-  loadingContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-
-  loadingIconWrapper: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-    borderWidth: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-
-  spinnerContainer: {
-    marginBottom: 32,
-    transform: [{ scale: 1.5 }],
-  },
-
-  loadingTitle: {
-    fontSize: 28,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-
-  loadingSubtitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-});

@@ -3,9 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  Dimensions,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -13,7 +12,6 @@ import Animated, {
   withSpring,
   withTiming,
   withDelay,
-  withSequence,
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,43 +19,32 @@ import {
   Heart,
   Users,
   ArrowRight,
-  Shield,
-  Sparkles,
 } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/Colors';
 import { Logo } from '@/components/ui/Logo';
-import { AnimatedCard } from '@/components/ui/AnimatedCard';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
-
-const { width, height } = Dimensions.get('window');
 
 export default function RoleSelectionScreen() {
-  const { colors } = useTheme();
+  // Use light mode colors by default
+  const colors = Colors.light;
 
-  // Animation values
+  // Subtle animation values
   const headerOpacity = useSharedValue(0);
-  const headerTranslateY = useSharedValue(30);
-  const card1Scale = useSharedValue(0);
-  const card2Scale = useSharedValue(0);
-  const footerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(20);
+  const card1Opacity = useSharedValue(0);
+  const card1TranslateY = useSharedValue(15);
+  const card2Opacity = useSharedValue(0);
+  const card2TranslateY = useSharedValue(15);
 
   useEffect(() => {
-    // Staggered animations
-    headerOpacity.value = withTiming(1, { duration: 800 });
-    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+    // Subtle staggered animations
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
 
-    card1Scale.value = withDelay(
-      300,
-      withSpring(1, { damping: 12, stiffness: 100 })
-    );
-    card2Scale.value = withDelay(
-      500,
-      withSpring(1, { damping: 12, stiffness: 100 })
-    );
+    card1Opacity.value = withDelay(200, withTiming(1, { duration: 500 }));
+    card1TranslateY.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 100 }));
 
-    footerOpacity.value = withDelay(800, withTiming(1, { duration: 600 }));
+    card2Opacity.value = withDelay(350, withTiming(1, { duration: 500 }));
+    card2TranslateY.value = withDelay(350, withSpring(0, { damping: 18, stiffness: 100 }));
   }, []);
 
   const handleRoleSelection = (role: 'patient' | 'healthcare') => {
@@ -70,280 +57,104 @@ export default function RoleSelectionScreen() {
   }));
 
   const card1Style = useAnimatedStyle(() => ({
-    transform: [{ scale: card1Scale.value }],
+    opacity: card1Opacity.value,
+    transform: [{ translateY: card1TranslateY.value }],
   }));
 
   const card2Style = useAnimatedStyle(() => ({
-    transform: [{ scale: card2Scale.value }],
-  }));
-
-  const footerStyle = useAnimatedStyle(() => ({
-    opacity: footerOpacity.value,
+    opacity: card2Opacity.value,
+    transform: [{ translateY: card2TranslateY.value }],
   }));
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <LinearGradient
-        colors={[colors.background, colors.surface]}
-        style={styles.backgroundGradient}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Theme Toggle - Fixed Position */}
-        <View style={styles.themeToggleContainer}>
-          <ThemeToggle style={styles.themeToggle} />
-        </View>
+        {/* Branding Section - Large and Prominent */}
+        <Animated.View style={[styles.brandingSection, headerStyle]}>
+          <Logo size={80} animated={false} />
+          <Text style={[styles.appName, { color: colors.text }]}>
+            Svastheya
+          </Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+            Centralized medical records sharing for patients, doctors, and lab assistants
+          </Text>
+        </Animated.View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header with Logo - Now inside ScrollView */}
-          <Animated.View style={[styles.headerContent, headerStyle]}>
-            <Logo size={60} animated={true} />
-            <Text style={[styles.appName, { color: colors.text }]}>
-              Svastheya
-            </Text>
-            <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-              Your Health, Our Priority
-            </Text>
-          </Animated.View>
-
-          {/* Welcome Section */}
-          <Animated.View style={[styles.welcomeSection, headerStyle]}>
-            <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-              Welcome to Better Health
-            </Text>
-            <Text
-              style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}
-            >
-              Choose your role to begin your personalized healthcare journey
-            </Text>
-          </Animated.View>
-
-          {/* Role Selection Cards */}
-          <View style={styles.roleContainer}>
-            <Animated.View style={card1Style}>
-              <AnimatedCard
-                onPress={() => handleRoleSelection('patient')}
-                style={styles.roleCard}
-                delay={0}
-              >
-                <LinearGradient
-                  colors={[
-                    'rgba(0, 148, 133, 0.05)',
-                    'rgba(0, 148, 133, 0.02)',
-                  ]}
-                  style={styles.roleCardGradient}
-                >
-                  <View style={styles.roleHeader}>
-                    <View style={styles.roleIconContainer}>
-                      <LinearGradient
-                        colors={['#009485', '#004d40']}
-                        style={styles.roleIconGradient}
-                      >
-                        <Heart size={32} color="#FFFFFF" strokeWidth={2} />
-                      </LinearGradient>
-                    </View>
-                    <View style={styles.roleArrow}>
-                      <ArrowRight
-                        size={20}
-                        color={Colors.primary}
-                        strokeWidth={2}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.roleContent}>
-                    <Text style={[styles.roleTitle, { color: colors.text }]}>
-                      I'm a Patient
-                    </Text>
-                    <Text
-                      style={[
-                        styles.roleDescription,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      Access medical records, track health metrics, and manage
-                      your complete health journey
-                    </Text>
-
-                    <View style={styles.roleFeatures}>
-                      <View style={styles.featureItem}>
-                        <View
-                          style={[
-                            styles.featureDot,
-                            { backgroundColor: Colors.primary },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.featureText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Medical Records
-                        </Text>
-                      </View>
-                      <View style={styles.featureItem}>
-                        <View
-                          style={[
-                            styles.featureDot,
-                            { backgroundColor: Colors.primary },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.featureText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Health Tracking
-                        </Text>
-                      </View>
-                      <View style={styles.featureItem}>
-                        <View
-                          style={[
-                            styles.featureDot,
-                            { backgroundColor: Colors.primary },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.featureText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Family Tree
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </LinearGradient>
-              </AnimatedCard>
-            </Animated.View>
-
-            <Animated.View style={card2Style}>
-              <AnimatedCard
-                onPress={() => handleRoleSelection('healthcare')}
-                style={styles.roleCard}
-                delay={200}
-              >
-                <LinearGradient
-                  colors={[
-                    'rgba(0, 148, 133, 0.05)',
-                    'rgba(0, 148, 133, 0.02)',
-                  ]}
-                  style={styles.roleCardGradient}
-                >
-                  <View style={styles.roleHeader}>
-                    <View style={styles.roleIconContainer}>
-                      <LinearGradient
-                        colors={['#80cbc4', '#009485']}
-                        style={styles.roleIconGradient}
-                      >
-                        <Users size={32} color="#FFFFFF" strokeWidth={2} />
-                      </LinearGradient>
-                    </View>
-                    <View style={styles.roleArrow}>
-                      <ArrowRight
-                        size={20}
-                        color={Colors.primary}
-                        strokeWidth={2}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.roleContent}>
-                    <Text style={[styles.roleTitle, { color: colors.text }]}>
-                      I'm a Healthcare Professional
-                    </Text>
-                    <Text
-                      style={[
-                        styles.roleDescription,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      Manage patient records, lab results, and provide
-                      exceptional healthcare services
-                    </Text>
-
-                    <View style={styles.roleFeatures}>
-                      <View style={styles.featureItem}>
-                        <View
-                          style={[
-                            styles.featureDot,
-                            { backgroundColor: Colors.primary },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.featureText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Patient Management
-                        </Text>
-                      </View>
-                      <View style={styles.featureItem}>
-                        <View
-                          style={[
-                            styles.featureDot,
-                            { backgroundColor: Colors.primary },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.featureText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Lab Results
-                        </Text>
-                      </View>
-                      <View style={styles.featureItem}>
-                        <View
-                          style={[
-                            styles.featureDot,
-                            { backgroundColor: Colors.primary },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.featureText,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          Digital Prescriptions
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </LinearGradient>
-              </AnimatedCard>
-            </Animated.View>
-          </View>
-
-          {/* Footer */}
-          <Animated.View style={[styles.footer, footerStyle]}>
+        {/* Role Selection Cards - Smaller and Minimal */}
+        <View style={styles.roleContainer}>
+          <Animated.View style={card1Style}>
             <View
               style={[
-                styles.securityBadge,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                styles.roleCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
               ]}
             >
-              <Shield size={18} color={Colors.primary} strokeWidth={2} />
-              <Text style={[styles.securityText, { color: Colors.primary }]}>
-                HIPAA Compliant & Secure
-              </Text>
+              <TouchableOpacity
+                onPress={() => handleRoleSelection('patient')}
+                style={styles.roleCardTouchable}
+                activeOpacity={0.7}
+              >
+                <View style={styles.roleCardContent}>
+                  <View style={[styles.roleIconWrapper, { backgroundColor: 'rgba(0, 148, 133, 0.1)' }]}>
+                    <Heart size={24} color={Colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.roleTextContainer}>
+                    <Text style={[styles.roleTitle, { color: colors.text }]}>
+                      Patient
+                    </Text>
+                    <Text style={[styles.roleSubtitle, { color: colors.textSecondary }]}>
+                      Access your records
+                    </Text>
+                  </View>
+                  <ArrowRight size={20} color={colors.textSecondary} strokeWidth={2} />
+                </View>
+              </TouchableOpacity>
             </View>
-            <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
-              Trusted by healthcare professionals and patients worldwide
-            </Text>
           </Animated.View>
-        </ScrollView>
-      </LinearGradient>
+
+          <Animated.View style={card2Style}>
+            <View
+              style={[
+                styles.roleCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={() => handleRoleSelection('healthcare')}
+                style={styles.roleCardTouchable}
+                activeOpacity={0.7}
+              >
+                <View style={styles.roleCardContent}>
+                  <View style={[styles.roleIconWrapper, { backgroundColor: 'rgba(0, 148, 133, 0.1)' }]}>
+                    <Users size={24} color={Colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.roleTextContainer}>
+                    <Text style={[styles.roleTitle, { color: colors.text }]}>
+                      Healthcare
+                    </Text>
+                    <Text style={[styles.roleSubtitle, { color: colors.textSecondary }]}>
+                      Manage records
+                    </Text>
+                  </View>
+                  <ArrowRight size={20} color={colors.textSecondary} strokeWidth={2} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -352,174 +163,77 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backgroundGradient: {
-    flex: 1,
-  },
-  themeToggleContainer: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 1,
-  },
-  headerContent: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    marginBottom: 20,
-  },
-  themeToggle: {
-    // No additional margin needed
-  },
-  appName: {
-    fontFamily: 'IvyMode-Regular',
-    fontSize: 28,
-    marginTop: 8,
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontFamily: 'Satoshi-Variable',
-    fontSize: 14,
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingTop: 80,
     paddingBottom: 40,
   },
-  welcomeSection: {
+  brandingSection: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 40,
+    paddingHorizontal: 32,
+    marginBottom: 64,
   },
-  welcomeTitle: {
+  appName: {
     fontFamily: 'IvyMode-Regular',
-    fontSize: 24,
-    textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: -0.5,
+    fontSize: 42,
+    marginTop: 16,
+    letterSpacing: 0.5,
   },
-  welcomeSubtitle: {
+  tagline: {
     fontFamily: 'Satoshi-Variable',
-    fontSize: 16,
+    fontSize: 15,
+    marginTop: 12,
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 10,
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   roleContainer: {
-    paddingHorizontal: 20,
-    gap: 24,
-    marginBottom: 40,
+    paddingHorizontal: 24,
+    gap: 16,
   },
   roleCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  roleCardGradient: {
-    padding: 24,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0, 148, 133, 0.1)',
-  },
-  roleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  roleIconContainer: {
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
-  roleIconGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  roleCardTouchable: {
+    width: '100%',
+  },
+  roleCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  roleIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  roleArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 148, 133, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 148, 133, 0.2)',
-  },
-  roleContent: {
+  roleTextContainer: {
     flex: 1,
   },
   roleTitle: {
     fontFamily: 'IvyMode-Regular',
-    fontSize: 20,
-    marginBottom: 12,
-    letterSpacing: -0.3,
+    fontSize: 18,
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  roleDescription: {
-    fontFamily: 'Satoshi-Variable',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  roleFeatures: {
-    gap: 8,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  featureDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 12,
-  },
-  featureText: {
+  roleSubtitle: {
     fontFamily: 'Satoshi-Variable',
     fontSize: 13,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  securityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 30,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-    marginBottom: 16,
-  },
-  securityText: {
-    fontFamily: 'Satoshi-Variable',
-    fontSize: 13,
-    marginLeft: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  footerNote: {
-    fontFamily: 'Satoshi-Variable',
-    fontSize: 12,
-    textAlign: 'center',
-    opacity: 0.8,
   },
 });

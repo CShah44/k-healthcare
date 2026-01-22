@@ -6,28 +6,25 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
+  withDelay,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
-  Calendar,
   FileText,
-  Clock,
-  ChevronRight,
-  TestTube2,
   Plus,
   Bell,
   Users,
-  Pill,
-  FileImage,
   Shield,
+  Heart,
+  Lightbulb,
+  Leaf,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,33 +41,69 @@ import { createHomeStyles } from '../../styles/home';
 import { db } from '@/constants/firebase';
 import { doc, getDoc, collection, query, getDocs } from 'firebase/firestore';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Wellness tips that rotate based on time
+const wellnessTips = [
+  {
+    icon: Heart,
+    title: 'Stay Active',
+    text: 'Just 30 minutes of walking daily can improve your heart health significantly.',
+    color: '#EF4444',
+    bgColor: '#FEF2F2',
+  },
+  {
+    icon: Leaf,
+    title: 'Mindful Breathing',
+    text: 'Take 5 deep breaths when you feel stressed. It helps calm your nervous system.',
+    color: '#10B981',
+    bgColor: '#ECFDF5',
+  },
+  {
+    icon: Lightbulb,
+    title: 'Stay Hydrated',
+    text: 'Drink at least 8 glasses of water today. Your body will thank you!',
+    color: '#F59E0B',
+    bgColor: '#FFFBEB',
+  },
+];
 
 export default function PatientHomeScreen() {
   const { user, userData } = useAuth();
-  const { colors } = useTheme();
-  const styles = createHomeStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = createHomeStyles(colors, isDarkMode);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [familyMembersCount, setFamilyMembersCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Get a tip based on the current hour
+  const currentTip = wellnessTips[new Date().getHours() % wellnessTips.length];
+  const TipIcon = currentTip.icon;
+
   // Animation values
   const headerOpacity = useSharedValue(0);
-  const headerTranslateY = useSharedValue(30);
-  const cardScale = useSharedValue(0.9);
-  const cardOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(20);
+  const statsOpacity = useSharedValue(0);
+  const statsTranslateY = useSharedValue(20);
+  const actionsOpacity = useSharedValue(0);
+  const actionsTranslateY = useSharedValue(20);
+  const tipsOpacity = useSharedValue(0);
+  const tipsTranslateY = useSharedValue(20);
 
   useEffect(() => {
-    // Animate header entrance
-    headerOpacity.value = withTiming(1, { duration: 800 });
-    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+    // Staggered entrance animations
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
 
-    // Animate cards with stagger
-    setTimeout(() => {
-      cardScale.value = withSpring(1, { damping: 12, stiffness: 100 });
-      cardOpacity.value = withTiming(1, { duration: 600 });
-    }, 300);
+    statsOpacity.value = withDelay(150, withTiming(1, { duration: 600 }));
+    statsTranslateY.value = withDelay(150, withSpring(0, { damping: 20, stiffness: 90 }));
+
+    actionsOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
+    actionsTranslateY.value = withDelay(300, withSpring(0, { damping: 20, stiffness: 90 }));
+
+    tipsOpacity.value = withDelay(450, withTiming(1, { duration: 600 }));
+    tipsTranslateY.value = withDelay(450, withSpring(0, { damping: 20, stiffness: 90 }));
   }, []);
 
   useEffect(() => {
@@ -119,33 +152,45 @@ export default function PatientHomeScreen() {
     transform: [{ translateY: headerTranslateY.value }],
   }));
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cardScale.value }],
-    opacity: cardOpacity.value,
+  const statsStyle = useAnimatedStyle(() => ({
+    opacity: statsOpacity.value,
+    transform: [{ translateY: statsTranslateY.value }],
   }));
 
-  const recentRecords = medicalRecords.slice(0, 3);
+  const actionsStyle = useAnimatedStyle(() => ({
+    opacity: actionsOpacity.value,
+    transform: [{ translateY: actionsTranslateY.value }],
+  }));
+
+  const tipsStyle = useAnimatedStyle(() => ({
+    opacity: tipsOpacity.value,
+    transform: [{ translateY: tipsTranslateY.value }],
+  }));
+
+  // Soft background colors based on theme - match Profile
+  const backgroundColors: readonly [string, string] = isDarkMode
+    ? [colors.background, colors.surface]
+    : ['#FAF8F3', '#FAF8F3']; // Match Profile soft beige
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <LinearGradient
-        colors={[colors.background, colors.surface]}
+        colors={backgroundColors}
         style={styles.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
       >
-        {/* Decorative Elements */}
-        <View
-          style={[
-            styles.decorativeCircle1,
-            { backgroundColor: 'rgba(0, 148, 133, 0.05)' },
-          ]}
-        />
-        <View
-          style={[
-            styles.decorativeCircle2,
-            { backgroundColor: 'rgba(34, 197, 94, 0.06)' },
-          ]}
+        {/* Subtle Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+
+        {/* Bottom Corner Illustration */}
+        <Image
+          source={require('@/assets/images/image copy.png')}
+          style={styles.bottomIllustration}
+          resizeMode="contain"
         />
 
         <ScrollView
@@ -153,63 +198,61 @@ export default function PatientHomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Header Section */}
           <Animated.View style={[styles.header, headerStyle]}>
             <View style={styles.headerLeft}>
               <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-                {getGreeting()}
+                {getGreeting()} 👋
               </Text>
               <Text style={[styles.name, { color: colors.text }]}>
                 {userData?.firstName || 'User'}
               </Text>
               {userData?.patientId && (
                 <View style={styles.idContainer}>
-                  <Text style={[styles.idText, { color: colors.textSecondary }]}>
+                  <Text style={styles.idText}>
                     ID: {userData.patientId}
                   </Text>
                 </View>
               )}
             </View>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={styles.headerRight}>
               <TouchableOpacity
-                style={[
-                  styles.notificationButton,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
+                style={styles.notificationButton}
                 onPress={() => router.push('/(patient-tabs)/access-requests')}
+                activeOpacity={0.7}
               >
-                <Shield size={20} color={colors.text} strokeWidth={2} />
+                <Shield size={18} color={colors.text} strokeWidth={1.8} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.notificationButton,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
+                style={styles.notificationButton}
                 onPress={() => router.push('/notifications')}
+                activeOpacity={0.7}
               >
-                <Bell size={20} color={colors.text} strokeWidth={2} />
+                <Bell size={18} color={colors.text} strokeWidth={1.8} />
               </TouchableOpacity>
             </View>
           </Animated.View>
 
-          {/* Quick Stats */}
-          <Animated.View style={[styles.statsContainer, cardStyle]}>
-            <View
+          {/* Stats Cards */}
+          <Animated.View style={[styles.statsContainer, statsStyle]}>
+            <TouchableOpacity
               style={[
                 styles.statCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                !isDarkMode && styles.statCardAccent1,
               ]}
+              onPress={() => router.push('/(patient-tabs)/records')}
+              activeOpacity={0.8}
             >
               <View
                 style={[
                   styles.statIcon,
-                  { backgroundColor: `${Colors.medical.blue}15` },
+                  styles.statIconAccent1,
                 ]}
               >
                 <FileText
-                  size={20}
-                  color={Colors.medical.blue}
-                  strokeWidth={2}
+                  size={18}
+                  color="#009485"
+                  strokeWidth={1.8}
                 />
               </View>
               <View style={styles.statContent}>
@@ -219,24 +262,26 @@ export default function PatientHomeScreen() {
                 <Text
                   style={[styles.statLabel, { color: colors.textSecondary }]}
                 >
-                  Total Records
+                  Records
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View
+            <TouchableOpacity
               style={[
                 styles.statCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                !isDarkMode && styles.statCardAccent2,
               ]}
+              onPress={() => router.push('/(patient-tabs)/family')}
+              activeOpacity={0.8}
             >
               <View
                 style={[
                   styles.statIcon,
-                  { backgroundColor: `${Colors.medical.blue}15` },
+                  styles.statIconAccent2,
                 ]}
               >
-                <Users size={20} color={Colors.medical.blue} strokeWidth={2} />
+                <Users size={18} color="#6366F1" strokeWidth={1.8} />
               </View>
               <View style={styles.statContent}>
                 <Text style={[styles.statNumber, { color: colors.text }]}>
@@ -245,151 +290,102 @@ export default function PatientHomeScreen() {
                 <Text
                   style={[styles.statLabel, { color: colors.textSecondary }]}
                 >
-                  Family Members
+                  Family
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </Animated.View>
 
-          {/* Quick Actions */}
-          <Animated.View style={[styles.actionsContainer, cardStyle]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Quick Actions
-            </Text>
+          {/* Quick Actions - No heading */}
+          <Animated.View style={[styles.actionsContainer, actionsStyle]}>
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={[
                   styles.actionButton,
-                  { backgroundColor: colors.card, borderColor: colors.border },
+                  styles.actionButtonPrimary,
                 ]}
                 onPress={() => router.push('/(patient-tabs)/upload-record')}
+                activeOpacity={0.8}
               >
-                <Plus size={24} color={Colors.primary} strokeWidth={2} />
-                <Text style={[styles.actionText, { color: colors.text }]}>
-                  Upload Record
+                <View style={[styles.actionIconWrapper, styles.actionIconPrimary]}>
+                  <Plus size={22} color="#FFFFFF" strokeWidth={2} />
+                </View>
+                <Text style={[styles.actionText, styles.actionTextPrimary]}>
+                  Upload
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.actionButton,
-                  { backgroundColor: colors.card, borderColor: colors.border },
+                  styles.actionButtonSecondary,
                 ]}
                 onPress={() => router.push('/(patient-tabs)/records')}
+                activeOpacity={0.8}
               >
-                <FileText size={24} color={Colors.primary} strokeWidth={2} />
+                <View style={[styles.actionIconWrapper, styles.actionIconSecondary]}>
+                  <FileText size={20} color="#8B5CF6" strokeWidth={1.8} />
+                </View>
                 <Text style={[styles.actionText, { color: colors.text }]}>
-                  View Records
+                  Records
                 </Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
 
-          {/* Recent Records */}
-          <Animated.View style={[styles.recordsContainer, cardStyle]}>
-            <View style={styles.recordsHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Recent Records
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push('/(patient-tabs)/records')}
-              >
-                <Text style={[styles.viewAllText, { color: Colors.primary }]}>
-                  View All
+          {/* Wellness Tip Card */}
+          <Animated.View style={[styles.tipsContainer, tipsStyle]}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+              Daily Tip
+            </Text>
+            <View style={[styles.tipCard, { backgroundColor: isDarkMode ? colors.card : currentTip.bgColor }]}>
+              <View style={[styles.tipIconWrapper, { backgroundColor: `${currentTip.color}18` }]}>
+                <TipIcon size={20} color={currentTip.color} strokeWidth={1.8} />
+              </View>
+              <View style={styles.tipContent}>
+                <Text style={[styles.tipTitle, { color: colors.text }]}>
+                  {currentTip.title}
                 </Text>
-              </TouchableOpacity>
+                <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+                  {currentTip.text}
+                </Text>
+              </View>
             </View>
-
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text
-                  style={[styles.loadingText, { color: colors.textSecondary }]}
-                >
-                  Loading records...
-                </Text>
-              </View>
-            ) : recentRecords.length > 0 ? (
-              <View style={styles.recordsList}>
-                {recentRecords.map((record, index) => {
-                  const { icon: IconComponent, color } = getRecordIcon(
-                    record.type,
-                    record.source
-                  );
-                  return (
-                    <TouchableOpacity
-                      key={record.id}
-                      style={[
-                        styles.recordCard,
-                        {
-                          backgroundColor: colors.card,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                      onPress={() =>
-                        router.push(`/(patient-tabs)/records?id=${record.id}`)
-                      }
-                    >
-                      <View
-                        style={[
-                          styles.recordIcon,
-                          { backgroundColor: `${color}15` },
-                        ]}
-                      >
-                        <IconComponent
-                          size={20}
-                          color={color}
-                          strokeWidth={2}
-                        />
-                      </View>
-                      <View style={styles.recordInfo}>
-                        <Text
-                          style={[styles.recordTitle, { color: colors.text }]}
-                          numberOfLines={1}
-                        >
-                          {record.title}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.recordDate,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {formatDate(record.uploadedAt)}
-                        </Text>
-                      </View>
-                      <ChevronRight
-                        size={16}
-                        color={colors.textSecondary}
-                        strokeWidth={2}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <FileText
-                  size={48}
-                  color={colors.textSecondary}
-                  strokeWidth={1}
-                />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                  No Records Yet
-                </Text>
-                <Text
-                  style={[
-                    styles.emptySubtitle,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Upload your first medical record to get started
-                </Text>
-              </View>
-            )}
           </Animated.View>
+
+          {/* Health Summary Card */}
+          <Animated.View style={[styles.summaryContainer, tipsStyle]}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
+              <View style={styles.summaryHeader}>
+                <Text style={[styles.summaryTitle, { color: colors.text }]}>
+                  Your Health at a Glance
+                </Text>
+              </View>
+              <View style={styles.summaryContent}>
+                <View style={styles.summaryItem}>
+                  <View style={[styles.summaryDot, { backgroundColor: '#10B981' }]} />
+                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                    {totalRecords} records stored securely
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <View style={[styles.summaryDot, { backgroundColor: '#6366F1' }]} />
+                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                    {familyMembersCount} family member{familyMembersCount !== 1 ? 's' : ''} connected
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <View style={[styles.summaryDot, { backgroundColor: '#009485' }]} />
+                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                    All data encrypted & protected
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+
         </ScrollView>
       </LinearGradient>
-    </SafeAreaView >
+    </SafeAreaView>
   );
 }

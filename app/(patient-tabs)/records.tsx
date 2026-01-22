@@ -25,7 +25,6 @@ import {
   FileText,
   Search,
   Download,
-  Eye,
   Upload,
   TestTube2,
   Pill,
@@ -203,10 +202,12 @@ async function decryptFileFromUrl(
   else {
     const base64Data = uint8ArrayToBase64(decryptedUint8);
     const fileExtension = record.fileType.includes('pdf') ? 'pdf' : 'jpg';
-    const path = `${FileSystem.cacheDirectory}${record.title || 'record'}.${fileExtension}`;
+    // Use documentDirectory as fallback if cacheDirectory is not available
+    const cacheDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
+    const path = `${cacheDir}${record.title || 'record'}.${fileExtension}`;
 
     await FileSystem.writeAsStringAsync(path, base64Data, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64' as any,
     });
 
     return path; // returns file:// URI
@@ -215,8 +216,8 @@ async function decryptFileFromUrl(
 
 export default function MedicalRecordsScreen() {
 
-  const { colors } = useTheme();
-  const styles = createRecordsStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = createRecordsStyles(colors, isDarkMode);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -424,17 +425,17 @@ export default function MedicalRecordsScreen() {
 
   const getRecordIcon = (type: string, source: string) => {
     if (source === 'lab_uploaded') {
-      return { icon: TestTube2, color: medicalColors.green };
+      return { icon: TestTube2, color: '#10B981', bgColor: '#D1FAE5' }; // Pastel green
     }
     switch (type) {
       case 'prescriptions':
-        return { icon: Pill, color: medicalColors.orange };
+        return { icon: Pill, color: '#EAB308', bgColor: '#FEF9C3' }; // Pastel yellow
       case 'uploaded':
-        return { icon: FileImage, color: primary };
+        return { icon: FileImage, color: '#3B82F6', bgColor: '#DBEAFE' }; // Pastel blue
       case 'lab_reports':
-        return { icon: TestTube2, color: medicalColors.green };
+        return { icon: TestTube2, color: '#10B981', bgColor: '#D1FAE5' }; // Pastel green
       default:
-        return { icon: FileText, color: colors.textSecondary };
+        return { icon: FileText, color: '#3B82F6', bgColor: '#DBEAFE' }; // Pastel blue
     }
   };
 
@@ -951,34 +952,34 @@ export default function MedicalRecordsScreen() {
           >
             {filteredRecords.length > 0 ? (
               filteredRecords.map((record, index) => {
-                const { icon: IconComponent, color } = getRecordIcon(
+                const { icon: IconComponent, color, bgColor } = getRecordIcon(
                   record.type,
                   record.source
                 );
                 const canEdit = canEditRecord(record);
 
                 return (
-                  <View
+                  <Animated.View
                     key={record.id}
-                    style={{ marginBottom: 16 }}
+                    style={{ marginBottom: 12 }}
+                    entering={FadeInDown.delay(index * 50).springify().damping(15)}
                   >
                     <TouchableOpacity
                       style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordCard : styles.recordCard}
-                      activeOpacity={0.7}
+                      activeOpacity={0.85}
                       onPress={() => {
                         setSelectedRecord(record);
                         setPreviewModalVisible(true);
                       }}
                     >
                       <View style={styles.recordCardContent}>
-                        {record.isNew && <View style={styles.newBadge} />}
-
                         <View style={styles.recordMain}>
+                          {/* Left: Icon and Content */}
                           <View style={styles.recordLeft}>
                             <View
                               style={[
                                 styles.recordIcon,
-                                { backgroundColor: `${color}15` },
+                                { backgroundColor: bgColor || `${color}15` },
                               ]}
                             >
                               <IconComponent
@@ -994,10 +995,12 @@ export default function MedicalRecordsScreen() {
                               >
                                 {record.title}
                               </Text>
-                              <View style={styles.recordMeta}>
+                              
+                              {/* Metadata Row */}
+                              <View style={styles.recordMetaRow}>
                                 <Text style={styles.recordSource}>
                                   {record.source === 'lab_uploaded'
-                                    ? record.lab
+                                    ? record.lab || 'Lab'
                                     : record.doctor || 'Self-uploaded'}
                                 </Text>
                                 <View style={styles.metaDot} />
@@ -1008,6 +1011,7 @@ export default function MedicalRecordsScreen() {
                                       .toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
+                                        year: 'numeric',
                                       })
                                     : record.uploadedAt?.seconds
                                       ? new Date(
@@ -1015,151 +1019,81 @@ export default function MedicalRecordsScreen() {
                                       ).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
+                                        year: 'numeric',
                                       })
                                       : 'N/A'}
                                 </Text>
                               </View>
 
-                              {/* Tags */}
-                              {record.tags && record.tags.length > 0 && (
-                                <View style={styles.recordTags}>
-                                  {record.tags
-                                    .slice(0, 2)
-                                    .map((tagId: string) => {
-                                      const tagInfo = getTagInfo(tagId);
-                                      return (
-                                        <View
-                                          key={tagId}
-                                          style={[
-                                            styles.recordTag,
-                                            {
-                                              backgroundColor: `${tagInfo.color}15`,
-                                            },
-                                          ]}
-                                        >
-                                          <tagInfo.icon
-                                            size={10}
-                                            color={tagInfo.color}
-                                            strokeWidth={2}
-                                          />
-                                          <Text
-                                            style={[
-                                              styles.recordTagText,
-                                              { color: tagInfo.color },
-                                            ]}
-                                          >
-                                            {tagInfo.label}
-                                          </Text>
-                                        </View>
-                                      );
-                                    })}
-                                  {record.tags.length > 2 && (
-                                    <Text style={styles.moreTagsText}>
-                                      +{record.tags.length - 2}
-                                    </Text>
-                                  )}
+                              {/* Category Badge */}
+                              <View style={styles.recordDetailsRow}>
+                                <View style={styles.categoryBadge}>
+                                  <Text style={styles.categoryBadgeText}>
+                                    {record.source === 'lab_uploaded'
+                                      ? 'Lab Report'
+                                      : record.type === 'prescriptions'
+                                        ? 'Prescription'
+                                        : record.type === 'lab_reports'
+                                          ? 'Lab Report'
+                                          : 'Document'}
+                                  </Text>
                                 </View>
-                              )}
-
-                              <View style={styles.recordDetails}>
-                                <Text style={styles.fileInfo}>
-                                  {record.fileType} •{' '}
-                                  {record.fileSize || 'Unknown size'}
-                                </Text>
-                                {record.source === 'lab_uploaded' && (
-                                  <View style={styles.labBadge}>
-                                    <Text style={styles.labBadgeText}>
-                                      Lab Report
-                                    </Text>
-                                  </View>
-                                )}
                               </View>
                             </View>
                           </View>
 
+                          {/* Right: Actions */}
                           <View style={styles.recordActions}>
-                            <TouchableOpacity style={styles.actionButton}>
-                              <Eye size={16} color={primary} strokeWidth={2} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionButton}>
+                            <TouchableOpacity
+                              style={styles.actionButton}
+                              activeOpacity={0.7}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                // Download functionality - open in new tab/window for web, download for mobile
+                                if (record.fileUrl) {
+                                  if (Platform.OS === 'web') {
+                                    window.open(record.fileUrl, '_blank');
+                                  } else {
+                                    Linking.openURL(record.fileUrl);
+                                  }
+                                }
+                              }}
+                            >
                               <Download
                                 size={16}
-                                color={primary}
+                                color={isDarkMode ? colors.textSecondary : '#6B7280'}
                                 strokeWidth={2}
                               />
                             </TouchableOpacity>
                             {canEdit && (
-                              <>
-                                <TouchableOpacity
-                                  style={styles.actionButton}
-                                  onPress={() => handleEditRecord(record)}
-                                >
-                                  <Edit3
+                              <TouchableOpacity
+                                style={styles.actionButton}
+                                activeOpacity={0.7}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRecord(record);
+                                }}
+                                disabled={deletingRecordId === record.id}
+                              >
+                                {deletingRecordId === record.id ? (
+                                  <ActivityIndicator
+                                    size="small"
+                                    color={medicalColors.red}
+                                  />
+                                ) : (
+                                  <Trash2
                                     size={16}
-                                    color={medicalColors.blue}
+                                    color={isDarkMode ? medicalColors.red : '#DC2626'}
                                     strokeWidth={2}
                                   />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={styles.actionButton}
-                                  onPress={() => handleDeleteRecord(record)}
-                                  disabled={deletingRecordId === record.id}
-                                >
-                                  {deletingRecordId === record.id ? (
-                                    <ActivityIndicator
-                                      size="small"
-                                      color={medicalColors.red}
-                                    />
-                                  ) : (
-                                    <Trash2
-                                      size={16}
-                                      color={medicalColors.red}
-                                      strokeWidth={2}
-                                    />
-                                  )}
-                                </TouchableOpacity>
-                              </>
+                                )}
+                              </TouchableOpacity>
                             )}
                           </View>
                         </View>
-
-                        {record.status && record.status !== 'archived' && (
-                          <View style={styles.recordFooter}>
-                            <View
-                              style={[
-                                styles.statusIndicator,
-                                {
-                                  backgroundColor: `${getStatusColor(
-                                    record.status
-                                  )}20`,
-                                },
-                              ]}
-                            >
-                              <View
-                                style={[
-                                  styles.statusDot,
-                                  {
-                                    backgroundColor: getStatusColor(
-                                      record.status
-                                    ),
-                                  },
-                                ]}
-                              />
-                              <Text
-                                style={[
-                                  styles.statusText,
-                                  { color: getStatusColor(record.status) },
-                                ]}
-                              >
-                                {record.status.charAt(0).toUpperCase() +
-                                  record.status.slice(1)}
-                              </Text>
-                            </View>
-                          </View>
-                        )}
                       </View>
                     </TouchableOpacity>
-                  </View>
+                  </Animated.View>
                 );
               })
             ) : (

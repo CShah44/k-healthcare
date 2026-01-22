@@ -4,7 +4,7 @@ import { TestTube2, Pill, FileImage, FileText } from 'lucide-react-native';
 export function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
+  if (hour < 16) return 'Good afternoon';
   return 'Good evening';
 }
 

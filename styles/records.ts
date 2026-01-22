@@ -1,15 +1,16 @@
 import { StyleSheet } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
-export const createRecordsStyles = (colors: any) =>
+export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: isDarkMode ? colors.background : '#FAF8F3', // Match Profile soft beige background
     },
 
     backgroundGradient: {
       flex: 1,
+      backgroundColor: isDarkMode ? colors.background : '#FAF8F3', // Match Profile background
     },
 
     header: {
@@ -52,17 +53,16 @@ export const createRecordsStyles = (colors: any) =>
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.surface,
+      backgroundColor: isDarkMode ? colors.surface : '#F9FAFB', // Match Profile card background
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderWidth: 0,
       position: 'relative',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
       shadowRadius: 4,
-      elevation: 2,
+      elevation: 1,
     },
 
     headerButtonActive: {
@@ -115,18 +115,17 @@ export const createRecordsStyles = (colors: any) =>
     searchInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: isDarkMode ? colors.surface : '#F9FAFB', // Match Profile card background
       borderRadius: 16,
       paddingHorizontal: 16,
       paddingVertical: 14,
       gap: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
+      borderWidth: 0,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
+      shadowRadius: 4,
+      elevation: 1,
     },
 
     searchInput: {
@@ -181,18 +180,17 @@ export const createRecordsStyles = (colors: any) =>
     filterTab: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: isDarkMode ? colors.surface : '#F9FAFB', // Match Profile card background
       paddingVertical: 10,
       paddingHorizontal: 18,
       borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderWidth: 0,
       gap: 10,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 6,
-      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
+      shadowRadius: 4,
+      elevation: 1,
     },
 
     filterTabActive: {
@@ -247,105 +245,100 @@ export const createRecordsStyles = (colors: any) =>
     },
 
     recordCard: {
-      backgroundColor: colors.card,
-      borderRadius: 20,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
+      backgroundColor: isDarkMode ? colors.card : '#F9FAFB', // Match Profile card background
+      borderRadius: 16,
+      marginBottom: 12,
+      borderWidth: 0,
       position: 'relative',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.01,
+      shadowRadius: 3,
+      elevation: 1,
+      overflow: 'hidden', // For smooth press effect
     },
 
     recordCardContent: {
-      padding: 20,
+      padding: 16,
     },
 
     newBadge: {
       position: 'absolute',
-      top: 16,
-      right: 16,
-      width: 10,
-      height: 10,
-      borderRadius: 5,
+      top: 12,
+      right: 12,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
       backgroundColor: Colors.primary,
-      shadowColor: Colors.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.4,
-      shadowRadius: 4,
-      elevation: 3,
+      zIndex: 1,
     },
 
     recordMain: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      justifyContent: 'space-between',
     },
 
     recordLeft: {
       flexDirection: 'row',
       flex: 1,
+      marginRight: 12,
     },
 
     recordIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 16,
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 16,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      marginRight: 12,
+      // No shadow - pastel backgrounds are enough
     },
 
     recordInfo: {
       flex: 1,
+      minWidth: 0, // Allow text to wrap properly
     },
 
     recordTitle: {
-      fontSize: 17,
+      fontSize: 16,
       fontFamily: 'Satoshi-Variable',
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 6,
+      fontWeight: '600',
+      color: isDarkMode ? colors.text : '#1F2937', // Match Profile text color
+      marginBottom: 8,
       lineHeight: 22,
-      letterSpacing: -0.3,
+      letterSpacing: -0.2,
     },
 
-    recordMeta: {
+    recordMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 10,
+      flexWrap: 'wrap',
     },
 
     recordSource: {
-      fontSize: 14,
-      color: colors.textSecondary,
+      fontSize: 13,
+      color: isDarkMode ? colors.textSecondary : '#6B7280', // Lighter secondary text
       fontFamily: 'Satoshi-Variable',
       fontWeight: '500',
-      letterSpacing: -0.1,
+      letterSpacing: 0,
     },
 
     metaDot: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.textTertiary,
-      marginHorizontal: 10,
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: isDarkMode ? colors.textTertiary : '#D1D5DB', // Softer dot
+      marginHorizontal: 8,
     },
 
     recordDate: {
-      fontSize: 14,
-      color: colors.textSecondary,
+      fontSize: 13,
+      color: isDarkMode ? colors.textSecondary : '#6B7280', // Lighter secondary text
       fontFamily: 'Satoshi-Variable',
       fontWeight: '500',
-      letterSpacing: -0.1,
+      letterSpacing: 0,
     },
 
     recordTags: {
@@ -378,18 +371,20 @@ export const createRecordsStyles = (colors: any) =>
       fontWeight: '500',
     },
 
-    recordDetails: {
+    recordDetailsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 8,
+      flexWrap: 'wrap',
+      marginTop: 2,
     },
 
     fileInfo: {
-      fontSize: 13,
-      color: colors.textSecondary,
+      fontSize: 12,
+      color: isDarkMode ? colors.textTertiary : '#9CA3AF', // Even lighter tertiary text
       fontFamily: 'Satoshi-Variable',
-      fontWeight: '500',
-      letterSpacing: -0.1,
+      fontWeight: '400',
+      letterSpacing: 0,
     },
 
     labBadge: {
@@ -410,31 +405,43 @@ export const createRecordsStyles = (colors: any) =>
       letterSpacing: 0.5,
     },
 
+    categoryBadge: {
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#F3F4F6', // Softer, more subtle
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+
+    categoryBadgeText: {
+      fontSize: 11,
+      color: isDarkMode ? colors.textSecondary : '#9CA3AF', // Lighter, more subtle
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      letterSpacing: 0.1,
+    },
+
     recordActions: {
-      flexDirection: 'row',
-      gap: 10,
+      flexDirection: 'column',
+      gap: 8,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
     },
 
     actionButton: {
       width: 36,
       height: 36,
-      borderRadius: 12,
-      backgroundColor: colors.surface,
+      borderRadius: 10,
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#F3F4F6', // More subtle background
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
+      borderWidth: 0,
+      // No shadow - visually secondary
     },
 
     recordFooter: {
       paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopWidth: 0,
+      marginTop: 12,
     },
 
     statusIndicator: {
@@ -462,6 +469,10 @@ export const createRecordsStyles = (colors: any) =>
       alignItems: 'center',
       paddingVertical: 80,
       paddingHorizontal: 40,
+      backgroundColor: isDarkMode ? colors.card : '#F9FAFB', // Match Profile card background
+      borderRadius: 16,
+      marginHorizontal: 20,
+      marginTop: 20,
     },
 
     emptyTitle: {
@@ -494,13 +505,12 @@ export const createRecordsStyles = (colors: any) =>
       paddingVertical: 14,
       borderRadius: 16,
       gap: 10,
-      borderWidth: 1,
-      borderColor: `${Colors.primary}30`,
-      shadowColor: Colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
+      borderWidth: 0,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
+      shadowRadius: 4,
+      elevation: 1,
     },
 
     uploadEmptyText: {

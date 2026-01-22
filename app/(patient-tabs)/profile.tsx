@@ -22,6 +22,13 @@ import {
   HelpCircle,
   Info,
   ArrowLeftRight,
+  AlertCircle,
+  Stethoscope,
+  Calendar,
+  Pill,
+  Syringe,
+  FileText,
+  Info as InfoIcon,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +38,10 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useCustomAlert } from '@/components/CustomAlert';
 import { deletePatientAccount } from './services/accountDeletion';
 import { Modal } from 'react-native';
+import { calculateAge } from './services/profileHelpers';
+import { RecordsService } from '@/services/recordsService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/constants/firebase';
 
 export default function ProfileScreen() {
   const {
@@ -42,12 +53,20 @@ export default function ProfileScreen() {
     isSwitchedAccount,
     originalUserId,
   } = useAuth();
-  const { colors } = useTheme();
-  const styles = createProfileStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = createProfileStyles(colors, isDarkMode);
   const [loading, setLoading] = useState(false);
   const [accessibleAccounts, setAccessibleAccounts] = useState<any[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const { showAlert, AlertComponent } = useCustomAlert();
+  const [recordCounts, setRecordCounts] = useState({
+    allergies: 0,
+    diagnoses: 0,
+    visits: 0,
+    prescriptions: 0,
+    vaccinations: 0,
+    documents: 0,
+  });
 
   // Helper function to format user ID based on role
   const formatUserId = (customUserId: string | undefined, role: string) => {
@@ -71,6 +90,68 @@ export default function ProfileScreen() {
     return `sva-${rolePrefix}-${customUserId}`;
   };
 
+  // Format date of birth to MM/DD/YYYY
+  const formatDateOfBirth = (dob: string | undefined) => {
+    if (!dob) return '';
+    try {
+      // Handle different date formats (MM/DD/YYYY or ISO string)
+      let date: Date;
+      if (dob.includes('/')) {
+        // Already in MM/DD/YYYY format
+        const parts = dob.split('/');
+        if (parts.length === 3) {
+          date = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        } else {
+          date = new Date(dob);
+        }
+      } else {
+        date = new Date(dob);
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return dob; // Return original if invalid
+      }
+      
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    } catch {
+      return dob;
+    }
+  };
+
+  // Get age from date of birth
+  const getAge = () => {
+    if (!userData?.dateOfBirth) return null;
+    try {
+      const age = calculateAge(userData.dateOfBirth);
+      // Return age if it's a valid number (0 or positive)
+      if (typeof age === 'number' && age >= 0) {
+        return age;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error calculating age:', error, 'Date:', userData.dateOfBirth);
+      return null;
+    }
+  };
+
+  // Format patient ID for display (e.g., 1EG4-TE5-MK72)
+  const formatPatientId = () => {
+    const id = userData?.patientId || formatUserId(userData?.customUserId, userData?.role || '');
+    // Format to match reference style if it's a long ID
+    if (id.length > 8) {
+      // Try to format as XXX-XXX-XXXX if possible
+      const cleaned = id.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      if (cleaned.length >= 8) {
+        return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 7)}-${cleaned.slice(7, 11)}`;
+      }
+    }
+    return id;
+  };
+
   useEffect(() => {
     const fetchAccessibleAccounts = async () => {
       setLoadingAccounts(true);
@@ -86,6 +167,33 @@ export default function ProfileScreen() {
 
     fetchAccessibleAccounts();
   }, [userData?.linkedAccounts, userData?.parentAccountId]);
+
+  useEffect(() => {
+    const fetchRecordCounts = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        const recordsRef = collection(db, 'patients', user.uid, 'records');
+        const snapshot = await getDocs(recordsRef);
+        const records = snapshot.docs.map(doc => doc.data());
+        
+        const counts = {
+          allergies: records.filter(r => r.tags?.includes('allergy') || r.type === 'allergy').length,
+          diagnoses: records.filter(r => r.diagnosis || r.tags?.includes('diagnosis') || r.type === 'diagnosis').length,
+          visits: records.filter(r => r.type === 'consultation' || r.type === 'visit').length,
+          prescriptions: records.filter(r => r.type === 'prescription' || r.type === 'prescriptions').length,
+          vaccinations: records.filter(r => r.type === 'vaccination' || r.tags?.includes('vaccination')).length,
+          documents: records.filter(r => r.fileUrl || r.fileType).length,
+        };
+        
+        setRecordCounts(counts);
+      } catch (error) {
+        console.error('Error fetching record counts:', error);
+      }
+    };
+
+    fetchRecordCounts();
+  }, [user?.uid]);
 
   const handleSwitchAccount = async (accountId: string) => {
     try {
@@ -146,54 +254,71 @@ export default function ProfileScreen() {
     }
   };
 
-  const menuItems = [
+  const clinicalProfileItems = [
     {
-      id: 'edit',
-      title: 'Edit Profile',
-      icon: Edit,
+      id: 'allergies',
+      title: 'Allergies',
+      icon: AlertCircle,
+      iconColor: '#EAB308',
+      iconBg: '#FEF9C3',
+      count: recordCounts.allergies,
+      onPress: () => router.push('/(patient-tabs)/records'),
+    },
+    {
+      id: 'diagnoses',
+      title: 'Past diagnoses',
+      icon: Stethoscope,
+      iconColor: '#EC4899',
+      iconBg: '#FCE7F3',
+      count: recordCounts.diagnoses,
+      onPress: () => router.push('/(patient-tabs)/records'),
+    },
+    {
+      id: 'visits',
+      title: 'Visits history',
+      icon: Calendar,
+      iconColor: '#10B981',
+      iconBg: '#D1FAE5',
+      count: null,
+      onPress: () => router.push('/(patient-tabs)/records'),
+    },
+    {
+      id: 'prescriptions',
+      title: 'Prescriptions & examinations',
+      icon: Pill,
+      iconColor: '#EAB308',
+      iconBg: '#FEF9C3',
+      count: recordCounts.prescriptions,
+      onPress: () => router.push('/(patient-tabs)/records'),
+    },
+    {
+      id: 'vaccinations',
+      title: 'Vaccination',
+      icon: Syringe,
+      iconColor: '#10B981',
+      iconBg: '#D1FAE5',
+      count: null,
+      onPress: () => router.push('/(patient-tabs)/records'),
+    },
+    {
+      id: 'documents',
+      title: 'Medical documents',
+      icon: FileText,
+      iconColor: '#3B82F6',
+      iconBg: '#DBEAFE',
+      count: null,
+      onPress: () => router.push('/(patient-tabs)/records'),
+    },
+  ];
+
+  const settingsItems = [
+    {
+      id: 'profile',
+      title: 'My profile',
+      icon: User,
+      iconColor: '#EC4899',
+      iconBg: '#FCE7F3',
       onPress: () => router.push('/(patient-tabs)/edit-profile'),
-    },
-    {
-      id: 'family',
-      title: 'Family Members',
-      icon: Users,
-      onPress: () => router.push('/(patient-tabs)/family-tree'),
-    },
-    {
-      id: 'access-requests',
-      title: 'Shared Access',
-      icon: Shield,
-      onPress: () => router.push('/(patient-tabs)/access-requests'),
-    },
-    {
-      id: 'settings',
-      title: 'Settings',
-      icon: Settings,
-      onPress: () => router.push('/settings'),
-    },
-    {
-      id: 'notifications',
-      title: 'Notifications',
-      icon: Bell,
-      onPress: () => router.push('/notifications'),
-    },
-    {
-      id: 'privacy',
-      title: 'Privacy & Security',
-      icon: Shield,
-      onPress: () => router.push('/privacy'),
-    },
-    {
-      id: 'help',
-      title: 'Help & Support',
-      icon: HelpCircle,
-      onPress: () => router.push('/help'),
-    },
-    {
-      id: 'about',
-      title: 'About',
-      icon: Info,
-      onPress: () => router.push('/about'),
     },
   ];
 
@@ -204,45 +329,139 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
-          <ThemeToggle />
-        </View>
-
-        <View style={styles.profileSection}>
-          <View style={[styles.profileAvatar, { overflow: 'hidden' }]}>
+        {/* Top Profile Section */}
+        <View style={styles.profileHeader}>
+          <View style={styles.profilePhotoContainer}>
             {userData?.avatarUrl ? (
               <Image
                 source={{ uri: userData.avatarUrl }}
-                style={{ width: '100%', height: '100%' }}
+                style={styles.profilePhoto}
                 resizeMode="cover"
               />
             ) : (
-              <User size={40} color={Colors.primary} strokeWidth={1.5} />
+              <View style={styles.profilePhotoPlaceholder}>
+                <User size={32} color={Colors.primary} strokeWidth={1.5} />
+              </View>
             )}
+            <TouchableOpacity
+              style={styles.editPhotoButton}
+              onPress={() => router.push('/(patient-tabs)/edit-profile')}
+              activeOpacity={0.7}
+            >
+              <Edit size={14} color="#EC4899" strokeWidth={2} />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.profileName}>
-            {userData?.firstName} {userData?.lastName}
-          </Text>
-          <Text style={styles.profileEmail}>{user?.email}</Text>
-          <Text style={styles.profileEmail}>
-            {userData?.patientId ||
-              formatUserId(userData?.customUserId, userData?.role || '')}
-          </Text>
-          {isSwitchedAccount && (
-            <View style={styles.switchedAccountIndicator}>
-              <Text style={styles.switchedAccountText}>
-                👤 Switched Account
-              </Text>
+          
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>
+              {userData?.firstName || ''} {userData?.lastName || ''}
+            </Text>
+            
+            <View style={styles.demographicsRow}>
+              {userData?.gender && (
+                <>
+                  <View style={styles.demographicItem}>
+                    <Text style={styles.demographicLabel}>GENDER</Text>
+                    <Text style={styles.demographicValue}>
+                      {userData.gender.charAt(0).toUpperCase() + userData.gender.slice(1)}
+                    </Text>
+                  </View>
+                  {(() => {
+                    const age = getAge();
+                    return age !== null && age !== undefined ? (
+                      <>
+                        <View style={styles.demographicDivider} />
+                        <View style={styles.demographicItem}>
+                          <Text style={styles.demographicLabel}>AGE</Text>
+                          <Text style={styles.demographicValue}>{age}</Text>
+                        </View>
+                      </>
+                    ) : null;
+                  })()}
+                  {userData?.dateOfBirth && (
+                    <>
+                      <View style={styles.demographicDivider} />
+                      <View style={styles.demographicItem}>
+                        <Text style={styles.demographicLabel}>BIRTHDAY</Text>
+                        <Text style={styles.demographicValue}>
+                          {formatDateOfBirth(userData.dateOfBirth)}
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                </>
+              )}
+            </View>
+
+            <View style={styles.patientIdContainer}>
+              <View style={styles.patientIdLeft}>
+                <Text style={styles.patientIdText}>{formatPatientId()}</Text>
+                <InfoIcon size={14} color="#047857" strokeWidth={2} />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {isSwitchedAccount && (
+          <View style={styles.switchedAccountIndicator}>
+            <Text style={styles.switchedAccountText}>
+              👤 Switched Account
+            </Text>
+            <TouchableOpacity
+              style={styles.switchBackButton}
+              onPress={() => handleSwitchAccount(originalUserId || '')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.switchBackButtonText}>Switch Back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Clinical Profile Section */}
+        <View style={styles.clinicalProfileSection}>
+          <Text style={styles.sectionTitle}>Clinical profile</Text>
+          <View style={styles.clinicalProfileCard}>
+            {clinicalProfileItems.map((item) => (
               <TouchableOpacity
-                style={styles.switchBackButton}
-                onPress={() => handleSwitchAccount(originalUserId || '')}
+                key={item.id}
+                style={styles.clinicalProfileItem}
+                onPress={item.onPress}
                 activeOpacity={0.7}
               >
-                <Text style={styles.switchBackButtonText}>Switch Back</Text>
+                <View style={[styles.clinicalProfileIcon, { backgroundColor: item.iconBg }]}>
+                  <item.icon size={20} color={item.iconColor} strokeWidth={2} />
+                </View>
+                <Text style={styles.clinicalProfileItemText}>{item.title}</Text>
+                {item.count !== null && item.count > 0 && (
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{item.count}</Text>
+                  </View>
+                )}
+                <ChevronRight size={18} color={colors.textSecondary} style={styles.chevron} />
               </TouchableOpacity>
-            </View>
-          )}
+            ))}
+          </View>
+        </View>
+
+        {/* Settings Section */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.settingsCard}>
+            {settingsItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.settingsItem}
+                onPress={item.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsIcon, { backgroundColor: item.iconBg }]}>
+                  <item.icon size={20} color={item.iconColor} strokeWidth={2} />
+                </View>
+                <Text style={styles.settingsItemText}>{item.title}</Text>
+                <ChevronRight size={18} color={colors.textSecondary} style={styles.chevron} />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {accessibleAccounts.length > 0 && (
@@ -301,22 +520,6 @@ export default function ProfileScreen() {
             </View>
           </View>
         )}
-
-        <View style={styles.menuSection}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.menuItem}
-              onPress={item.onPress}
-            >
-              <View style={styles.menuItemLeft}>
-                <item.icon size={20} color={colors.textSecondary} />
-                <Text style={styles.menuItemTitle}>{item.title}</Text>
-              </View>
-              <ChevronRight size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
-        </View>
 
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <LogOut size={20} color={Colors.medical.red} />

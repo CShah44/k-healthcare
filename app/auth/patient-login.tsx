@@ -1,28 +1,37 @@
-import React, { useState } from 'react';
-
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  Dimensions,
   StyleSheet,
   Modal,
   TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Eye, EyeOff } from 'lucide-react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
-import { GlobalStyles } from '@/constants/Styles';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCustomAlert } from '@/components/CustomAlert';
-import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { authStyles } from '@/styles/auth';
 
-const { width } = Dimensions.get('window');
+const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export default function PatientLoginScreen() {
   const [identifier, setIdentifier] = useState('');
@@ -34,9 +43,32 @@ export default function PatientLoginScreen() {
   }>({});
   const { showAlert, AlertComponent } = useCustomAlert();
   const { login, isLoading, forgotPassword } = useAuth()!;
-  const { colors } = useTheme();
   const [showForgot, setShowForgot] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(20);
+  const formOpacity = useSharedValue(0);
+  const formTranslateY = useSharedValue(30);
+
+  useEffect(() => {
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
+    formOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+    formTranslateY.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 100 }));
+  }, []);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const formStyle = useAnimatedStyle(() => ({
+    opacity: formOpacity.value,
+    transform: [{ translateY: formTranslateY.value }],
+  }));
 
   const validateForm = () => {
     const newErrors: { identifier?: string; password?: string } = {};
@@ -47,8 +79,6 @@ export default function PatientLoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleLogin = async () => {
     if (!validateForm()) return;
     setIsSubmitting(true);
@@ -58,10 +88,6 @@ export default function PatientLoginScreen() {
     } catch (error: any) {
       showAlert('Login Failed', error.message || 'Invalid credentials. Please try again.');
       setIsSubmitting(false);
-    } finally {
-      // We don't set submitting to false on success because we're redirecting
-      // and we want to keep the loader until unmount/redirect to prevent flash
-      if (errors) setIsSubmitting(false); // Fallback safe
     }
   };
 
@@ -79,48 +105,40 @@ export default function PatientLoginScreen() {
     }
   };
 
+  const colors = Colors.light;
+
   if (isLoading) {
     return (
-      <View style={styles.fullscreenLoadingContainer}>
+      <View style={authStyles.fullscreenLoadingContainer}>
         <LinearGradient
           colors={[colors.background, colors.surface, colors.card]}
-          style={styles.loadingGradient}
+          style={authStyles.loadingGradient}
         >
-          {/* Decorative Elements */}
-          <View style={[styles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
-          <View style={[styles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
-          <View style={[styles.loadingDecorativeCircle3, { backgroundColor: `${Colors.medical.blue}05` }]} />
-
-          {/* Main Loading Content */}
-          <View style={styles.loadingContent}>
-            {/* Logo/Icon */}
-            <View style={[styles.loadingIconWrapper, {
+          <View style={[authStyles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
+          <View style={[authStyles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
+          <View style={[authStyles.loadingDecorativeCircle3, { backgroundColor: `${Colors.medical.blue}05` }]} />
+          <View style={authStyles.loadingContent}>
+            <View style={[authStyles.loadingIconWrapper, {
               backgroundColor: `${Colors.primary}15`,
               borderColor: `${Colors.primary}30`,
               shadowColor: colors.shadow
             }]}>
               <Heart size={48} color={Colors.primary} strokeWidth={2} />
             </View>
-
-            {/* Loading Spinner */}
-            <View style={styles.spinnerContainer}>
+            <View style={authStyles.spinnerContainer}>
               <LoadingSpinner size={48} />
             </View>
-
-            {/* Loading Text */}
-            <Text style={[styles.loadingTitle, { color: colors.text }]}>
+            <Text style={[authStyles.loadingTitle, { color: colors.text }]}>
               Signing you in...
             </Text>
-            <Text style={[styles.loadingSubtitle, { color: colors.textSecondary }]}>
+            <Text style={[authStyles.loadingSubtitle, { color: colors.textSecondary }]}>
               Please wait while we verify your credentials
             </Text>
-
-            {/* Loading Progress Indicator */}
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+            <View style={authStyles.progressContainer}>
+              <View style={[authStyles.progressBar, { backgroundColor: colors.border }]}>
                 <LinearGradient
                   colors={Colors.gradients.primary}
-                  style={styles.progressFill}
+                  style={authStyles.progressFill}
                 />
               </View>
             </View>
@@ -131,26 +149,17 @@ export default function PatientLoginScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView style={[authStyles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
         colors={[colors.background, colors.surface]}
-        style={styles.backgroundGradient}
+        style={authStyles.backgroundGradient}
       >
-        {/* Decorative Elements */}
-        <View
-          style={[
-            styles.decorativeCircle,
-            { backgroundColor: `${Colors.primary}08` },
-          ]}
-        />
+        <View style={[authStyles.decorativeCircle, { backgroundColor: `${Colors.primary}06` }]} />
 
-        {/* Header */}
-        <View style={styles.header}>
+        <AnimatedView style={[authStyles.header, headerStyle]}>
           <TouchableOpacity
             style={[
-              styles.backButton,
+              authStyles.backButton,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
             onPress={() => router.replace('/auth/role-selection')}
@@ -158,160 +167,189 @@ export default function PatientLoginScreen() {
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
-        </View>
+        </AnimatedView>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <View
-              style={[
-                styles.iconWrapper,
-                {
-                  backgroundColor: `${Colors.primary}15`,
-                  borderColor: `${Colors.primary}30`,
-                },
-              ]}
-            >
-              <Heart size={32} color={Colors.primary} strokeWidth={2} />
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Welcome Back
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Log in to your Svastheya account
-            </Text>
-          </View>
-
-          <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>
-                Username / Email / Phone
-              </Text>
-              <View style={styles.inputWrapper}>
-                <Input
-                  placeholder="Enter your username, email, or phone"
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  autoCapitalize="none"
-                  editable={!isSubmitting}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={authStyles.keyboardAvoidingView}
+        >
+          <ScrollView
+            style={authStyles.scrollView}
+            contentContainerStyle={authStyles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <AnimatedView style={[authStyles.content, formStyle]}>
+              <AnimatedView
+                entering={FadeInDown.delay(100).springify()}
+                style={authStyles.logoContainer}
+              >
+                <View
                   style={[
-                    styles.input,
+                    authStyles.iconWrapper,
                     {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
+                      backgroundColor: `${Colors.primary}15`,
+                      borderColor: `${Colors.primary}30`,
                     },
                   ]}
-                />
-              </View>
-              {errors.identifier && (
-                <Text style={styles.errorText}>{errors.identifier}</Text>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>
-                Password
-              </Text>
-              <View style={styles.inputWrapper}>
-                <Input
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  editable={!isSubmitting}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                  ]}
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff size={20} color={colors.textSecondary} />
-                  ) : (
-                    <Eye size={20} color={colors.textSecondary} />
+                  <Heart size={36} color={Colors.primary} strokeWidth={2.5} />
+                </View>
+                <AnimatedText
+                  entering={FadeInDown.delay(200).springify()}
+                  style={[authStyles.title, { color: colors.text }]}
+                >
+                  Welcome Back
+                </AnimatedText>
+                <AnimatedText
+                  entering={FadeInDown.delay(300).springify()}
+                  style={[authStyles.subtitle, { color: colors.textSecondary }]}
+                >
+                  Log in to access your medical records
+                </AnimatedText>
+              </AnimatedView>
+
+              <AnimatedView
+                entering={FadeInDown.delay(400).springify()}
+                style={authStyles.formContainer}
+              >
+                <View style={authStyles.inputContainer}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text }]}>
+                    Username / Email / Phone
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your username, email, or phone"
+                      value={identifier}
+                      onChangeText={setIdentifier}
+                      autoCapitalize="none"
+                      editable={!isSubmitting}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.identifier ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                  </View>
+                  {errors.identifier && (
+                    <Text style={authStyles.errorText}>{errors.identifier}</Text>
                   )}
+                </View>
+
+                <View style={authStyles.inputContainer}>
+                  <Text style={[authStyles.inputLabel, { color: colors.text }]}>
+                    Password
+                  </Text>
+                  <View style={authStyles.inputWrapper}>
+                    <Input
+                      placeholder="Enter your password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      editable={!isSubmitting}
+                      style={[
+                        authStyles.input,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: errors.password ? Colors.light.error : colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                    />
+                    <TouchableOpacity
+                      style={authStyles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color={colors.textSecondary} />
+                      ) : (
+                        <Eye size={20} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {errors.password && (
+                    <Text style={authStyles.errorText}>{errors.password}</Text>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={authStyles.forgotPassword}
+                  onPress={() => setShowForgot(true)}
+                  disabled={isSubmitting}
+                >
+                  <Text style={authStyles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
-              </View>
-              {errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              )}
-            </View>
 
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => setShowForgot(true)}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  activeOpacity={0.8}
+                  disabled={isSubmitting}
+                >
+                  <LinearGradient
+                    colors={Colors.gradients.primary}
+                    style={[
+                      authStyles.primaryButton,
+                      isSubmitting && authStyles.buttonDisabled,
+                    ]}
+                  >
+                    {isSubmitting ? (
+                      <LoadingSpinner size={24} color="white" />
+                    ) : (
+                      <Text style={authStyles.primaryButtonText}>Log In</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </AnimatedView>
 
-            <TouchableOpacity
-              onPress={handleLogin}
-              activeOpacity={0.8}
-              disabled={isSubmitting}
-            >
-              <LinearGradient
-                colors={Colors.gradients.primary}
-                style={styles.signInButton}
+              <AnimatedView
+                entering={FadeInDown.delay(500).springify()}
+                style={authStyles.footer}
               >
-                {isSubmitting ? (
-                  <LoadingSpinner size={24} color="white" />
-                ) : (
-                  <Text style={styles.signInButtonText}>Log In</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              Don't have an account?{' '}
-              <Text
-                style={styles.signUpLink}
-                onPress={() => router.push('/auth/patient-signup')}
-              >
-                Sign Up
-              </Text>
-            </Text>
-          </View>
-        </View>
+                <Text style={[authStyles.footerText, { color: colors.textSecondary }]}>
+                  Don't have an account?{' '}
+                  <Text
+                    style={authStyles.linkText}
+                    onPress={() => router.push('/auth/patient-signup')}
+                  >
+                    Sign Up
+                  </Text>
+                </Text>
+              </AnimatedView>
+            </AnimatedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </LinearGradient>
 
       <AlertComponent />
       <Modal
         visible={showForgot}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowForgot(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.forgotTitle, { color: colors.text }]}>
+        <View style={authStyles.modalOverlay}>
+          <AnimatedView
+            entering={FadeInDown.springify()}
+            style={[authStyles.modalContent, { backgroundColor: colors.card }]}
+          >
+            <Text style={[authStyles.modalTitle, { color: colors.text }]}>
               Reset Password
             </Text>
-            <Text
-              style={[styles.forgotDescription, { color: colors.textSecondary }]}
-            >
-              Enter your email address and we'll send you a link to reset your
-              password.
+            <Text style={[authStyles.modalDescription, { color: colors.textSecondary }]}>
+              Enter your email address and we'll send you a link to reset your password.
             </Text>
             <TextInput
               placeholder="Email address"
+              placeholderTextColor={colors.textSecondary}
               value={resetEmail}
               onChangeText={setResetEmail}
               autoCapitalize="none"
               keyboardType="email-address"
               style={[
-                styles.input,
-                styles.resetInput,
+                authStyles.resetInput,
                 {
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
@@ -326,338 +364,12 @@ export default function PatientLoginScreen() {
                 setShowForgot(false);
                 setResetEmail('');
               }}
-              style={{ marginTop: 8 }}
+              style={{ marginTop: 12 }}
               variant="secondary"
             />
-          </View>
+          </AnimatedView>
         </View>
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  backgroundGradient: {
-    flex: 1,
-  },
-
-  decorativeCircle: {
-    position: 'absolute',
-    top: -80,
-    right: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  loadingGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
-
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 50,
-  },
-
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-
-  title: {
-    fontSize: 32,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-
-  subtitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-  },
-
-  formContainer: {
-    marginBottom: 30,
-  },
-
-  inputContainer: {
-    marginBottom: 20,
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-
-  inputWrapper: {
-    position: 'relative',
-  },
-
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
-    padding: 4,
-  },
-
-  errorText: {
-    fontSize: 12,
-    color: Colors.light.error,
-    marginTop: 4,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 32,
-  },
-
-  forgotPasswordText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '500',
-  },
-
-  signInButton: {
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  signInButtonText: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
-
-  footer: {
-    alignItems: 'center',
-  },
-
-  footerText: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  signUpLink: {
-    color: Colors.primary,
-    fontFamily: 'Satoshi-Variable',
-    fontWeight: '600',
-  },
-
-  loadingText: {
-    fontSize: 16,
-    marginTop: 16,
-    fontFamily: 'Satoshi-Variable',
-  },
-
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-
-  modalContent: {
-    padding: 24,
-    borderRadius: 16,
-    width: '90%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-
-  forgotTitle: {
-    fontSize: 20,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 8,
-  },
-
-  forgotDescription: {
-    fontSize: 14,
-    fontFamily: 'Satoshi-Variable',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-
-  resetInput: {
-    marginBottom: 16,
-  },
-
-  // New Loading Screen Styles
-  fullscreenLoadingContainer: {
-    flex: 1,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
-
-  loadingDecorativeCircle1: {
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-  },
-
-  loadingDecorativeCircle2: {
-    position: 'absolute',
-    bottom: -80,
-    left: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-
-  loadingDecorativeCircle3: {
-    position: 'absolute',
-    top: '40%',
-    right: -60,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-  },
-
-  loadingContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-
-  loadingIconWrapper: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-    borderWidth: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-
-  spinnerContainer: {
-    marginBottom: 32,
-    transform: [{ scale: 1.5 }], // scale should be a number
-  },
-
-  loadingTitle: {
-    fontSize: 28,
-    fontFamily: 'IvyMode-Regular',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-
-  loadingSubtitle: {
-    fontSize: 16,
-    fontFamily: 'Satoshi-Variable',
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 24,
-  },
-
-  progressContainer: {
-    width: '100%',
-    maxWidth: 280,
-    marginTop: 20,
-  },
-
-  progressBar: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-
-  progressFill: {
-    height: '100%',
-    width: '70%',
-    borderRadius: 2,
-  },
-});
