@@ -243,8 +243,8 @@ async function openPdfFile(fileUri: string) {
 export default function MemberRecordsScreen() {
   const { memberId } = useLocalSearchParams<{ memberId: string }>();
   const { user, userData } = useAuth();
-  const { colors } = useTheme();
-  const styles = createRecordsStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = createRecordsStyles(colors, isDarkMode);
   const { showAlert, AlertComponent } = useCustomAlert();
 
   const [memberData, setMemberData] = useState<any>(null);
@@ -266,14 +266,15 @@ export default function MemberRecordsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Animation values - disable on mobile for better performance
-  const headerOpacity = useSharedValue(Platform.OS === 'web' ? 0 : 1);
-  const headerTranslateY = useSharedValue(Platform.OS === 'web' ? -20 : 0);
+  // Animation values - subtle animations
+  const headerOpacity = useSharedValue(1);
+  const headerTranslateY = useSharedValue(0);
 
   useEffect(() => {
+    // Subtle entrance animations
     if (Platform.OS === 'web') {
-      headerOpacity.value = withTiming(1, { duration: 800 });
-      headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+      headerOpacity.value = withTiming(1, { duration: 400 });
+      headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 100 });
     }
   }, []);
 
@@ -527,7 +528,7 @@ export default function MemberRecordsScreen() {
   return (
     <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
       <LinearGradient
-        colors={[colors.surface, colors.surfaceSecondary]}
+        colors={isDarkMode ? [colors.surface, colors.surfaceSecondary] : ['#FAF8F3', '#FAF8F3']}
         style={styles.backgroundGradient}
       >
         {/* Header */}

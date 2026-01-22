@@ -29,6 +29,7 @@ import {
   Syringe,
   FileText,
   Info as InfoIcon,
+  Palette,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,12 +53,14 @@ export default function ProfileScreen() {
     getAccessibleAccounts,
     isSwitchedAccount,
     originalUserId,
+    isLoading: authLoading,
   } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const styles = createProfileStyles(colors, isDarkMode);
   const [loading, setLoading] = useState(false);
   const [accessibleAccounts, setAccessibleAccounts] = useState<any[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const { showAlert, AlertComponent } = useCustomAlert();
   const [recordCounts, setRecordCounts] = useState({
     allergies: 0,
@@ -197,10 +200,13 @@ export default function ProfileScreen() {
 
   const handleSwitchAccount = async (accountId: string) => {
     try {
+      setSwitchingAccount(true);
       await switchToAccount(accountId);
       Alert.alert('Success', 'Switched to account successfully!');
     } catch (error: any) {
       Alert.alert('Error', error.message);
+    } finally {
+      setSwitchingAccount(false);
     }
   };
 
@@ -216,7 +222,8 @@ export default function ProfileScreen() {
         onPress: async () => {
           try {
             await logout();
-            router.replace('/auth/patient-login');
+            // Redirect to index which will show role-selection
+            router.replace('/');
           } catch (error) {
             showAlert('Error', 'Failed to sign out. Please try again.');
           }
@@ -232,9 +239,9 @@ export default function ProfileScreen() {
     try {
       setIsDeleting(true);
       await deletePatientAccount(user?.uid || '');
-      // Auth state change will handle navigation to login
-      // But we can force it just in case or if auth state update is slow
-      router.replace('/auth/patient-login');
+      // Auth state change will handle navigation
+      // Redirect to index which will show role-selection
+      router.replace('/');
     } catch (error: any) {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -314,16 +321,33 @@ export default function ProfileScreen() {
   const settingsItems = [
     {
       id: 'profile',
-      title: 'My profile',
+      title: 'Edit profile',
       icon: User,
       iconColor: '#EC4899',
       iconBg: '#FCE7F3',
       onPress: () => router.push('/(patient-tabs)/edit-profile'),
     },
+    {
+      id: 'theme',
+      title: 'Appearance',
+      icon: Palette,
+      iconColor: '#8B5CF6',
+      iconBg: '#EDE9FE',
+      onPress: () => {}, // No navigation, handled by toggle
+      showToggle: true,
+    },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
+      {(switchingAccount || authLoading) && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Switching account...</Text>
+          </View>
+        </View>
+      )}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -404,9 +428,22 @@ export default function ProfileScreen() {
 
         {isSwitchedAccount && (
           <View style={styles.switchedAccountIndicator}>
-            <Text style={styles.switchedAccountText}>
-              👤 Switched Account
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={{ 
+                width: 32, 
+                height: 32, 
+                borderRadius: 16, 
+                backgroundColor: `${Colors.primary}15`, 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginRight: 12,
+              }}>
+                <Users size={16} color={Colors.primary} strokeWidth={2} />
+              </View>
+              <Text style={styles.switchedAccountText}>
+                Viewing as {userData?.firstName || 'another account'}
+              </Text>
+            </View>
             <TouchableOpacity
               style={styles.switchBackButton}
               onPress={() => handleSwitchAccount(originalUserId || '')}
@@ -453,12 +490,17 @@ export default function ProfileScreen() {
                 style={styles.settingsItem}
                 onPress={item.onPress}
                 activeOpacity={0.7}
+                disabled={item.showToggle}
               >
                 <View style={[styles.settingsIcon, { backgroundColor: item.iconBg }]}>
                   <item.icon size={20} color={item.iconColor} strokeWidth={2} />
                 </View>
                 <Text style={styles.settingsItemText}>{item.title}</Text>
-                <ChevronRight size={18} color={colors.textSecondary} style={styles.chevron} />
+                {item.showToggle ? (
+                  <ThemeToggle size={20} />
+                ) : (
+                  <ChevronRight size={18} color={colors.textSecondary} style={styles.chevron} />
+                )}
               </TouchableOpacity>
             ))}
           </View>

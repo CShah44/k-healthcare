@@ -305,6 +305,24 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
       fontWeight: '500',
       letterSpacing: 0.1,
     },
+    
+    skeletonContainer: {
+      gap: 6,
+    },
+    
+    skeletonNumber: {
+      width: 40,
+      height: 22,
+      borderRadius: 6,
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#E5E7EB',
+    },
+    
+    skeletonLabel: {
+      width: 60,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#E5E7EB',
+    },
 
     // Quick Actions - Compact CTA buttons
     actionsContainer: {

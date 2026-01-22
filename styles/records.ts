@@ -348,19 +348,28 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       gap: 8,
     },
 
+    recordTagsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'wrap',
+    },
+
     recordTag: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 8,
       gap: 4,
+      borderWidth: 1,
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : 'rgba(255, 255, 255, 0.6)',
     },
 
     recordTagText: {
-      fontSize: 11,
+      fontSize: 10,
       fontFamily: 'Satoshi-Variable',
-      fontWeight: '500',
+      fontWeight: '600',
       letterSpacing: -0.1,
     },
 
@@ -554,12 +563,36 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       borderBottomColor: colors.border,
     },
 
+    tagModalHeaderTitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+    },
+
     modalTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontFamily: 'Satoshi-Variable',
       fontWeight: '700',
       color: colors.text,
       letterSpacing: -0.4,
+    },
+
+    selectedTagsCountBadge: {
+      backgroundColor: Colors.primary,
+      borderRadius: 12,
+      minWidth: 24,
+      height: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 8,
+    },
+
+    selectedTagsCountText: {
+      fontSize: 12,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      color: '#ffffff',
     },
 
     tagModalHeaderActions: {
@@ -571,17 +604,171 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     addCustomTagHeaderButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      backgroundColor: `${Colors.primary}10`,
     },
 
     addCustomTagHeaderText: {
       fontSize: 14,
       color: Colors.primary,
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
+    },
+
+    closeModalButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#F3F4F6',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    tagSearchContainer: {
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+
+    tagSearchInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#F9FAFB',
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+
+    tagSearchInput: {
+      flex: 1,
+      fontSize: 15,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.text,
+      fontWeight: '500',
+    },
+
+    clearSearchButton: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.textTertiary + '20',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     tagsList: {
       padding: 20,
+      flex: 1,
+    },
+
+    tagSection: {
+      marginBottom: 24,
+    },
+
+    tagSectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+
+    tagSectionTitle: {
+      fontSize: 16,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.2,
+      marginBottom: 12,
+    },
+
+    tagGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+
+    tagChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 12,
+      gap: 8,
+      backgroundColor: isDarkMode ? colors.surface : '#F9FAFB',
+      borderWidth: 1,
+      borderColor: colors.border,
+      position: 'relative',
+      minHeight: 40,
+    },
+
+    tagChipText: {
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '500',
+      color: colors.text,
+    },
+
+    tagCountBadge: {
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#E5E7EB',
+      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      minWidth: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    tagCountText: {
+      fontSize: 11,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+
+    tagSelectedIndicator: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 4,
+    },
+
+    removeCustomTagButton: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#F3F4F6',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 4,
+    },
+
+    noTagsFound: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 60,
+    },
+
+    noTagsFoundText: {
+      fontSize: 18,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+
+    noTagsFoundSubtext: {
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.textSecondary,
     },
 
     loadingTagsContainer: {
@@ -692,16 +879,28 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
 
     applyTagsButton: {
       flex: 1,
-      paddingVertical: 12,
+      paddingVertical: 14,
       borderRadius: 12,
       alignItems: 'center',
       backgroundColor: Colors.primary,
+      shadowColor: Colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+
+    applyTagsButtonDisabled: {
+      backgroundColor: colors.textTertiary,
+      shadowOpacity: 0,
+      elevation: 0,
     },
 
     applyTagsText: {
-      fontSize: 14,
+      fontSize: 15,
       color: '#ffffff',
       fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
     },
 
     // Custom tag modal

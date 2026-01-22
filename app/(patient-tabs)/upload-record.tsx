@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   Image,
   Alert,
@@ -12,18 +11,12 @@ import {
   Dimensions,
   TextInput,
   Modal,
-  FlexAlignType,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
-  withDelay,
-  FadeInDown,
-  FadeInUp,
-  BounceIn,
-  SlideInRight,
+  FadeIn,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -131,24 +124,8 @@ export const previewEncryptedPDF = async (storagePath: string, userUid: string) 
 };
 
 export default function UploadRecordScreen() {
-  const { colors } = useTheme();
-  const styles = {
-    ...createUploadRecordStyles(colors),
-    openPdfButton: {
-      backgroundColor: Colors.primary,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      alignItems: 'center' as FlexAlignType,
-      marginTop: 8,
-    },
-    openPdfText: {
-      color: '#fff',
-      fontSize: 14,
-      fontFamily: 'Satoshi-Variable',
-      fontWeight: 'bold' as 'bold',
-    },
-  };
+  const { colors, isDarkMode } = useTheme();
+  const styles = createUploadRecordStyles(colors, isDarkMode);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
@@ -163,22 +140,12 @@ export default function UploadRecordScreen() {
   const [addingTag, setAddingTag] = useState(false);
   const { user } = useAuth();
 
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const headerTranslateY = useSharedValue(-30);
+  // Subtle animation values
   const contentOpacity = useSharedValue(0);
-  const contentTranslateY = useSharedValue(50);
 
   useEffect(() => {
-    // Animate header
-    headerOpacity.value = withTiming(1, { duration: 800 });
-    headerTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
-
-    // Animate content with delay
-    setTimeout(() => {
-      contentOpacity.value = withTiming(1, { duration: 600 });
-      contentTranslateY.value = withSpring(0, { damping: 12, stiffness: 80 });
-    }, 200);
+    // Very subtle fade in
+    contentOpacity.value = withTiming(1, { duration: 400 });
   }, []);
 
   // Load user's custom tags on component mount
@@ -219,15 +186,9 @@ export default function UploadRecordScreen() {
     }
   };
 
-  // Animated styles
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-    transform: [{ translateY: headerTranslateY.value }],
-  }));
-
+  // Subtle animated style
   const contentAnimatedStyle = useAnimatedStyle(() => ({
     opacity: contentOpacity.value,
-    transform: [{ translateY: contentTranslateY.value }],
   }));
 
   const openDocumentPicker = async () => {
@@ -540,24 +501,25 @@ export default function UploadRecordScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#f8fafc', '#e2e8f0', '#f1f5f9']}
+        colors={isDarkMode ? [colors.surface, colors.surfaceSecondary] : ['#FAF8F3', '#FAF8F3']}
         style={styles.backgroundGradient}
       >
-        {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        {/* Modern Header */}
+        <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
+            <ArrowLeft size={20} color={colors.text} strokeWidth={2.5} />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Upload Record</Text>
             <Text style={styles.headerSubtitle}>
-              Add your medical documents
+              Securely add your medical documents
             </Text>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Scrollable Content */}
         <ScrollView
@@ -576,90 +538,93 @@ export default function UploadRecordScreen() {
               </View>
             ) : (
               <>
-                {/* Upload Options */}
+                {/* Modern Upload Options */}
                 <View style={styles.uploadOptionsContainer}>
                   <Text style={styles.sectionTitle}>Choose Upload Method</Text>
 
                   <View style={styles.optionsGrid}>
-                    <Animated.View entering={FadeInDown.delay(300).springify()}>
-                      <TouchableOpacity
-                        style={[styles.uploadOption, styles.pdfOption]}
-                        onPress={openDocumentPicker}
+                    <TouchableOpacity
+                      style={styles.uploadOption}
+                      onPress={openDocumentPicker}
+                      activeOpacity={0.9}
+                    >
+                      <LinearGradient
+                        colors={['#3b82f6', '#2563eb']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.uploadOptionGradient}
                       >
-                        <LinearGradient
-                          colors={['#3b82f6', '#1d4ed8']}
-                          style={styles.uploadOptionGradient}
-                        >
-                          <View style={styles.iconContainer}>
-                            <FileText
-                              size={24}
-                              color="#ffffff"
-                              strokeWidth={2}
-                            />
-                          </View>
-                          <Text style={styles.uploadOptionText}>
-                            Upload PDF
-                          </Text>
-                          <Text style={styles.uploadOptionSubtext}>
-                            Select documents
-                          </Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </Animated.View>
+                        <View style={styles.iconContainer}>
+                          <FileText
+                            size={28}
+                            color="#ffffff"
+                            strokeWidth={2.5}
+                          />
+                        </View>
+                        <Text style={styles.uploadOptionText}>
+                          Upload PDF
+                        </Text>
+                        <Text style={styles.uploadOptionSubtext}>
+                          Select documents
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
 
-                    <Animated.View entering={FadeInDown.delay(400).springify()}>
-                      <TouchableOpacity
-                        style={[styles.uploadOption, styles.cameraOption]}
-                        onPress={openCamera}
+                    <TouchableOpacity
+                      style={styles.uploadOption}
+                      onPress={openCamera}
+                      activeOpacity={0.9}
+                    >
+                      <LinearGradient
+                        colors={['#10b981', '#059669']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.uploadOptionGradient}
                       >
-                        <LinearGradient
-                          colors={['#10b981', '#059669']}
-                          style={styles.uploadOptionGradient}
-                        >
-                          <View style={styles.iconContainer}>
-                            <Camera size={24} color="#ffffff" strokeWidth={2} />
-                          </View>
-                          <Text style={styles.uploadOptionText}>
-                            Take Photo
-                          </Text>
-                          <Text style={styles.uploadOptionSubtext}>
-                            Use camera
-                          </Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </Animated.View>
+                        <View style={styles.iconContainer}>
+                          <Camera size={28} color="#ffffff" strokeWidth={2.5} />
+                        </View>
+                        <Text style={styles.uploadOptionText}>
+                          Take Photo
+                        </Text>
+                        <Text style={styles.uploadOptionSubtext}>
+                          Use camera
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
 
-                    <Animated.View entering={FadeInDown.delay(500).springify()}>
-                      <TouchableOpacity
-                        style={[styles.uploadOption, styles.galleryOption]}
-                        onPress={openImagePicker}
+                    <TouchableOpacity
+                      style={styles.uploadOption}
+                      onPress={openImagePicker}
+                      activeOpacity={0.9}
+                    >
+                      <LinearGradient
+                        colors={['#8b5cf6', '#7c3aed']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.uploadOptionGradient}
                       >
-                        <LinearGradient
-                          colors={['#8b5cf6', '#7c3aed']}
-                          style={styles.uploadOptionGradient}
-                        >
-                          <View style={styles.iconContainer}>
-                            <ImageIcon
-                              size={24}
-                              color="#ffffff"
-                              strokeWidth={2}
-                            />
-                          </View>
-                          <Text style={styles.uploadOptionText}>Gallery</Text>
-                          <Text style={styles.uploadOptionSubtext}>
-                            Choose photos
-                          </Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </Animated.View>
+                        <View style={styles.iconContainer}>
+                          <ImageIcon
+                            size={28}
+                            color="#ffffff"
+                            strokeWidth={2.5}
+                          />
+                        </View>
+                        <Text style={styles.uploadOptionText}>Gallery</Text>
+                        <Text style={styles.uploadOptionSubtext}>
+                          Choose photos
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                {/* Preview Section */}
+                {/* Modern Preview Section */}
                 {(selectedFile || selectedImage) && (
                   <Animated.View
                     style={styles.previewContainer}
-                    entering={BounceIn.delay(200)}
+                    entering={FadeIn.duration(300)}
                   >
                     <Text style={styles.sectionTitle}>Document Details</Text>
                     <View style={styles.previewCard}>
@@ -740,6 +705,7 @@ export default function UploadRecordScreen() {
                           onChangeText={setRecordTitle}
                           placeholder="Enter a descriptive title for your record"
                           placeholderTextColor={colors.textSecondary}
+                          autoCapitalize="words"
                         />
                       </View>
 
@@ -757,11 +723,12 @@ export default function UploadRecordScreen() {
                           <TouchableOpacity
                             style={styles.addCustomTagButton}
                             onPress={() => setShowCustomTagModal(true)}
+                            activeOpacity={0.7}
                           >
                             <Plus
                               size={16}
                               color={Colors.primary}
-                              strokeWidth={2}
+                              strokeWidth={2.5}
                             />
                             <Text style={styles.addCustomTagText}>
                               Add Custom
@@ -777,12 +744,15 @@ export default function UploadRecordScreen() {
                                 selectedTags.includes(tag.id) && [
                                   styles.tagOptionSelected,
                                   {
-                                    backgroundColor: `${tag.color}20`,
+                                    backgroundColor: isDarkMode 
+                                      ? `${tag.color}25` 
+                                      : `${tag.color}15`,
                                     borderColor: tag.color,
                                   },
                                 ],
                               ]}
                               onPress={() => toggleTag(tag.id)}
+                              activeOpacity={0.7}
                             >
                               <tag.icon
                                 size={16}
@@ -810,11 +780,12 @@ export default function UploadRecordScreen() {
                                     removeCustomTag(tag.id);
                                   }}
                                   style={styles.removeCustomTagButton}
+                                  activeOpacity={0.7}
                                 >
                                   <X
-                                    size={12}
+                                    size={14}
                                     color={colors.textSecondary}
-                                    strokeWidth={2}
+                                    strokeWidth={2.5}
                                   />
                                 </TouchableOpacity>
                               )}
@@ -857,11 +828,12 @@ export default function UploadRecordScreen() {
                                   </Text>
                                   <TouchableOpacity
                                     onPress={() => toggleTag(tagId)}
+                                    activeOpacity={0.7}
                                   >
                                     <X
-                                      size={12}
+                                      size={14}
                                       color={tag.color}
-                                      strokeWidth={2}
+                                      strokeWidth={2.5}
                                     />
                                   </TouchableOpacity>
                                 </View>
@@ -874,12 +846,15 @@ export default function UploadRecordScreen() {
                       <TouchableOpacity
                         style={styles.uploadConfirmButton}
                         onPress={handleUpload}
+                        activeOpacity={0.8}
                       >
                         <LinearGradient
                           colors={['#10b981', '#059669']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
                           style={styles.confirmButtonGradient}
                         >
-                          <Upload size={18} color="#ffffff" strokeWidth={2} />
+                          <Upload size={20} color="#ffffff" strokeWidth={2.5} />
                           <Text style={styles.uploadConfirmText}>
                             Upload Document
                           </Text>
@@ -894,6 +869,7 @@ export default function UploadRecordScreen() {
                           setSelectedTags([]);
                           setRecordTitle('');
                         }}
+                        activeOpacity={0.7}
                       >
                         <Text style={styles.cancelButtonText}>Cancel</Text>
                       </TouchableOpacity>
@@ -902,28 +878,30 @@ export default function UploadRecordScreen() {
                 )}
 
                 {/* Tips Section */}
-                <View style={styles.tipsContainer}>
-                  <Text style={styles.tipsTitle}>
-                    💡 Tips for better uploads
-                  </Text>
-                  <View style={styles.tipsList}>
-                    <Text style={styles.tipItem}>
-                      • Ensure documents are clear and readable
+                {!(selectedFile || selectedImage) && (
+                  <View style={styles.tipsContainer}>
+                    <Text style={styles.tipsTitle}>
+                      💡 Tips for better uploads
                     </Text>
-                    <Text style={styles.tipItem}>
-                      • PDF files are preferred for text documents
-                    </Text>
-                    <Text style={styles.tipItem}>
-                      • Images should be well-lit and in focus
-                    </Text>
-                    <Text style={styles.tipItem}>
-                      • Use descriptive titles and relevant categories
-                    </Text>
-                    <Text style={styles.tipItem}>
-                      • File size should be under 10MB
-                    </Text>
+                    <View style={styles.tipsList}>
+                      <Text style={styles.tipItem}>
+                        • Ensure documents are clear and readable
+                      </Text>
+                      <Text style={styles.tipItem}>
+                        • PDF files are preferred for text documents
+                      </Text>
+                      <Text style={styles.tipItem}>
+                        • Images should be well-lit and in focus
+                      </Text>
+                      <Text style={styles.tipItem}>
+                        • Use descriptive titles and relevant categories
+                      </Text>
+                      <Text style={styles.tipItem}>
+                        • File size should be under 10MB
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                )}
               </>
             )}
           </Animated.View>
@@ -940,8 +918,11 @@ export default function UploadRecordScreen() {
             <View style={styles.customTagModalContent}>
               <View style={styles.customTagModalHeader}>
                 <Text style={styles.modalTitle}>Add Custom Tag</Text>
-                <TouchableOpacity onPress={() => setShowCustomTagModal(false)}>
-                  <X size={24} color={colors.text} strokeWidth={2} />
+                <TouchableOpacity 
+                  onPress={() => setShowCustomTagModal(false)}
+                  activeOpacity={0.7}
+                >
+                  <X size={24} color={colors.text} strokeWidth={2.5} />
                 </TouchableOpacity>
               </View>
 
@@ -968,6 +949,7 @@ export default function UploadRecordScreen() {
                     setNewTagInput('');
                     setShowCustomTagModal(false);
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.cancelCustomTagText}>Cancel</Text>
                 </TouchableOpacity>
@@ -979,11 +961,12 @@ export default function UploadRecordScreen() {
                   ]}
                   onPress={addCustomTag}
                   disabled={!newTagInput.trim() || addingTag}
+                  activeOpacity={0.8}
                 >
                   {addingTag ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Check size={16} color="white" strokeWidth={2} />
+                    <Check size={18} color="white" strokeWidth={2.5} />
                   )}
                   <Text style={styles.addCustomTagConfirmText}>
                     {addingTag ? 'Adding...' : 'Add Tag'}

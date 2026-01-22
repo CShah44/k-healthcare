@@ -42,10 +42,11 @@ export default function PatientLoginScreen() {
     password?: string;
   }>({});
   const { showAlert, AlertComponent } = useCustomAlert();
-  const { login, isLoading, forgotPassword } = useAuth()!;
+  const { login, isLoading, forgotPassword, user, userData } = useAuth()!;
   const [showForgot, setShowForgot] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -79,15 +80,31 @@ export default function PatientLoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Auto-redirect when user becomes authenticated
+  useEffect(() => {
+    if (user && userData && userData.role === 'patient' && isSubmitting) {
+      // User is authenticated, navigate to patient tabs
+      router.replace('/(patient-tabs)');
+      // Keep loading visible for smooth transition
+      setTimeout(() => {
+        setIsNavigating(false);
+        setIsSubmitting(false);
+      }, 200);
+    }
+  }, [user, userData, isSubmitting, router]);
+
   const handleLogin = async () => {
     if (!validateForm()) return;
     setIsSubmitting(true);
+    setIsNavigating(true);
     try {
       await login(identifier, password, 'patient');
-      router.replace('/(patient-tabs)');
+      // Don't navigate here - let useEffect handle it when auth state updates
+      // This ensures smooth transition without flashing
     } catch (error: any) {
-      showAlert('Login Failed', error.message || 'Invalid credentials. Please try again.');
+      setIsNavigating(false);
       setIsSubmitting(false);
+      showAlert('Login Failed', error.message || 'Invalid credentials. Please try again.');
     }
   };
 
@@ -107,7 +124,8 @@ export default function PatientLoginScreen() {
 
   const colors = Colors.light;
 
-  if (isLoading) {
+  // Show loading screen during login submission or navigation
+  if (isLoading || isSubmitting || isNavigating) {
     return (
       <View style={authStyles.fullscreenLoadingContainer}>
         <LinearGradient

@@ -82,7 +82,7 @@ export default function RoleSelectionScreen() {
             Svastheya
           </Text>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            Centralized medical records sharing for patients, doctors, and lab assistants
+            Secure Medical Records, Seamless Care
           </Text>
         </Animated.View>
 

@@ -41,12 +41,13 @@ export default function HealthcareLoginScreen() {
     identifier?: string;
     password?: string;
   }>({});
-  const { login, isLoading, forgotPassword } = useAuth();
+  const { login, isLoading, forgotPassword, user, userData } = useAuth();
   const [showForgot, setShowForgot] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [role, setRole] = useState<'doctor' | 'lab_assistant'>('doctor');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -80,13 +81,29 @@ export default function HealthcareLoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Auto-redirect when user becomes authenticated
+  useEffect(() => {
+    if (user && userData && (userData.role === 'doctor' || userData.role === 'lab_assistant') && isSubmitting) {
+      // User is authenticated, navigate to healthcare tabs
+      router.replace('/(healthcare-tabs)');
+      // Keep loading visible for smooth transition
+      setTimeout(() => {
+        setIsNavigating(false);
+        setIsSubmitting(false);
+      }, 200);
+    }
+  }, [user, userData, isSubmitting, router]);
+
   const handleLogin = async () => {
     if (!validateForm()) return;
     setIsSubmitting(true);
+    setIsNavigating(true);
     try {
       await login(identifier, password, role);
-      router.replace('/(healthcare-tabs)');
+      // Don't navigate here - let useEffect handle it when auth state updates
+      // This ensures smooth transition without flashing
     } catch (error) {
+      setIsNavigating(false);
       setIsSubmitting(false);
     }
   };
@@ -104,7 +121,8 @@ export default function HealthcareLoginScreen() {
     }
   };
 
-  if (isLoading) {
+  // Show loading screen during login submission or navigation
+  if (isLoading || isSubmitting || isNavigating) {
     return (
       <View style={authStyles.fullscreenLoadingContainer}>
         <LinearGradient

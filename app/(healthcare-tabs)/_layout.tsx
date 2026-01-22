@@ -4,7 +4,7 @@ import { Colors } from '@/constants/Colors';
 import { layoutStyles } from '../../styles/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StatusBar } from 'react-native';
 
 export default function HealthcareTabsLayout() {
   const { colors } = useTheme();
@@ -23,7 +23,13 @@ export default function HealthcareTabsLayout() {
   }
 
   return (
-    <Tabs
+    <>
+      <StatusBar
+        barStyle={colors.background === Colors.light.background ? "dark-content" : "light-content"}
+        backgroundColor={colors.background}
+        translucent={Platform.OS === 'android'}
+      />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
@@ -90,5 +96,6 @@ export default function HealthcareTabsLayout() {
         }}
       />
     </Tabs>
+    </>
   );
 }

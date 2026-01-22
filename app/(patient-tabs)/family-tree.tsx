@@ -9,7 +9,15 @@ import {
   Modal,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  interpolate,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -37,7 +45,7 @@ import {
   FamilyRelation,
   FAMILY_RELATIONS,
 } from '@/types/family';
-import { onSnapshot, doc, collection, query, where } from 'firebase/firestore';
+import { onSnapshot, doc, collection, query, where, getDoc } from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 import { useCustomAlert } from '@/components/CustomAlert';
 import { createFamilyTreeStyles } from '../../styles/family-tree';
@@ -60,13 +68,18 @@ export default function FamilyTreeScreen() {
     refreshUserData,
     createChildAccount: createChildAccountAuth,
   } = useAuth();
-  const { colors } = useTheme();
-  const styles = createFamilyTreeStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = createFamilyTreeStyles(colors, isDarkMode);
 
   const [family, setFamily] = useState<Family | null>(null);
   const [invitations, setInvitations] = useState<FamilyInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({});
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  
+  // Skeleton animation
+  const skeletonShimmer = useSharedValue(0);
 
   const { showAlert, AlertComponent } = useCustomAlert();
 
@@ -115,19 +128,47 @@ export default function FamilyTreeScreen() {
         setLoading(true);
 
         if (userData.familyId) {
+          setLoadingMembers(true);
           familyUnsubscribe = onSnapshot(
             doc(db, 'families', userData.familyId),
-            (doc) => {
-              if (doc.exists()) {
-                const familyData = { id: doc.id, ...doc.data() } as Family;
+            async (familyDoc) => {
+              if (familyDoc.exists()) {
+                const familyData = { id: familyDoc.id, ...familyDoc.data() } as Family;
                 setFamily(familyData);
+                
+                // Fetch avatars for all members
+                const avatarPromises = familyData.members.map(async (member) => {
+                  try {
+                    const userDoc = await getDoc(doc(db, 'users', member.userId));
+                    if (userDoc.exists()) {
+                      const memberUserData = userDoc.data() as any;
+                      return { userId: member.userId, avatarUrl: memberUserData.avatarUrl || null };
+                    }
+                    return { userId: member.userId, avatarUrl: null };
+                  } catch (error) {
+                    console.error(`Error fetching avatar for ${member.userId}:`, error);
+                    return { userId: member.userId, avatarUrl: null };
+                  }
+                });
+                
+                const avatarResults = await Promise.all(avatarPromises);
+                const avatarMap: Record<string, string | null> = {};
+                avatarResults.forEach(({ userId, avatarUrl }) => {
+                  avatarMap[userId] = avatarUrl;
+                });
+                setMemberAvatars(avatarMap);
+                setLoadingMembers(false);
               } else {
                 setFamily(null);
+                setMemberAvatars({});
+                setLoadingMembers(false);
               }
             }
           );
         } else {
           setFamily(null);
+          setMemberAvatars({});
+          setLoadingMembers(false);
         }
 
         const invitationsQuery = query(
@@ -361,6 +402,24 @@ export default function FamilyTreeScreen() {
     }
   };
 
+  // Skeleton animation
+  useEffect(() => {
+    skeletonShimmer.value = withRepeat(
+      withTiming(1, { duration: 1500 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const skeletonStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      skeletonShimmer.value,
+      [0, 0.5, 1],
+      [0.3, 0.6, 0.3]
+    );
+    return { opacity };
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -380,15 +439,21 @@ export default function FamilyTreeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        style={{ backgroundColor: isDarkMode ? colors.background : '#FAF8F3' }}
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Family Tree</Text>
-            <Text style={styles.subtitle}>
-              {family
-                ? `${family.name} Family`
-                : 'Manage your family connections'}
-            </Text>
+            <Text style={styles.title}>Your Family</Text>
+            {family && (
+              <View style={styles.familyNameContainer}>
+                <Text style={styles.familyName}>{family.name}</Text>
+              </View>
+            )}
+            {!family && (
+              <Text style={styles.subtitle}>
+                Manage your family connections
+              </Text>
+            )}
           </View>
           {invitations.length > 0 && (
             <TouchableOpacity
@@ -453,74 +518,107 @@ export default function FamilyTreeScreen() {
                 </View>
               </View>
 
-              {family.members.map((member) => (
-                <TouchableOpacity
-                  key={member.userId}
-                  style={styles.memberCard}
-                  onPress={() =>
-                    router.push(
-                      `/(patient-tabs)/member-records?memberId=${member.userId}`
-                    )
-                  }
-                >
-                  <View style={styles.memberAvatar}>
-                    <Text style={styles.memberInitials}>
-                      {getMemberInitials(member)}
-                    </Text>
-                  </View>
-                  <View style={styles.memberInfo}>
-                    <View style={styles.memberNameRow}>
-                      <Text style={styles.memberName}>
-                        {member.firstName} {member.lastName}
-                      </Text>
-                      {member.userId === family.createdBy && (
-                        <Crown size={14} color={Colors.medical.orange} />
-                      )}
-                      {member.userId === user?.uid && (
-                        <Text style={styles.youLabel}>(You)</Text>
+              {loadingMembers ? (
+                // Skeleton loading for members
+                [1, 2, 3].map((index) => (
+                  <Animated.View
+                    key={`skeleton-${index}`}
+                    style={[styles.memberCard, styles.skeletonCard]}
+                  >
+                    <Animated.View
+                      style={[styles.memberAvatar, styles.skeletonAvatar, skeletonStyle]}
+                    />
+                    <View style={styles.memberInfo}>
+                      <Animated.View
+                        style={[styles.skeletonName, skeletonStyle]}
+                      />
+                      <Animated.View
+                        style={[styles.skeletonRelation, skeletonStyle]}
+                      />
+                    </View>
+                    <Animated.View
+                      style={[styles.skeletonAction, skeletonStyle]}
+                    />
+                  </Animated.View>
+                ))
+              ) : (
+                family.members.map((member) => (
+                  <TouchableOpacity
+                    key={member.userId}
+                    style={styles.memberCard}
+                    onPress={() =>
+                      router.push(
+                        `/(patient-tabs)/member-records?memberId=${member.userId}`
+                      )
+                    }
+                  >
+                    <View style={styles.memberAvatar}>
+                      {memberAvatars[member.userId] ? (
+                        <Image
+                          source={{ uri: memberAvatars[member.userId]! }}
+                          style={styles.memberAvatarImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.memberInitials}>
+                          {getMemberInitials(member)}
+                        </Text>
                       )}
                     </View>
-                    <View style={styles.memberMeta}>
-                      <View style={styles.relationTag}>
-                        {getRelationIcon(member.relation)}
-                        <Text
-                          style={[
-                            styles.relationText,
-                            { color: getRelationColor(member.relation) },
-                          ]}
-                        >
-                          {FAMILY_RELATIONS.find(
-                            (r) => r.value === member.relation
-                          )?.label || member.relation}
+                    <View style={styles.memberInfo}>
+                      <View style={styles.memberNameRow}>
+                        <Text style={styles.memberName}>
+                          {member.firstName} {member.lastName}
                         </Text>
+                        {member.userId === family.createdBy && (
+                          <Crown size={14} color={Colors.medical.orange} />
+                        )}
+                        {member.userId === user?.uid && (
+                          <Text style={styles.youLabel}>(You)</Text>
+                        )}
+                      </View>
+                      <View style={styles.memberMeta}>
+                        <View style={styles.relationTag}>
+                          {getRelationIcon(member.relation)}
+                          <Text
+                            style={[
+                              styles.relationText,
+                              { color: getRelationColor(member.relation) },
+                            ]}
+                          >
+                            {FAMILY_RELATIONS.find(
+                              (r) => r.value === member.relation
+                            )?.label || member.relation}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                  <View style={styles.memberActions}>
-                    <TouchableOpacity
-                      style={styles.viewRecordsButton}
-                      onPress={() => {
-                        router.push(
-                          `/(patient-tabs)/member-records?memberId=${member.userId}`
-                        );
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <ChevronRight size={20} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                    {member.userId !== user?.uid &&
-                      family.createdBy === user?.uid && (
-                        <TouchableOpacity
-                          style={styles.kickButton}
-                          onPress={() => handleKickMember(member)}
-                          activeOpacity={0.7}
-                        >
-                          <UserX size={16} color={Colors.medical.red} />
-                        </TouchableOpacity>
-                      )}
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.memberActions}>
+                      <TouchableOpacity
+                        style={styles.viewRecordsButton}
+                        onPress={() => {
+                          router.push(
+                            `/(patient-tabs)/member-records?memberId=${member.userId}`
+                          );
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <ChevronRight size={20} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                      {member.userId !== user?.uid &&
+                        family.createdBy === user?.uid && (
+                          <TouchableOpacity
+                            style={styles.kickButton}
+                            onPress={() => handleKickMember(member)}
+                            activeOpacity={0.7}
+                          >
+                            <UserX size={16} color={Colors.medical.red} />
+                          </TouchableOpacity>
+                        )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
 
             <View style={styles.section}>
@@ -715,14 +813,20 @@ export default function FamilyTreeScreen() {
                     onPress={() => handleAcceptInvitation(invitation.id)}
                     disabled={submitting}
                   >
-                    <Check size={16} color="white" />
+                    <Check size={18} color="white" strokeWidth={2.5} />
+                    <Text style={{ color: 'white', fontSize: 15, fontFamily: 'Satoshi-Variable', fontWeight: '600', marginLeft: 6 }}>
+                      Accept
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.declineButton}
                     onPress={() => handleDeclineInvitation(invitation.id)}
                     disabled={submitting}
                   >
-                    <X size={16} color={colors.text} />
+                    <X size={18} color={isDarkMode ? colors.text : '#6B7280'} strokeWidth={2.5} />
+                    <Text style={{ color: isDarkMode ? colors.text : '#6B7280', fontSize: 15, fontFamily: 'Satoshi-Variable', fontWeight: '600', marginLeft: 6 }}>
+                      Decline
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>

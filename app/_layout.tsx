@@ -2,10 +2,9 @@ import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-rout
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { StatusBar } from 'expo-status-bar';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StatusBar, Platform } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 // Keep the splash screen visible while we fetch resources
@@ -13,6 +12,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { user, userData, isLoading } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   const segments = useSegments();
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
@@ -24,10 +24,14 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === 'auth';
     const inPatientGroup = segments[0] === '(patient-tabs)';
     const inHealthcareGroup = segments[0] === '(healthcare-tabs)';
+    const isIndex = segments.length === 0 || segments[0] === 'index';
 
-    if (!user && !inAuthGroup) {
-      // Redirect to the login page if not authenticated
-      router.replace('/auth');
+    // Don't interfere with index route - it handles its own navigation
+    if (isIndex) return;
+
+    if (!user && !inAuthGroup && !isIndex) {
+      // Redirect to index (role-selection) if not authenticated (but not from index)
+      router.replace('/');
     } else if (user && inAuthGroup) {
       // Redirect to signed-in state if authenticated and trying to access auth pages
       if (userData?.role === 'patient') {
@@ -47,8 +51,12 @@ function RootLayoutNav() {
 
 
   return (
-    <ThemeProvider>
-      <StatusBar style="auto" />
+    <>
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+        translucent={Platform.OS === 'android'}
+      />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -59,12 +67,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(patient-tabs)" />
         <Stack.Screen name="auth" />
       </Stack>
-      {isLoading && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', zIndex: 9999 }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      )}
-    </ThemeProvider>
+    </>
   );
 }
 
@@ -90,7 +93,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
     </AuthProvider>
   );
 }

@@ -40,8 +40,8 @@ export default function EditPatientProfileScreen() {
     updateUserProfile,
     isLoading,
   } = useAuth();
-  const { colors } = useTheme();
-  const styles = createEditProfileStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = createEditProfileStyles(colors, isDarkMode);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',

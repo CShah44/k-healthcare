@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
 
-export const createEditProfileStyles = (colors: any) =>
+export const createEditProfileStyles = (colors: any, isDarkMode?: boolean) =>
   StyleSheet.create({
     container: {
-      backgroundColor: colors.background,
+      backgroundColor: isDarkMode ? colors.background : '#FAF8F3', // Match Profile soft beige background
     },
 
     header: {

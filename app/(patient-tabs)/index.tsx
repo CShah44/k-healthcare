@@ -13,6 +13,8 @@ import Animated, {
   withTiming,
   withSpring,
   withDelay,
+  withRepeat,
+  interpolate,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -69,13 +71,15 @@ const wellnessTips = [
 ];
 
 export default function PatientHomeScreen() {
-  const { user, userData } = useAuth();
+  const { user, userData, isLoading } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const styles = createHomeStyles(colors, isDarkMode);
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [familyMembersCount, setFamilyMembersCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [loadingFamily, setLoadingFamily] = useState(true);
 
   // Get a tip based on the current hour
   const currentTip = wellnessTips[new Date().getHours() % wellnessTips.length];
@@ -90,6 +94,9 @@ export default function PatientHomeScreen() {
   const actionsTranslateY = useSharedValue(20);
   const tipsOpacity = useSharedValue(0);
   const tipsTranslateY = useSharedValue(20);
+  
+  // Skeleton animation
+  const skeletonShimmer = useSharedValue(0);
 
   useEffect(() => {
     // Staggered entrance animations
@@ -104,6 +111,13 @@ export default function PatientHomeScreen() {
 
     tipsOpacity.value = withDelay(450, withTiming(1, { duration: 600 }));
     tipsTranslateY.value = withDelay(450, withSpring(0, { damping: 20, stiffness: 90 }));
+    
+    // Skeleton shimmer animation
+    skeletonShimmer.value = withRepeat(
+      withTiming(1, { duration: 1500 }),
+      -1,
+      false
+    );
   }, []);
 
   useEffect(() => {
@@ -115,17 +129,18 @@ export default function PatientHomeScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadingRecords(true);
+      setLoadingFamily(true);
 
-      // Load medical records
-      const records = await RecordsService.getRecentRecords(user!.uid, 5);
+      // Load medical records and count in parallel
+      const [records, totalRecordsSnapshot] = await Promise.all([
+        RecordsService.getRecentRecords(user!.uid, 5),
+        getDocs(query(collection(db, 'patients', user!.uid, 'records')))
+      ]);
+      
       setMedicalRecords(records);
-
-      // Get total records count
-      const totalRecordsQuery = query(
-        collection(db, 'patients', user!.uid, 'records')
-      );
-      const totalRecordsSnapshot = await getDocs(totalRecordsQuery);
       setTotalRecords(totalRecordsSnapshot.size);
+      setLoadingRecords(false);
 
       // Get family members count
       if (userData?.familyId) {
@@ -136,12 +151,17 @@ export default function PatientHomeScreen() {
             ? familyData.members.length
             : 1;
           setFamilyMembersCount(membersCount);
+        } else {
+          setFamilyMembersCount(1);
         }
       } else {
         setFamilyMembersCount(1); // Just the user if no family
       }
+      setLoadingFamily(false);
     } catch (error) {
       console.error('Error loading data:', error);
+      setLoadingRecords(false);
+      setLoadingFamily(false);
     } finally {
       setLoading(false);
     }
@@ -166,6 +186,15 @@ export default function PatientHomeScreen() {
     opacity: tipsOpacity.value,
     transform: [{ translateY: tipsTranslateY.value }],
   }));
+  
+  const skeletonStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      skeletonShimmer.value,
+      [0, 0.5, 1],
+      [0.3, 0.6, 0.3]
+    );
+    return { opacity };
+  });
 
   // Soft background colors based on theme - match Profile
   const backgroundColors: readonly [string, string] = isDarkMode
@@ -256,14 +285,23 @@ export default function PatientHomeScreen() {
                 />
               </View>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>
-                  {totalRecords}
-                </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
-                  Records
-                </Text>
+                {loadingRecords ? (
+                  <View style={styles.skeletonContainer}>
+                    <Animated.View style={[styles.skeletonNumber, skeletonStyle]} />
+                    <Animated.View style={[styles.skeletonLabel, skeletonStyle]} />
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.statNumber, { color: colors.text }]}>
+                      {totalRecords}
+                    </Text>
+                    <Text
+                      style={[styles.statLabel, { color: colors.textSecondary }]}
+                    >
+                      Records
+                    </Text>
+                  </>
+                )}
               </View>
             </TouchableOpacity>
 
@@ -284,14 +322,23 @@ export default function PatientHomeScreen() {
                 <Users size={18} color="#6366F1" strokeWidth={1.8} />
               </View>
               <View style={styles.statContent}>
-                <Text style={[styles.statNumber, { color: colors.text }]}>
-                  {familyMembersCount}
-                </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
-                  Family
-                </Text>
+                {loadingFamily ? (
+                  <View style={styles.skeletonContainer}>
+                    <Animated.View style={[styles.skeletonNumber, skeletonStyle]} />
+                    <Animated.View style={[styles.skeletonLabel, skeletonStyle]} />
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.statNumber, { color: colors.text }]}>
+                      {familyMembersCount}
+                    </Text>
+                    <Text
+                      style={[styles.statLabel, { color: colors.textSecondary }]}
+                    >
+                      Family
+                    </Text>
+                  </>
+                )}
               </View>
             </TouchableOpacity>
           </Animated.View>

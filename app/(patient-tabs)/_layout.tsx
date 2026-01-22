@@ -9,9 +9,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function PatientTabsLayout() {
   const { colors } = useTheme();
-  const { userData, isLoading } = useAuth();
+  const { userData, isLoading, user } = useAuth();
 
-  if (isLoading) {
+  // Only show loading if we have a user but userData is still loading
+  // If no user, the root layout will handle redirect
+  if (isLoading && user) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -19,16 +21,22 @@ export default function PatientTabsLayout() {
     );
   }
 
-  if (userData?.role !== 'patient') {
+  // If auth check is complete and user doesn't have patient role, redirect
+  if (!isLoading && user && userData?.role !== 'patient') {
+    return <Redirect href="/auth" />;
+  }
+
+  // If no user at all, let root layout handle it
+  if (!isLoading && !user) {
     return <Redirect href="/auth" />;
   }
 
   return (
     <>
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor="transparent"
-        translucent={true}
+        barStyle={colors.background === Colors.light.background ? "dark-content" : "light-content"}
+        backgroundColor={colors.background}
+        translucent={Platform.OS === 'android'}
       />
       <Tabs
         screenOptions={{

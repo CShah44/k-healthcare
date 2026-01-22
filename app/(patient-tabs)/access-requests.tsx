@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     ScrollView,
     TouchableOpacity,
     Image,
@@ -19,6 +18,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
 import { collection, query, where, onSnapshot, Timestamp, writeBatch, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { createAccessRequestsStyles } from '../../styles/access-requests';
 
 interface AccessRequest {
     id: string;
@@ -43,7 +43,8 @@ interface ActiveAccess {
 }
 
 export default function AccessRequestsScreen() {
-    const { colors } = useTheme();
+    const { colors, isDarkMode } = useTheme();
+    const styles = createAccessRequestsStyles(colors, isDarkMode);
     const router = useRouter();
     const { user } = useAuth();
 
@@ -257,7 +258,7 @@ export default function AccessRequestsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
@@ -317,7 +318,7 @@ export default function AccessRequestsScreen() {
                             requests.map((request) => (
                                 <View
                                     key={request.id}
-                                    style={[styles.requestCard, { backgroundColor: colors.surface }]}
+                                    style={styles.requestCard}
                                 >
                                     <View style={styles.cardHeader}>
                                         <Image
@@ -340,7 +341,7 @@ export default function AccessRequestsScreen() {
                                         </View>
                                     </View>
 
-                                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                                    <View style={[styles.divider, { backgroundColor: isDarkMode ? colors.border : '#E5E7EB' }]} />
 
                                     <View style={styles.actions}>
                                         <TouchableOpacity
@@ -363,7 +364,7 @@ export default function AccessRequestsScreen() {
                             ))
                         ) : (
                             <View style={styles.emptyState}>
-                                <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
+                                <View style={styles.emptyIconContainer}>
                                     <Lock size={40} color={colors.textSecondary} />
                                 </View>
                                 <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -377,7 +378,7 @@ export default function AccessRequestsScreen() {
                     </>
                 ) : (
                     <>
-                        <View style={[styles.infoBox, { backgroundColor: 'rgba(52, 211, 153, 0.1)' }]}>
+                        <View style={styles.infoBox}>
                             <Check size={20} color={Colors.medical.green} style={styles.infoIcon} />
                             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                                 These doctors currently have access to your medical records.
@@ -389,7 +390,7 @@ export default function AccessRequestsScreen() {
                             activeAccessList.map((access) => (
                                 <View
                                     key={access.id}
-                                    style={[styles.requestCard, { backgroundColor: colors.surface }]}
+                                    style={styles.requestCard}
                                 >
                                     <View style={styles.cardHeader}>
                                         <Image
@@ -428,7 +429,7 @@ export default function AccessRequestsScreen() {
                                         </View>
                                     </View>
 
-                                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                                    <View style={[styles.divider, { backgroundColor: isDarkMode ? colors.border : '#E5E7EB' }]} />
 
                                     <TouchableOpacity
                                         style={[styles.actionButton, styles.rejectButton]}
@@ -441,7 +442,7 @@ export default function AccessRequestsScreen() {
                             ))
                         ) : (
                             <View style={styles.emptyState}>
-                                <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
+                                <View style={styles.emptyIconContainer}>
                                     <Lock size={40} color={colors.textSecondary} />
                                 </View>
                                 <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -463,7 +464,7 @@ export default function AccessRequestsScreen() {
                 onRequestClose={() => setApprovalModalVisible(false)}
             >
                 <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                    <View style={styles.modalContent}>
                         <Text style={[styles.modalTitle, { color: colors.text }]}>
                             Grant Access
                         </Text>
@@ -478,7 +479,7 @@ export default function AccessRequestsScreen() {
                                     style={[
                                         styles.optionButton,
                                         {
-                                            borderColor: selectedDuration === option.value ? Colors.primary : colors.border,
+                                            borderColor: selectedDuration === option.value ? Colors.primary : (isDarkMode ? colors.border : '#E5E7EB'),
                                             backgroundColor: selectedDuration === option.value ? 'rgba(56, 189, 248, 0.1)' : 'transparent'
                                         }
                                     ]}
@@ -486,7 +487,7 @@ export default function AccessRequestsScreen() {
                                 >
                                     <View style={[
                                         styles.radioOuter,
-                                        { borderColor: selectedDuration === option.value ? Colors.primary : colors.textSecondary }
+                                        { borderColor: selectedDuration === option.value ? Colors.primary : (isDarkMode ? colors.textSecondary : '#9CA3AF') }
                                     ]}>
                                         {selectedDuration === option.value && (
                                             <View style={[styles.radioInner, { backgroundColor: Colors.primary }]} />
@@ -507,7 +508,7 @@ export default function AccessRequestsScreen() {
 
                         <View style={styles.modalActions}>
                             <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: colors.border }]}
+                                style={[styles.modalButton, { backgroundColor: isDarkMode ? colors.border : '#F3F4F6' }]}
                                 onPress={() => setApprovalModalVisible(false)}
                             >
                                 <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
@@ -530,262 +531,3 @@ export default function AccessRequestsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '700',
-    },
-    content: {
-        flex: 1,
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        marginBottom: 10,
-    },
-    tab: {
-        marginRight: 20,
-        paddingBottom: 8,
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent',
-    },
-    activeTab: {
-        borderBottomColor: Colors.primary,
-    },
-    tabText: {
-        fontSize: 16,
-        fontFamily: 'Satoshi-Variable',
-        color: '#666',
-        fontWeight: '500',
-    },
-    activeTabText: {
-        color: Colors.primary,
-        fontWeight: '700',
-    },
-    contentContainer: {
-        padding: 20,
-    },
-    infoBox: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(56, 189, 248, 0.1)',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 24,
-        gap: 12,
-    },
-    infoIcon: {
-        marginTop: 2,
-    },
-    infoText: {
-        flex: 1,
-        fontSize: 14,
-        fontFamily: 'Satoshi-Variable',
-        lineHeight: 20,
-    },
-    requestCard: {
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 16,
-    },
-    avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-    },
-    doctorInfo: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    doctorName: {
-        fontSize: 16,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    specialty: {
-        fontSize: 14,
-        fontFamily: 'Satoshi-Variable',
-        marginBottom: 8,
-    },
-    timeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    timestamp: {
-        fontSize: 12,
-        fontFamily: 'Satoshi-Variable',
-    },
-    divider: {
-        height: 1,
-        width: '100%',
-        marginBottom: 16,
-    },
-    actions: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    actionButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        borderRadius: 12,
-        gap: 8,
-    },
-    rejectButton: {
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    },
-    approveButton: {
-        backgroundColor: Colors.primary,
-    },
-    rejectText: {
-        fontSize: 14,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '600',
-        color: Colors.medical.red,
-    },
-    approveText: {
-        fontSize: 14,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '600',
-        color: 'white',
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40,
-        marginTop: 40,
-    },
-    emptyIconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '700',
-        marginBottom: 8,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        fontFamily: 'Satoshi-Variable',
-        color: '#666',
-        textAlign: 'center',
-        lineHeight: 20,
-        maxWidth: 240,
-    },
-    modalOverlay: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        width: '100%',
-        borderRadius: 20,
-        padding: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '700',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    modalSubtitle: {
-        fontSize: 14,
-        fontFamily: 'Satoshi-Variable',
-        textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 20,
-    },
-    optionsContainer: {
-        gap: 12,
-        marginBottom: 24,
-    },
-    optionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        gap: 12,
-    },
-    radioOuter: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    radioInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
-    optionLabel: {
-        fontSize: 16,
-        fontFamily: 'Satoshi-Variable',
-    },
-    modalActions: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    modalButton: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    modalButtonText: {
-        fontSize: 16,
-        fontFamily: 'Satoshi-Variable',
-        fontWeight: '600',
-    },
-});
