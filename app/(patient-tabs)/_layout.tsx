@@ -41,6 +41,8 @@ export default function PatientTabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
+          tabBarShowLabel: true,
+          tabBarLabelPosition: 'below-icon',
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarStyle: {
@@ -114,6 +116,30 @@ export default function PatientTabsLayout() {
         />
         <Tabs.Screen
           name="access-requests"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="allergies"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="diagnoses"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="visits"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="vaccinations"
           options={{
             href: null,
           }}

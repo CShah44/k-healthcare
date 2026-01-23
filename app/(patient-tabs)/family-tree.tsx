@@ -77,7 +77,7 @@ export default function FamilyTreeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string | null>>({});
   const [loadingMembers, setLoadingMembers] = useState(true);
-  
+
   // Skeleton animation
   const skeletonShimmer = useSharedValue(0);
 
@@ -135,7 +135,7 @@ export default function FamilyTreeScreen() {
               if (familyDoc.exists()) {
                 const familyData = { id: familyDoc.id, ...familyDoc.data() } as Family;
                 setFamily(familyData);
-                
+
                 // Fetch avatars for all members
                 const avatarPromises = familyData.members.map(async (member) => {
                   try {
@@ -150,7 +150,7 @@ export default function FamilyTreeScreen() {
                     return { userId: member.userId, avatarUrl: null };
                   }
                 });
-                
+
                 const avatarResults = await Promise.all(avatarPromises);
                 const avatarMap: Record<string, string | null> = {};
                 avatarResults.forEach(({ userId, avatarUrl }) => {
@@ -547,9 +547,14 @@ export default function FamilyTreeScreen() {
                     key={member.userId}
                     style={styles.memberCard}
                     onPress={() =>
-                      router.push(
-                        `/(patient-tabs)/member-records?memberId=${member.userId}`
-                      )
+                      router.push({
+                        pathname: '/(patient-tabs)/member-records',
+                        params: {
+                          memberId: member.userId,
+                          firstName: member.firstName,
+                          lastName: member.lastName,
+                        },
+                      })
                     }
                   >
                     <View style={styles.memberAvatar}>
@@ -597,9 +602,14 @@ export default function FamilyTreeScreen() {
                       <TouchableOpacity
                         style={styles.viewRecordsButton}
                         onPress={() => {
-                          router.push(
-                            `/(patient-tabs)/member-records?memberId=${member.userId}`
-                          );
+                          router.push({
+                            pathname: '/(patient-tabs)/member-records',
+                            params: {
+                              memberId: member.userId,
+                              firstName: member.firstName,
+                              lastName: member.lastName,
+                            },
+                          });
                         }}
                         activeOpacity={0.7}
                       >
@@ -736,7 +746,7 @@ export default function FamilyTreeScreen() {
                   style={[
                     styles.relationOption,
                     selectedRelation === relation.value &&
-                      styles.relationOptionSelected,
+                    styles.relationOptionSelected,
                   ]}
                   onPress={() => setSelectedRelation(relation.value)}
                   activeOpacity={0.7}
@@ -745,7 +755,7 @@ export default function FamilyTreeScreen() {
                     style={[
                       styles.relationOptionText,
                       selectedRelation === relation.value &&
-                        styles.relationOptionTextSelected,
+                      styles.relationOptionTextSelected,
                     ]}
                   >
                     {relation.label}
@@ -933,8 +943,8 @@ export default function FamilyTreeScreen() {
               >
                 {childFormData.gender
                   ? genderOptions.find(
-                      (opt) => opt.value === childFormData.gender
-                    )?.label
+                    (opt) => opt.value === childFormData.gender
+                  )?.label
                   : 'Select gender'}
               </Text>
               <Text style={styles.dropdownArrow}>

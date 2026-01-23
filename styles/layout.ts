@@ -8,7 +8,7 @@ export const layoutStyles = {
     borderTopWidth: 1,
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 25 : 8,
-    height: Platform.OS === 'ios' ? 85 : 65,
+    height: Platform.OS === 'ios' ? 85 : Platform.OS === 'web' ? 80 : 70,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

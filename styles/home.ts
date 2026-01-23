@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -21,6 +21,22 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
     scrollContent: {
       paddingBottom: 120,
       paddingTop: 8,
+      ...(Platform.OS === 'web' && {
+        maxWidth: 1000,
+        alignSelf: 'center' as const,
+        width: '100%',
+        paddingHorizontal: 40,
+        paddingTop: 24,
+      }),
+    },
+
+    // Web content wrapper for centered layout
+    webContentWrapper: {
+      ...(Platform.OS === 'web' && {
+        maxWidth: 900,
+        alignSelf: 'center' as const,
+        width: '100%',
+      }),
     },
 
     // Subtle decorative background elements
@@ -79,7 +95,28 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
       right: -10,
       width: 180,
       height: 180,
-      opacity: 0.12,
+      opacity: 0.25,
+    },
+
+    // New decorative illustrations
+    topRightIllustration: {
+      position: 'absolute',
+      top: 40,
+      right: -20,
+      width: 140,
+      height: 140,
+      opacity: 0.18,
+      transform: [{ rotate: '15deg' }],
+    },
+
+    midLeftIllustration: {
+      position: 'absolute',
+      top: 300,
+      left: -30,
+      width: 160,
+      height: 160,
+      opacity: 0.15,
+      transform: [{ rotate: '-10deg' }],
     },
 
     // Header Section - Compact and calm
@@ -245,19 +282,29 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
       paddingHorizontal: 20,
       gap: 12,
       marginBottom: 20,
+      ...(Platform.OS === 'web' && {
+        maxWidth: 900,
+        alignSelf: 'center' as const,
+        width: '100%',
+        gap: 20,
+        marginBottom: 28,
+      }),
     },
 
     statCard: {
       flex: 1,
-      backgroundColor: isDarkMode ? colors.card : '#F9FAFB', // Match Profile card background
+      backgroundColor: isDarkMode ? colors.card : '#F9FAFB',
       borderRadius: 16,
-      padding: 14,
+      padding: Platform.OS === 'web' ? 20 : 14,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.02,
       shadowRadius: 4,
       elevation: 1,
       borderWidth: 0,
+      ...(Platform.OS === 'web' && {
+        minHeight: 100,
+      }),
     },
 
     statCardAccent1: {
@@ -305,18 +352,18 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
       fontWeight: '500',
       letterSpacing: 0.1,
     },
-    
+
     skeletonContainer: {
       gap: 6,
     },
-    
+
     skeletonNumber: {
       width: 40,
       height: 22,
       borderRadius: 6,
       backgroundColor: isDarkMode ? colors.surfaceSecondary : '#E5E7EB',
     },
-    
+
     skeletonLabel: {
       width: 60,
       height: 12,
@@ -328,6 +375,12 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
     actionsContainer: {
       paddingHorizontal: 20,
       marginBottom: 20,
+      ...(Platform.OS === 'web' && {
+        maxWidth: 900,
+        alignSelf: 'center' as const,
+        width: '100%',
+        marginBottom: 32,
+      }),
     },
 
     sectionTitle: {
@@ -349,13 +402,17 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
     actionButtons: {
       flexDirection: 'row',
       gap: 12,
+      ...(Platform.OS === 'web' && {
+        flexWrap: 'wrap' as const,
+        gap: 16,
+      }),
     },
 
     actionButton: {
       flex: 1,
-      backgroundColor: isDarkMode ? colors.card : '#F9FAFB', // Match Profile card background
-      borderRadius: 16,
-      padding: 16,
+      backgroundColor: isDarkMode ? colors.card : '#F9FAFB',
+      borderRadius: Platform.OS === 'web' ? 16 : 16,
+      padding: Platform.OS === 'web' ? 24 : 16,
       alignItems: 'center',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
@@ -363,6 +420,10 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
       shadowRadius: 4,
       elevation: 1,
       borderWidth: 0,
+      ...(Platform.OS === 'web' && {
+        minWidth: 140,
+        minHeight: 110,
+      }),
     },
 
     actionButtonPrimary: {
@@ -374,12 +435,12 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
     },
 
     actionIconWrapper: {
-      width: 42,
-      height: 42,
-      borderRadius: 12,
+      width: Platform.OS === 'web' ? 48 : 42,
+      height: Platform.OS === 'web' ? 48 : 42,
+      borderRadius: Platform.OS === 'web' ? 14 : 12,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 10,
+      marginBottom: Platform.OS === 'web' ? 12 : 10,
     },
 
     actionIconPrimary: {
@@ -563,6 +624,12 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
     tipsContainer: {
       paddingHorizontal: 20,
       marginBottom: 16,
+      ...(Platform.OS === 'web' && {
+        maxWidth: 900,
+        alignSelf: 'center' as const,
+        width: '100%',
+        marginBottom: 24,
+      }),
     },
 
     tipCard: {
@@ -606,6 +673,12 @@ export const createHomeStyles = (colors: any, isDarkMode?: boolean) =>
     summaryContainer: {
       paddingHorizontal: 20,
       marginBottom: 24,
+      ...(Platform.OS === 'web' && {
+        maxWidth: 900,
+        alignSelf: 'center' as const,
+        width: '100%',
+        marginBottom: 32,
+      }),
     },
 
     summaryCard: {

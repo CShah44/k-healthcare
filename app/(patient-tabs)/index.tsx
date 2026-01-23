@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -27,6 +28,7 @@ import {
   Heart,
   Lightbulb,
   Leaf,
+  Syringe,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -94,7 +96,7 @@ export default function PatientHomeScreen() {
   const actionsTranslateY = useSharedValue(20);
   const tipsOpacity = useSharedValue(0);
   const tipsTranslateY = useSharedValue(20);
-  
+
   // Skeleton animation
   const skeletonShimmer = useSharedValue(0);
 
@@ -111,7 +113,7 @@ export default function PatientHomeScreen() {
 
     tipsOpacity.value = withDelay(450, withTiming(1, { duration: 600 }));
     tipsTranslateY.value = withDelay(450, withSpring(0, { damping: 20, stiffness: 90 }));
-    
+
     // Skeleton shimmer animation
     skeletonShimmer.value = withRepeat(
       withTiming(1, { duration: 1500 }),
@@ -137,7 +139,7 @@ export default function PatientHomeScreen() {
         RecordsService.getRecentRecords(user!.uid, 5),
         getDocs(query(collection(db, 'patients', user!.uid, 'records')))
       ]);
-      
+
       setMedicalRecords(records);
       setTotalRecords(totalRecordsSnapshot.size);
       setLoadingRecords(false);
@@ -186,7 +188,7 @@ export default function PatientHomeScreen() {
     opacity: tipsOpacity.value,
     transform: [{ translateY: tipsTranslateY.value }],
   }));
-  
+
   const skeletonStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       skeletonShimmer.value,
@@ -214,6 +216,18 @@ export default function PatientHomeScreen() {
         {/* Subtle Decorative Elements */}
         <View style={styles.decorativeCircle1} />
         <View style={styles.decorativeCircle2} />
+
+        {/* Background Illustrations */}
+        <Image
+          source={require('@/assets/images/image copy 3.png')}
+          style={styles.topRightIllustration}
+          resizeMode="contain"
+        />
+        <Image
+          source={require('@/assets/images/image copy 2.png')}
+          style={styles.midLeftIllustration}
+          resizeMode="contain"
+        />
 
         {/* Bottom Corner Illustration */}
         <Image
@@ -377,6 +391,42 @@ export default function PatientHomeScreen() {
                   Records
                 </Text>
               </TouchableOpacity>
+
+              {Platform.OS === 'web' && (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.actionButtonSecondary,
+                    ]}
+                    onPress={() => router.push('/(patient-tabs)/family-tree')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.actionIconWrapper, { backgroundColor: '#D1FAE5' }]}>
+                      <Users size={20} color="#10B981" strokeWidth={1.8} />
+                    </View>
+                    <Text style={[styles.actionText, { color: colors.text }]}>
+                      Family
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.actionButtonSecondary,
+                    ]}
+                    onPress={() => router.push('/(patient-tabs)/vaccinations')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.actionIconWrapper, { backgroundColor: '#FEF3C7' }]}>
+                      <Syringe size={20} color="#F59E0B" strokeWidth={1.8} />
+                    </View>
+                    <Text style={[styles.actionText, { color: colors.text }]}>
+                      Vaccinations
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </Animated.View>
 

@@ -12,6 +12,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import { createRecordsStyles } from '../../styles/records';
 import Animated, {
   useSharedValue,
@@ -204,7 +205,9 @@ async function decryptFileFromUrl(
     const fileExtension = record.fileType.includes('pdf') ? 'pdf' : 'jpg';
     // Use documentDirectory as fallback if cacheDirectory is not available
     const cacheDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
-    const path = `${cacheDir}${record.title || 'record'}.${fileExtension}`;
+    // Sanitize filename to avoid path issues
+    const sanitizedTitle = (record.title || 'record').replace(/[^a-zA-Z0-9]/g, '_');
+    const path = `${cacheDir}${sanitizedTitle}.${fileExtension}`;
 
     await FileSystem.writeAsStringAsync(path, base64Data, {
       encoding: 'base64' as any,
@@ -417,7 +420,7 @@ export default function MedicalRecordsScreen() {
     // Check if any of the record's tags match predefined tag IDs
     const predefinedTagIds = PREDEFINED_TAGS.map((tag) => tag.id);
     return (
-      record.tags?.some((tag: string) => 
+      record.tags?.some((tag: string) =>
         predefinedTagIds.includes(tag) && tag === filterId
       ) || false
     );
@@ -440,7 +443,7 @@ export default function MedicalRecordsScreen() {
 
     // Type filter - check type, source, and tags
     const matchesType =
-      selectedFilter === 'all' || 
+      selectedFilter === 'all' ||
       record.type === selectedFilter ||
       matchesFilterByTags(record, selectedFilter);
 
@@ -462,15 +465,15 @@ export default function MedicalRecordsScreen() {
     {
       id: 'uploaded',
       label: 'My Uploads',
-      count: filteredRecords.filter((r) => 
+      count: filteredRecords.filter((r) =>
         r.type === 'uploaded' || r.source === 'user_uploaded'
       ).length,
     },
     {
       id: 'lab_reports',
       label: 'Lab Reports',
-      count: filteredRecords.filter((r) => 
-        r.type === 'lab_reports' || 
+      count: filteredRecords.filter((r) =>
+        r.type === 'lab_reports' ||
         r.source === 'lab_uploaded' ||
         r.tags?.includes('lab_reports')
       ).length,
@@ -901,18 +904,7 @@ export default function MedicalRecordsScreen() {
         <Animated.View style={[styles.header, Platform.OS === 'web' ? headerAnimatedStyle : {}]}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>Medical Records</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              {loading && (
-                <ActivityIndicator 
-                  size="small" 
-                  color={Colors.primary} 
-                  style={{ marginRight: 8 }} 
-                />
-              )}
-              <Text style={styles.headerSubtitle}>
-                {loading ? 'Loading...' : `${filteredRecords.length} documents`}
-              </Text>
-            </View>
+
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -1043,29 +1035,29 @@ export default function MedicalRecordsScreen() {
                     onPress={() => setSelectedFilter(filter.id)}
                     activeOpacity={0.7}
                   >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      isSelected && styles.filterTextActive,
-                    ]}
-                  >
-                    {filter.label}
-                  </Text>
-                  <View
-                    style={[
-                      styles.filterCount,
-                      isSelected && styles.filterCountActive,
-                    ]}
-                  >
                     <Text
                       style={[
-                        styles.filterCountText,
-                        isSelected && styles.filterCountTextActive,
+                        styles.filterText,
+                        isSelected && styles.filterTextActive,
                       ]}
                     >
-                      {filter.count}
+                      {filter.label}
                     </Text>
-                  </View>
+                    <View
+                      style={[
+                        styles.filterCount,
+                        isSelected && styles.filterCountActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.filterCountText,
+                          isSelected && styles.filterCountTextActive,
+                        ]}
+                      >
+                        {filter.count}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 </Animated.View>
               );
@@ -1088,192 +1080,210 @@ export default function MedicalRecordsScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {filteredRecords.length > 0 ? (
-              filteredRecords.map((record, index) => {
-                const { icon: IconComponent, color, bgColor } = getRecordIcon(
-                  record.type,
-                  record.source
-                );
-                const canEdit = canEditRecord(record);
+              (() => {
+                // Group records by Month Year
+                const groups: { title: string; data: any[] }[] = [];
 
-                return (
-                  <Animated.View
-                    key={`${record.id}-${selectedFilter}`}
-                    style={{ marginBottom: 12 }}
-                    entering={FadeInDown.delay(index * 50).springify().damping(15)}
-                  >
-                    <TouchableOpacity
-                      style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordCard : styles.recordCard}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        setSelectedRecord(record);
-                        setPreviewModalVisible(true);
-                      }}
-                    >
-                      <View style={styles.recordCardContent}>
-                        <View style={styles.recordMain}>
-                          {/* Left: Icon and Content */}
-                          <View style={styles.recordLeft}>
-                            <View
-                              style={[
-                                styles.recordIcon,
-                                { backgroundColor: bgColor || `${color}15` },
-                              ]}
-                            >
-                              <IconComponent
-                                size={20}
-                                color={color}
-                                strokeWidth={2}
-                              />
-                            </View>
-                            <View style={styles.recordInfo}>
-                              <Text
-                                style={styles.recordTitle}
-                                numberOfLines={2}
-                              >
-                                {record.title}
-                              </Text>
-                              
-                              {/* Metadata Row */}
-                              <View style={styles.recordMetaRow}>
-                                <Text style={styles.recordSource}>
-                                  {record.source === 'lab_uploaded'
-                                    ? record.lab || 'Lab'
-                                    : isPrescription(record)
-                                      ? record.doctor || record.doctorName || 'Prescription'
-                                      : record.doctor || record.doctorName || 'Self-uploaded'}
-                                </Text>
-                                <View style={styles.metaDot} />
-                                <Text style={styles.recordDate}>
-                                  {record.uploadedAt?.toDate
-                                    ? record.uploadedAt
-                                      .toDate()
-                                      .toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                      })
-                                    : record.uploadedAt?.seconds
-                                      ? new Date(
-                                        record.uploadedAt.seconds * 1000
-                                      ).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                      })
-                                      : 'N/A'}
-                                </Text>
-                              </View>
+                filteredRecords.forEach((record) => {
+                  const date = record.uploadedAt?.toDate
+                    ? record.uploadedAt.toDate()
+                    : record.uploadedAt?.seconds
+                      ? new Date(record.uploadedAt.seconds * 1000)
+                      : new Date();
 
-                              {/* Category Badge and Tags */}
-                              <View style={styles.recordDetailsRow}>
-                                <View style={styles.categoryBadge}>
-                                  <Text style={styles.categoryBadgeText}>
-                                    {record.source === 'lab_uploaded'
-                                      ? 'Lab Report'
-                                      : isPrescription(record)
-                                        ? 'Prescription'
-                                        : record.type === 'lab_reports'
-                                          ? 'Lab Report'
-                                          : 'Document'}
-                                  </Text>
-                                </View>
-                                {/* Display medical tags */}
-                                {record.tags && record.tags.length > 0 && (
-                                  <View style={styles.recordTagsContainer}>
-                                    {record.tags
-                                      .filter((tagId: string) => {
-                                        // Only show predefined medical tags (not 'prescriptions', 'prescription', 'lab_reports')
-                                        const predefinedTag = PREDEFINED_TAGS.find((t) => t.id === tagId);
-                                        return predefinedTag && 
-                                          !['prescriptions', 'prescription', 'lab_reports'].includes(tagId);
-                                      })
-                                      .slice(0, 3) // Show max 3 tags
-                                      .map((tagId: string) => {
-                                        const tagInfo = getTagInfo(tagId);
-                                        return (
-                                          <View
-                                            key={tagId}
-                                            style={[
-                                              styles.recordTag,
-                                              { borderColor: `${tagInfo.color}40` },
-                                            ]}
-                                          >
-                                            <tagInfo.icon
-                                              size={10}
-                                              color={tagInfo.color}
-                                              strokeWidth={2}
-                                            />
-                                            <Text
-                                              style={[
-                                                styles.recordTagText,
-                                                { color: tagInfo.color },
-                                              ]}
-                                            >
-                                              {tagInfo.label}
-                                            </Text>
-                                          </View>
-                                        );
-                                      })}
+                  const monthYear = date.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                  });
+
+                  let group = groups.find(g => g.title === monthYear);
+                  if (!group) {
+                    group = { title: monthYear, data: [] };
+                    groups.push(group);
+                  }
+                  group.data.push(record);
+                });
+
+                return groups.map((group) => (
+                  <View key={group.title} style={{ marginBottom: 12 }}>
+                    <Text style={styles.sectionHeader}>{group.title}</Text>
+                    {group.data.map((record: any, index: number) => {
+                      const { icon: IconComponent, color, bgColor } = getRecordIcon(
+                        record.type,
+                        record.source
+                      );
+                      const canEdit = canEditRecord(record);
+
+                      return (
+                        <Animated.View
+                          key={`${record.id}-${selectedFilter}`}
+                          style={{ marginBottom: 8 }}
+                          entering={FadeInDown.springify().damping(15)}
+                        >
+                          <TouchableOpacity
+                            style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordCard : styles.recordCard}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              setSelectedRecord(record);
+                              setPreviewModalVisible(true);
+                            }}
+                          >
+                            <View style={styles.recordCardContent}>
+                              <View style={styles.recordMain}>
+                                {/* Left: Icon and Content */}
+                                <View style={styles.recordLeft}>
+                                  <View
+                                    style={[
+                                      styles.recordIcon,
+                                      { backgroundColor: bgColor || `${color}15` },
+                                    ]}
+                                  >
+                                    <IconComponent
+                                      size={18}
+                                      color={color}
+                                      strokeWidth={2}
+                                    />
                                   </View>
-                                )}
+                                  <View style={styles.recordInfo}>
+                                    <Text
+                                      style={styles.recordTitle}
+                                      numberOfLines={1}
+                                    >
+                                      {record.title}
+                                    </Text>
+
+                                    {/* Metadata Row */}
+                                    <View style={styles.recordMetaRow}>
+                                      <Text style={styles.recordSource}>
+                                        {record.source === 'lab_uploaded'
+                                          ? record.lab || 'Lab'
+                                          : isPrescription(record)
+                                            ? record.doctor || record.doctorName || 'Prescription'
+                                            : record.doctor || record.doctorName || 'Self-uploaded'}
+                                      </Text>
+                                      <View style={styles.metaDot} />
+                                      <Text style={styles.recordDate}>
+                                        {record.uploadedAt?.toDate
+                                          ? record.uploadedAt
+                                            .toDate()
+                                            .toLocaleDateString('en-US', {
+                                              day: 'numeric',
+                                              month: 'short',
+                                            })
+                                          : record.uploadedAt?.seconds
+                                            ? new Date(
+                                              record.uploadedAt.seconds * 1000
+                                            ).toLocaleDateString('en-US', {
+                                              day: 'numeric',
+                                              month: 'short',
+                                            })
+                                            : 'N/A'}
+                                      </Text>
+                                    </View>
+
+                                    {/* Category Badge and Tags - keep minimal */}
+                                    {record.tags && record.tags.length > 0 && (
+                                      <View style={styles.recordDetailsRow}>
+                                        {record.tags
+                                          .filter((tagId: string) => {
+                                            const predefinedTag = PREDEFINED_TAGS.find((t) => t.id === tagId);
+                                            return predefinedTag &&
+                                              !['prescriptions', 'prescription', 'lab_reports'].includes(tagId);
+                                          })
+                                          .slice(0, 2)
+                                          .map((tagId: string) => {
+                                            const tagInfo = getTagInfo(tagId);
+                                            return (
+                                              <View
+                                                key={tagId}
+                                                style={[
+                                                  styles.recordTag,
+                                                  { borderColor: `${tagInfo.color}30`, backgroundColor: 'transparent', borderWidth: 1, paddingVertical: 2, paddingHorizontal: 6 },
+                                                ]}
+                                              >
+                                                <Text
+                                                  style={[
+                                                    styles.recordTagText,
+                                                    { color: tagInfo.color, fontSize: 9 },
+                                                  ]}
+                                                >
+                                                  {tagInfo.label}
+                                                </Text>
+                                              </View>
+                                            );
+                                          })}
+                                      </View>
+                                    )}
+                                  </View>
+                                </View>
+
+                                {/* Right: Actions */}
+                                <View style={styles.recordActions}>
+                                  <TouchableOpacity
+                                    style={styles.actionButton}
+                                    activeOpacity={0.7}
+                                    onPress={async (e) => {
+                                      e.stopPropagation();
+                                      if (record.fileUrl) {
+                                        if (Platform.OS === 'web') {
+                                          window.open(record.fileUrl, '_blank');
+                                        } else {
+                                          try {
+                                            const uri = await decryptFileFromUrl(record.fileUrl, record, user);
+                                            // Share the file
+                                            if (await Sharing.isAvailableAsync()) {
+                                              await Sharing.shareAsync(uri);
+                                            } else {
+                                              showAlert('Error', 'Sharing is not available on this device');
+                                            }
+                                          } catch (error) {
+                                            console.error('Download error:', error);
+                                            showAlert('Error', 'Failed to download file');
+                                          }
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    <Download
+                                      size={16}
+                                      color={isDarkMode ? colors.textSecondary : '#9CA3AF'}
+                                      strokeWidth={2}
+                                    />
+                                  </TouchableOpacity>
+                                  {canEdit && (
+                                    <TouchableOpacity
+                                      style={styles.actionButton}
+                                      activeOpacity={0.7}
+                                      onPress={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteRecord(record);
+                                      }}
+                                      disabled={deletingRecordId === record.id}
+                                    >
+                                      {deletingRecordId === record.id ? (
+                                        <ActivityIndicator
+                                          size="small"
+                                          color={medicalColors.red}
+                                        />
+                                      ) : (
+                                        <Trash2
+                                          size={16}
+                                          color={isDarkMode ? medicalColors.red : '#DC2626'}
+                                          strokeWidth={2}
+                                        />
+                                      )}
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
                               </View>
                             </View>
-                          </View>
-
-                          {/* Right: Actions */}
-                          <View style={styles.recordActions}>
-                            <TouchableOpacity
-                              style={styles.actionButton}
-                              activeOpacity={0.7}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                // Download functionality - open in new tab/window for web, download for mobile
-                                if (record.fileUrl) {
-                                  if (Platform.OS === 'web') {
-                                    window.open(record.fileUrl, '_blank');
-                                  } else {
-                                    Linking.openURL(record.fileUrl);
-                                  }
-                                }
-                              }}
-                            >
-                              <Download
-                                size={16}
-                                color={isDarkMode ? colors.textSecondary : '#6B7280'}
-                                strokeWidth={2}
-                              />
-                            </TouchableOpacity>
-                            {canEdit && (
-                              <TouchableOpacity
-                                style={styles.actionButton}
-                                activeOpacity={0.7}
-                                onPress={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteRecord(record);
-                                }}
-                                disabled={deletingRecordId === record.id}
-                              >
-                                {deletingRecordId === record.id ? (
-                                  <ActivityIndicator
-                                    size="small"
-                                    color={medicalColors.red}
-                                  />
-                                ) : (
-                                  <Trash2
-                                    size={16}
-                                    color={isDarkMode ? medicalColors.red : '#DC2626'}
-                                    strokeWidth={2}
-                                  />
-                                )}
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                );
-              })
+                          </TouchableOpacity>
+                        </Animated.View>
+                      );
+                    })}
+                  </View>
+                ));
+              })()
             ) : (
               /* Empty State */
               <View style={styles.emptyState}>
@@ -1372,8 +1382,9 @@ export default function MedicalRecordsScreen() {
                 </View>
               </View>
 
-              <ScrollView 
-                style={styles.tagsList}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.tagsList}
                 showsVerticalScrollIndicator={false}
               >
                 {loadingTags ? (
@@ -1392,86 +1403,86 @@ export default function MedicalRecordsScreen() {
                         tagSearchQuery === '' ||
                         tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
                       ).length > 0 && (
-                      <View style={styles.tagSection}>
-                        <Text style={styles.tagSectionTitle}>Medical Categories</Text>
-                        <View style={styles.tagGrid}>
-                          {getAllAvailableTags()
-                            .filter((tag) => !tag.isCustom)
-                            .filter((tag) =>
-                              tagSearchQuery === '' ||
-                              tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
-                            )
-                            .map((tag) => {
-                              const isSelected = selectedTags.includes(tag.id);
-                              const tagCount = medicalRecords.filter((r) =>
-                                r.tags?.includes(tag.id)
-                              ).length;
-                              return (
-                                <Animated.View
-                                  key={tag.id}
-                                  entering={FadeInDown.delay(50).springify()}
-                                >
-                                  <TouchableOpacity
-                                    style={[
-                                      styles.tagChip,
-                                      isSelected && {
-                                        backgroundColor: `${tag.color}15`,
-                                        borderColor: tag.color,
-                                        borderWidth: 2,
-                                      },
-                                    ]}
-                                    onPress={() => toggleTag(tag.id)}
-                                    activeOpacity={0.7}
+                        <View style={styles.tagSection}>
+                          <Text style={styles.tagSectionTitle}>Medical Categories</Text>
+                          <View style={styles.tagGrid}>
+                            {getAllAvailableTags()
+                              .filter((tag) => !tag.isCustom)
+                              .filter((tag) =>
+                                tagSearchQuery === '' ||
+                                tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
+                              )
+                              .map((tag) => {
+                                const isSelected = selectedTags.includes(tag.id);
+                                const tagCount = medicalRecords.filter((r) =>
+                                  r.tags?.includes(tag.id)
+                                ).length;
+                                return (
+                                  <Animated.View
+                                    key={tag.id}
+                                    entering={FadeInDown.delay(50).springify()}
                                   >
-                                    <tag.icon
-                                      size={16}
-                                      color={isSelected ? tag.color : colors.textSecondary}
-                                      strokeWidth={2.5}
-                                    />
-                                    <Text
+                                    <TouchableOpacity
                                       style={[
-                                        styles.tagChipText,
-                                        isSelected && { color: tag.color, fontWeight: '600' },
+                                        styles.tagChip,
+                                        isSelected && {
+                                          backgroundColor: `${tag.color}15`,
+                                          borderColor: tag.color,
+                                          borderWidth: 2,
+                                        },
                                       ]}
+                                      onPress={() => toggleTag(tag.id)}
+                                      activeOpacity={0.7}
                                     >
-                                      {tag.label}
-                                    </Text>
-                                    {tagCount > 0 && (
-                                      <View
+                                      <tag.icon
+                                        size={16}
+                                        color={isSelected ? tag.color : colors.textSecondary}
+                                        strokeWidth={2.5}
+                                      />
+                                      <Text
                                         style={[
-                                          styles.tagCountBadge,
-                                          isSelected && {
-                                            backgroundColor: tag.color,
-                                          },
+                                          styles.tagChipText,
+                                          isSelected && { color: tag.color, fontWeight: '600' },
                                         ]}
                                       >
-                                        <Text
+                                        {tag.label}
+                                      </Text>
+                                      {tagCount > 0 && (
+                                        <View
                                           style={[
-                                            styles.tagCountText,
-                                            isSelected && { color: '#ffffff' },
+                                            styles.tagCountBadge,
+                                            isSelected && {
+                                              backgroundColor: tag.color,
+                                            },
                                           ]}
                                         >
-                                          {tagCount}
-                                        </Text>
-                                      </View>
-                                    )}
-                                    {isSelected && (
-                                      <View
-                                        style={[
-                                          styles.tagSelectedIndicator,
-                                          { backgroundColor: tag.color },
-                                        ]}
-                                      >
-                                        <Check size={12} color="#ffffff" strokeWidth={3} />
-                                      </View>
-                                    )}
-                                  </TouchableOpacity>
-                                </Animated.View>
-                              );
-                            })}
+                                          <Text
+                                            style={[
+                                              styles.tagCountText,
+                                              isSelected && { color: '#ffffff' },
+                                            ]}
+                                          >
+                                            {tagCount}
+                                          </Text>
+                                        </View>
+                                      )}
+                                      {isSelected && (
+                                        <View
+                                          style={[
+                                            styles.tagSelectedIndicator,
+                                            { backgroundColor: tag.color },
+                                          ]}
+                                        >
+                                          <Check size={12} color="#ffffff" strokeWidth={3} />
+                                        </View>
+                                      )}
+                                    </TouchableOpacity>
+                                  </Animated.View>
+                                );
+                              })}
+                          </View>
                         </View>
-                      </View>
-                    )}
+                      )}
 
                     {/* Custom Tags Section */}
                     {getAllAvailableTags()
@@ -1480,111 +1491,111 @@ export default function MedicalRecordsScreen() {
                         tagSearchQuery === '' ||
                         tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
                       ).length > 0 && (
-                      <View style={styles.tagSection}>
-                        <View style={styles.tagSectionHeader}>
-                          <Text style={styles.tagSectionTitle}>Custom Tags</Text>
-                        </View>
-                        <View style={styles.tagGrid}>
-                          {getAllAvailableTags()
-                            .filter((tag) => tag.isCustom)
-                            .filter((tag) =>
-                              tagSearchQuery === '' ||
-                              tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
-                            )
-                            .map((tag) => {
-                              const isSelected = selectedTags.includes(tag.id);
-                              const tagCount = medicalRecords.filter((r) =>
-                                r.tags?.includes(tag.id)
-                              ).length;
-                              return (
-                                <Animated.View
-                                  key={tag.id}
-                                  entering={FadeInDown.delay(50).springify()}
-                                >
-                                  <TouchableOpacity
-                                    style={[
-                                      styles.tagChip,
-                                      isSelected && {
-                                        backgroundColor: `${primary}15`,
-                                        borderColor: primary,
-                                        borderWidth: 2,
-                                      },
-                                    ]}
-                                    onPress={() => toggleTag(tag.id)}
-                                    activeOpacity={0.7}
+                        <View style={styles.tagSection}>
+                          <View style={styles.tagSectionHeader}>
+                            <Text style={styles.tagSectionTitle}>Custom Tags</Text>
+                          </View>
+                          <View style={styles.tagGrid}>
+                            {getAllAvailableTags()
+                              .filter((tag) => tag.isCustom)
+                              .filter((tag) =>
+                                tagSearchQuery === '' ||
+                                tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
+                              )
+                              .map((tag) => {
+                                const isSelected = selectedTags.includes(tag.id);
+                                const tagCount = medicalRecords.filter((r) =>
+                                  r.tags?.includes(tag.id)
+                                ).length;
+                                return (
+                                  <Animated.View
+                                    key={tag.id}
+                                    entering={FadeInDown.delay(50).springify()}
                                   >
-                                    <tag.icon
-                                      size={16}
-                                      color={isSelected ? primary : colors.textSecondary}
-                                      strokeWidth={2.5}
-                                    />
-                                    <Text
+                                    <TouchableOpacity
                                       style={[
-                                        styles.tagChipText,
-                                        isSelected && { color: primary, fontWeight: '600' },
+                                        styles.tagChip,
+                                        isSelected && {
+                                          backgroundColor: `${primary}15`,
+                                          borderColor: primary,
+                                          borderWidth: 2,
+                                        },
                                       ]}
+                                      onPress={() => toggleTag(tag.id)}
+                                      activeOpacity={0.7}
                                     >
-                                      {tag.label}
-                                    </Text>
-                                    {tagCount > 0 && (
-                                      <View
+                                      <tag.icon
+                                        size={16}
+                                        color={isSelected ? primary : colors.textSecondary}
+                                        strokeWidth={2.5}
+                                      />
+                                      <Text
                                         style={[
-                                          styles.tagCountBadge,
-                                          isSelected && {
-                                            backgroundColor: primary,
-                                          },
+                                          styles.tagChipText,
+                                          isSelected && { color: primary, fontWeight: '600' },
                                         ]}
                                       >
-                                        <Text
+                                        {tag.label}
+                                      </Text>
+                                      {tagCount > 0 && (
+                                        <View
                                           style={[
-                                            styles.tagCountText,
-                                            isSelected && { color: '#ffffff' },
+                                            styles.tagCountBadge,
+                                            isSelected && {
+                                              backgroundColor: primary,
+                                            },
                                           ]}
                                         >
-                                          {tagCount}
-                                        </Text>
-                                      </View>
-                                    )}
-                                    {isSelected && (
-                                      <View
-                                        style={[
-                                          styles.tagSelectedIndicator,
-                                          { backgroundColor: primary },
-                                        ]}
+                                          <Text
+                                            style={[
+                                              styles.tagCountText,
+                                              isSelected && { color: '#ffffff' },
+                                            ]}
+                                          >
+                                            {tagCount}
+                                          </Text>
+                                        </View>
+                                      )}
+                                      {isSelected && (
+                                        <View
+                                          style={[
+                                            styles.tagSelectedIndicator,
+                                            { backgroundColor: primary },
+                                          ]}
+                                        >
+                                          <Check size={12} color="#ffffff" strokeWidth={3} />
+                                        </View>
+                                      )}
+                                      <TouchableOpacity
+                                        onPress={(e) => {
+                                          e.stopPropagation();
+                                          removeCustomTag(tag.id);
+                                        }}
+                                        style={styles.removeCustomTagButton}
                                       >
-                                        <Check size={12} color="#ffffff" strokeWidth={3} />
-                                      </View>
-                                    )}
-                                    <TouchableOpacity
-                                      onPress={(e) => {
-                                        e.stopPropagation();
-                                        removeCustomTag(tag.id);
-                                      }}
-                                      style={styles.removeCustomTagButton}
-                                    >
-                                      <X size={12} color={colors.textTertiary} strokeWidth={2.5} />
+                                        <X size={12} color={colors.textTertiary} strokeWidth={2.5} />
+                                      </TouchableOpacity>
                                     </TouchableOpacity>
-                                  </TouchableOpacity>
-                                </Animated.View>
-                              );
-                            })}
+                                  </Animated.View>
+                                );
+                              })}
+                          </View>
                         </View>
-                      </View>
-                    )}
+                      )}
 
                     {/* No Results */}
                     {getAllAvailableTags().filter((tag) =>
                       tagSearchQuery === '' ||
                       tag.label.toLowerCase().includes(tagSearchQuery.toLowerCase())
                     ).length === 0 && (
-                      <View style={styles.noTagsFound}>
-                        <Tag size={48} color={colors.textTertiary} strokeWidth={1} />
-                        <Text style={styles.noTagsFoundText}>No tags found</Text>
-                        <Text style={styles.noTagsFoundSubtext}>
-                          Try a different search term
-                        </Text>
-                      </View>
-                    )}
+                        <View style={styles.noTagsFound}>
+                          <Tag size={48} color={colors.textTertiary} strokeWidth={1} />
+                          <Text style={styles.noTagsFoundText}>No tags found</Text>
+                          <Text style={styles.noTagsFoundSubtext}>
+                            Try a different search term
+                          </Text>
+                        </View>
+                      )}
                   </>
                 )}
               </ScrollView>
@@ -1701,7 +1712,7 @@ export default function MedicalRecordsScreen() {
               {selectedRecord && (
                 <>
                   <View style={styles.previewHeader}>
-                    <Text style={styles.modalTitle}>
+                    <Text style={styles.previewModalTitle}>
                       {selectedRecord.title}
                     </Text>
                     <TouchableOpacity
@@ -1802,15 +1813,28 @@ export default function MedicalRecordsScreen() {
                     <TouchableOpacity
                       style={styles.openPdfButton}
                       onPress={async () => {
-                        setPdfPreviewUri(null);
-                        setShowPdfPreview(true);
                         try {
                           const decryptedUri = await decryptFileFromUrl(
                             selectedRecord.fileUrl,
                             selectedRecord,
                             user
                           );
-                          setPdfPreviewUri(decryptedUri);
+
+                          if (Platform.OS === 'android') {
+                            // Android WebView cannot display PDFs directly - use system viewer
+                            if (await Sharing.isAvailableAsync()) {
+                              await Sharing.shareAsync(decryptedUri, {
+                                mimeType: 'application/pdf',
+                                dialogTitle: selectedRecord.title || 'Open PDF'
+                              });
+                            } else {
+                              showAlert('Error', 'PDF Viewer not available');
+                            }
+                          } else {
+                            // iOS and Web
+                            setPdfPreviewUri(decryptedUri);
+                            setShowPdfPreview(true);
+                          }
                         } catch (e) {
                           showAlert('Error', 'Failed to decrypt and open PDF.');
                           setShowPdfPreview(false);

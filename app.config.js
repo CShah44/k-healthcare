@@ -7,6 +7,7 @@ export default {
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
+    scheme: 'svastheya',
     userInterfaceStyle: 'automatic',
     splash: {
       image: './assets/images/Logo-Main.png',

@@ -40,6 +40,7 @@ import {
   Pill,
   X,
   Check,
+  ChevronRight,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '@/constants/firebase';
@@ -157,7 +158,7 @@ export default function UploadRecordScreen() {
 
   const loadUserCustomTags = async () => {
     if (!user) return;
-    
+
     try {
       setLoadingTags(true);
       const userTagsDoc = await getDoc(doc(db, 'userTags', user.uid));
@@ -174,7 +175,7 @@ export default function UploadRecordScreen() {
 
   const saveUserCustomTags = async (tags: string[]) => {
     if (!user) return;
-    
+
     try {
       await setDoc(doc(db, 'userTags', user.uid), {
         customTags: tags,
@@ -295,24 +296,24 @@ export default function UploadRecordScreen() {
 
     try {
       setAddingTag(true);
-      
+
       // Add to custom tags and select it
       const newCustomTags = [...customTags, trimmedTag];
       setCustomTags(newCustomTags);
       setSelectedTags((prev) => [...prev, trimmedTag]);
-      
+
       // Save to database
       await saveUserCustomTags(newCustomTags);
-      
+
       setNewTagInput('');
       setShowCustomTagModal(false);
-      
+
       // Show success feedback
       Alert.alert('Success', `Tag "${trimmedTag}" has been added and selected!`);
     } catch (error) {
       console.error('Error adding custom tag:', error);
       Alert.alert('Error', 'Failed to save custom tag. Please try again.');
-      
+
       // Revert local changes on error
       setCustomTags((prev) => prev.filter(tag => tag !== trimmedTag));
       setSelectedTags((prev) => prev.filter(tag => tag !== trimmedTag));
@@ -326,13 +327,13 @@ export default function UploadRecordScreen() {
       const newCustomTags = customTags.filter((id) => id !== tagId);
       setCustomTags(newCustomTags);
       setSelectedTags((prev) => prev.filter((id) => id !== tagId));
-      
+
       // Save to database
       await saveUserCustomTags(newCustomTags);
     } catch (error) {
       console.error('Error removing custom tag:', error);
       Alert.alert('Error', 'Failed to remove custom tag. Please try again.');
-      
+
       // Revert local changes on error
       setCustomTags((prev) => [...prev, tagId]);
     }
@@ -387,18 +388,18 @@ export default function UploadRecordScreen() {
         fileUri = selectedFile.uri;
         fileName = selectedFile.name;
         fileType = selectedFile.mimeType || 'application/pdf';
-      
+
         const response = await fetch(fileUri);
         const arrayBuffer = await response.arrayBuffer();
-      
+
         // Encrypt PDFs and images
         if (fileType === 'application/pdf' || fileType.startsWith('image/')) {
           const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
           const encryptionKey = getUserEncryptionKey(user.uid);
-      
+
           const encrypted = CryptoJS.AES.encrypt(wordArray, encryptionKey).toString();
           const encryptedBytes = base64ToUint8Array(encrypted);
-      
+
           uploadBlob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
         } else {
           uploadBlob = await response.blob();
@@ -407,17 +408,17 @@ export default function UploadRecordScreen() {
         fileUri = selectedImage.uri;
         fileName = selectedImage.fileName || `photo_${Date.now()}.jpg`;
         fileType = selectedImage.type || 'image/jpeg';
-        
+
         const response = await fetch(fileUri);
         const arrayBuffer = await response.arrayBuffer();
-        
+
         // Encrypt images
         const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
         const encryptionKey = getUserEncryptionKey(user.uid);
-    
+
         const encrypted = CryptoJS.AES.encrypt(wordArray, encryptionKey).toString();
         const encryptedBytes = base64ToUint8Array(encrypted);
-    
+
         uploadBlob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
       }
 
@@ -478,7 +479,7 @@ export default function UploadRecordScreen() {
       });
 
       setUploading(false);
-      
+
       // Show success message and redirect
       Alert.alert('Success', 'Record uploaded successfully!', [
         {
@@ -486,7 +487,7 @@ export default function UploadRecordScreen() {
           onPress: () => router.replace('/(patient-tabs)/records'),
         },
       ]);
-      
+
       // Auto redirect after 2 seconds if user doesn't click
       setTimeout(() => {
         router.replace('/(patient-tabs)/records');
@@ -497,7 +498,7 @@ export default function UploadRecordScreen() {
       Alert.alert('Error', 'Failed to upload record. Please try again.');
     }
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -538,7 +539,7 @@ export default function UploadRecordScreen() {
               </View>
             ) : (
               <>
-                {/* Modern Upload Options */}
+                {/* Upload Options */}
                 <View style={styles.uploadOptionsContainer}>
                   <Text style={styles.sectionTitle}>Choose Upload Method</Text>
 
@@ -546,76 +547,52 @@ export default function UploadRecordScreen() {
                     <TouchableOpacity
                       style={styles.uploadOption}
                       onPress={openDocumentPicker}
-                      activeOpacity={0.9}
+                      activeOpacity={0.7}
                     >
-                      <LinearGradient
-                        colors={['#3b82f6', '#2563eb']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.uploadOptionGradient}
-                      >
-                        <View style={styles.iconContainer}>
-                          <FileText
-                            size={28}
-                            color="#ffffff"
-                            strokeWidth={2.5}
-                          />
-                        </View>
-                        <Text style={styles.uploadOptionText}>
-                          Upload PDF
-                        </Text>
-                        <Text style={styles.uploadOptionSubtext}>
-                          Select documents
-                        </Text>
-                      </LinearGradient>
+                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#DBEAFE' }]}>
+                        <FileText size={24} color="#3B82F6" strokeWidth={2} />
+                      </View>
+                      <View style={styles.uploadOptionContent}>
+                        <Text style={styles.uploadOptionText}>Upload PDF</Text>
+                        <Text style={styles.uploadOptionSubtext}>Select documents from your device</Text>
+                      </View>
+                      <View style={styles.uploadOptionArrow}>
+                        <ChevronRight size={18} color={colors.textSecondary} />
+                      </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={styles.uploadOption}
                       onPress={openCamera}
-                      activeOpacity={0.9}
+                      activeOpacity={0.7}
                     >
-                      <LinearGradient
-                        colors={['#10b981', '#059669']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.uploadOptionGradient}
-                      >
-                        <View style={styles.iconContainer}>
-                          <Camera size={28} color="#ffffff" strokeWidth={2.5} />
-                        </View>
-                        <Text style={styles.uploadOptionText}>
-                          Take Photo
-                        </Text>
-                        <Text style={styles.uploadOptionSubtext}>
-                          Use camera
-                        </Text>
-                      </LinearGradient>
+                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#D1FAE5' }]}>
+                        <Camera size={24} color="#10B981" strokeWidth={2} />
+                      </View>
+                      <View style={styles.uploadOptionContent}>
+                        <Text style={styles.uploadOptionText}>Take Photo</Text>
+                        <Text style={styles.uploadOptionSubtext}>Capture with your camera</Text>
+                      </View>
+                      <View style={styles.uploadOptionArrow}>
+                        <ChevronRight size={18} color={colors.textSecondary} />
+                      </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={styles.uploadOption}
                       onPress={openImagePicker}
-                      activeOpacity={0.9}
+                      activeOpacity={0.7}
                     >
-                      <LinearGradient
-                        colors={['#8b5cf6', '#7c3aed']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.uploadOptionGradient}
-                      >
-                        <View style={styles.iconContainer}>
-                          <ImageIcon
-                            size={28}
-                            color="#ffffff"
-                            strokeWidth={2.5}
-                          />
-                        </View>
-                        <Text style={styles.uploadOptionText}>Gallery</Text>
-                        <Text style={styles.uploadOptionSubtext}>
-                          Choose photos
-                        </Text>
-                      </LinearGradient>
+                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#EDE9FE' }]}>
+                        <ImageIcon size={24} color="#8B5CF6" strokeWidth={2} />
+                      </View>
+                      <View style={styles.uploadOptionContent}>
+                        <Text style={styles.uploadOptionText}>Choose from Gallery</Text>
+                        <Text style={styles.uploadOptionSubtext}>Select existing photos</Text>
+                      </View>
+                      <View style={styles.uploadOptionArrow}>
+                        <ChevronRight size={18} color={colors.textSecondary} />
+                      </View>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -648,8 +625,8 @@ export default function UploadRecordScreen() {
                             <Text style={styles.fileSizeText}>
                               {selectedFile.size
                                 ? `${(selectedFile.size / 1024 / 1024).toFixed(
-                                    2
-                                  )} MB`
+                                  2
+                                )} MB`
                                 : 'Size unknown'}
                             </Text>
                             {/* Preview PDF Button */}
@@ -673,7 +650,7 @@ export default function UploadRecordScreen() {
                                 >
                                   <Text style={styles.openPdfText}>Preview PDF</Text>
                                 </TouchableOpacity>
-                            )}
+                              )}
                           </View>
                         </View>
                       )}
@@ -744,8 +721,8 @@ export default function UploadRecordScreen() {
                                 selectedTags.includes(tag.id) && [
                                   styles.tagOptionSelected,
                                   {
-                                    backgroundColor: isDarkMode 
-                                      ? `${tag.color}25` 
+                                    backgroundColor: isDarkMode
+                                      ? `${tag.color}25`
                                       : `${tag.color}15`,
                                     borderColor: tag.color,
                                   },
@@ -848,17 +825,12 @@ export default function UploadRecordScreen() {
                         onPress={handleUpload}
                         activeOpacity={0.8}
                       >
-                        <LinearGradient
-                          colors={['#10b981', '#059669']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.confirmButtonGradient}
-                        >
-                          <Upload size={20} color="#ffffff" strokeWidth={2.5} />
+                        <View style={styles.confirmButtonGradient}>
+                          <Upload size={20} color="#ffffff" strokeWidth={2} />
                           <Text style={styles.uploadConfirmText}>
                             Upload Document
                           </Text>
-                        </LinearGradient>
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -918,7 +890,7 @@ export default function UploadRecordScreen() {
             <View style={styles.customTagModalContent}>
               <View style={styles.customTagModalHeader}>
                 <Text style={styles.modalTitle}>Add Custom Tag</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => setShowCustomTagModal(false)}
                   activeOpacity={0.7}
                 >
@@ -957,7 +929,7 @@ export default function UploadRecordScreen() {
                   style={[
                     styles.addCustomTagConfirmButton,
                     (!newTagInput.trim() || addingTag) &&
-                      styles.addCustomTagConfirmButtonDisabled,
+                    styles.addCustomTagConfirmButtonDisabled,
                   ]}
                   onPress={addCustomTag}
                   disabled={!newTagInput.trim() || addingTag}

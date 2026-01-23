@@ -4,7 +4,7 @@ import { Colors } from '@/constants/Colors';
 import { layoutStyles } from '../../styles/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator, StatusBar } from 'react-native';
+import { View, ActivityIndicator, StatusBar, Platform } from 'react-native';
 
 export default function HealthcareTabsLayout() {
   const { colors } = useTheme();
@@ -30,72 +30,74 @@ export default function HealthcareTabsLayout() {
         translucent={Platform.OS === 'android'}
       />
       <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          ...layoutStyles.tabBarStyle,
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          shadowColor: colors.shadow,
-        },
-        tabBarLabelStyle: {
-          ...layoutStyles.tabBarLabelStyle,
-          fontFamily: 'Satoshi-Variable',
-        },
-        tabBarIconStyle: layoutStyles.tabBarIconStyle,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Activity size={size} color={color} strokeWidth={2} />
-          ),
+        screenOptions={{
+          headerShown: false,
+          tabBarShowLabel: true,
+          tabBarLabelPosition: 'below-icon',
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarStyle: {
+            ...layoutStyles.tabBarStyle,
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            shadowColor: colors.shadow,
+          },
+          tabBarLabelStyle: {
+            ...layoutStyles.tabBarLabelStyle,
+            fontFamily: 'Satoshi-Variable',
+          },
+          tabBarIconStyle: layoutStyles.tabBarIconStyle,
         }}
-      />
-      <Tabs.Screen
-        name="patients"
-        options={{
-          title: 'Patients',
-          tabBarIcon: ({ color, size }) => (
-            <Users size={size} color={color} strokeWidth={2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} strokeWidth={2} />
-          ),
-        }}
-      />
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, size }) => (
+              <Activity size={size} color={color} strokeWidth={2} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="patients"
+          options={{
+            title: 'Patients',
+            tabBarIcon: ({ color, size }) => (
+              <Users size={size} color={color} strokeWidth={2} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => (
+              <User size={size} color={color} strokeWidth={2} />
+            ),
+          }}
+        />
 
-      {/* Hidden routes */}
-      <Tabs.Screen
-        name="create-prescription"
-        options={{
-          href: null,
-          tabBarStyle: { display: 'none' }, // Hide tab bar on this screen if desired, or keep it. Patient app hides tabs on sub-screens often.
-        }}
-      />
-      <Tabs.Screen
-        name="records"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="edit-profile"
-        options={{
-          href: null,
-        }}
-      />
-    </Tabs>
+        {/* Hidden routes */}
+        <Tabs.Screen
+          name="create-prescription"
+          options={{
+            href: null,
+            tabBarStyle: { display: 'none' }, // Hide tab bar on this screen if desired, or keep it. Patient app hides tabs on sub-screens often.
+          }}
+        />
+        <Tabs.Screen
+          name="records"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="edit-profile"
+          options={{
+            href: null,
+          }}
+        />
+      </Tabs>
     </>
   );
 }

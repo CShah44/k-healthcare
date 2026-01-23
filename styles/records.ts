@@ -24,6 +24,8 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
 
     headerLeft: {
       flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
     },
 
     headerTitle: {
@@ -242,24 +244,37 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
 
     recordsContent: {
       paddingHorizontal: 20,
+      paddingBottom: 40,
+    },
+
+    sectionHeader: {
+      fontSize: 13,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginTop: 20,
+      marginBottom: 10,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      opacity: 0.8,
     },
 
     recordCard: {
       backgroundColor: isDarkMode ? colors.card : '#F9FAFB', // Match Profile card background
       borderRadius: 16,
-      marginBottom: 12,
-      borderWidth: 0,
+      marginBottom: 0, // Margin handled by container gap or group
+      borderWidth: 1, // Cleaner look
+      borderColor: isDarkMode ? colors.border : 'rgba(0,0,0,0.03)',
       position: 'relative',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.01,
-      shadowRadius: 3,
-      elevation: 1,
-      overflow: 'hidden', // For smooth press effect
+      shadowRadius: 2,
+      elevation: 0,
     },
 
     recordCardContent: {
-      padding: 16,
+      padding: 14, // Compact padding
     },
 
     newBadge: {
@@ -286,13 +301,12 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     },
 
     recordIcon: {
-      width: 40,
-      height: 40,
+      width: 38, // Slightly smaller
+      height: 38,
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,
-      // No shadow - pastel backgrounds are enough
     },
 
     recordInfo: {
@@ -437,14 +451,12 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     },
 
     actionButton: {
-      width: 36,
-      height: 36,
+      width: 32, // Smaller actions
+      height: 32,
       borderRadius: 10,
-      backgroundColor: isDarkMode ? colors.surfaceSecondary : '#F3F4F6', // More subtle background
+      backgroundColor: 'transparent', // Cleaner
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 0,
-      // No shadow - visually secondary
     },
 
     recordFooter: {
@@ -536,20 +548,28 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
 
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center', // Center properly
       alignItems: 'center',
+      padding: 20,
     },
 
     tagModalContent: {
       backgroundColor: colors.card,
-      borderRadius: 24,
-      margin: 20,
-      maxHeight: '80%',
-      width: '90%',
+      borderRadius: 24, // Rounded all corners for center modal / or top if bottom sheet
+      // Make tag modal a bottom sheet for mobile feel
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      maxHeight: '85%',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.2,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
       shadowRadius: 16,
       elevation: 8,
     },
@@ -663,8 +683,9 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     },
 
     tagsList: {
-      padding: 20,
-      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 20,
     },
 
     tagSection: {
@@ -697,14 +718,13 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 12,
+      paddingVertical: 12,
+      borderRadius: 24,
       gap: 8,
       backgroundColor: isDarkMode ? colors.surface : '#F9FAFB',
-      borderWidth: 1,
-      borderColor: colors.border,
-      position: 'relative',
-      minHeight: 40,
+      borderWidth: 1.5,
+      borderColor: isDarkMode ? colors.border : '#E5E7EB',
+      minHeight: 44,
     },
 
     tagChipText: {
@@ -857,10 +877,13 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
 
     tagModalActions: {
       flexDirection: 'row',
-      padding: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      paddingBottom: 32,
       gap: 12,
       borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopColor: isDarkMode ? colors.border : '#F3F4F6',
+      backgroundColor: colors.card,
     },
 
     clearTagsButton: {
@@ -942,7 +965,7 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       color: colors.text,
       backgroundColor: colors.surface,
     },
-  
+
     customTagModalActions: {
       flexDirection: 'row',
       gap: 12,
@@ -984,13 +1007,19 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     },
 
     // Preview modal
+    // Preview modal - Center it
     modalContent: {
       backgroundColor: colors.card,
-      borderRadius: 16,
-      margin: 20,
-      padding: 20,
-      maxHeight: '80%',
-      width: '90%',
+      borderRadius: 24,
+      padding: 24,
+      maxHeight: '85%',
+      width: '100%',
+      maxWidth: 500, // Constrain width for cleaner look on web/tablets
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 20,
+      elevation: 10,
     },
 
     previewHeader: {
@@ -998,6 +1027,17 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 16,
+      width: '100%',
+    },
+
+    previewModalTitle: {
+      fontSize: 22,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.4,
+      flex: 1,
+      marginRight: 16,
     },
 
     modalSubtitle: {
@@ -1065,10 +1105,15 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     // Edit modal
     editModalContent: {
       backgroundColor: colors.card,
-      borderRadius: 16,
-      margin: 20,
-      padding: 20,
-      width: '90%',
+      borderRadius: 24,
+      padding: 24,
+      width: '100%',
+      maxWidth: 500,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 20,
+      elevation: 10,
     },
 
     editModalHeader: {
@@ -1258,5 +1303,37 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       paddingVertical: 4,
       borderRadius: 8,
       alignSelf: 'flex-start',
+    },
+    emptyStateIconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+
+    emptyStateTitle: {
+      fontSize: 18,
+      fontFamily: 'Satoshi-Variable',
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+
+    emptyStateText: {
+      fontSize: 15,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      maxWidth: 260,
+    },
+
+    recordDescription: {
+      fontSize: 14,
+      fontFamily: 'Satoshi-Variable',
+      color: colors.textSecondary,
+      lineHeight: 20,
     },
   });

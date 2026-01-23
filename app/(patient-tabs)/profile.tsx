@@ -110,12 +110,12 @@ export default function ProfileScreen() {
       } else {
         date = new Date(dob);
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return dob; // Return original if invalid
       }
-      
+
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const year = date.getFullYear();
@@ -174,12 +174,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchRecordCounts = async () => {
       if (!user?.uid) return;
-      
+
       try {
         const recordsRef = collection(db, 'patients', user.uid, 'records');
         const snapshot = await getDocs(recordsRef);
         const records = snapshot.docs.map(doc => doc.data());
-        
+
         const counts = {
           allergies: records.filter(r => r.tags?.includes('allergy') || r.type === 'allergy').length,
           diagnoses: records.filter(r => r.diagnosis || r.tags?.includes('diagnosis') || r.type === 'diagnosis').length,
@@ -188,7 +188,7 @@ export default function ProfileScreen() {
           vaccinations: records.filter(r => r.type === 'vaccination' || r.tags?.includes('vaccination')).length,
           documents: records.filter(r => r.fileUrl || r.fileType).length,
         };
-        
+
         setRecordCounts(counts);
       } catch (error) {
         console.error('Error fetching record counts:', error);
@@ -269,7 +269,7 @@ export default function ProfileScreen() {
       iconColor: '#EAB308',
       iconBg: '#FEF9C3',
       count: recordCounts.allergies,
-      onPress: () => router.push('/(patient-tabs)/records'),
+      onPress: () => router.push('/(patient-tabs)/allergies'),
     },
     {
       id: 'diagnoses',
@@ -278,7 +278,7 @@ export default function ProfileScreen() {
       iconColor: '#EC4899',
       iconBg: '#FCE7F3',
       count: recordCounts.diagnoses,
-      onPress: () => router.push('/(patient-tabs)/records'),
+      onPress: () => router.push('/(patient-tabs)/diagnoses'),
     },
     {
       id: 'visits',
@@ -287,7 +287,7 @@ export default function ProfileScreen() {
       iconColor: '#10B981',
       iconBg: '#D1FAE5',
       count: null,
-      onPress: () => router.push('/(patient-tabs)/records'),
+      onPress: () => router.push('/(patient-tabs)/visits'),
     },
     {
       id: 'prescriptions',
@@ -305,7 +305,7 @@ export default function ProfileScreen() {
       iconColor: '#10B981',
       iconBg: '#D1FAE5',
       count: null,
-      onPress: () => router.push('/(patient-tabs)/records'),
+      onPress: () => router.push('/(patient-tabs)/vaccinations'),
     },
     {
       id: 'documents',
@@ -333,8 +333,32 @@ export default function ProfileScreen() {
       icon: Palette,
       iconColor: '#8B5CF6',
       iconBg: '#EDE9FE',
-      onPress: () => {}, // No navigation, handled by toggle
+      onPress: () => { }, // No navigation, handled by toggle
       showToggle: true,
+    },
+    {
+      id: 'privacy',
+      title: 'Privacy & Security',
+      icon: Shield,
+      iconColor: '#10B981',
+      iconBg: '#D1FAE5',
+      onPress: () => router.push('/privacy'),
+    },
+    {
+      id: 'help',
+      title: 'Help & Support',
+      icon: HelpCircle,
+      iconColor: '#3B82F6',
+      iconBg: '#DBEAFE',
+      onPress: () => router.push('/help'),
+    },
+    {
+      id: 'about',
+      title: 'About',
+      icon: Info,
+      iconColor: '#F59E0B',
+      iconBg: '#FEF3C7',
+      onPress: () => router.push('/about'),
     },
   ];
 
@@ -375,12 +399,12 @@ export default function ProfileScreen() {
               <Edit size={14} color="#EC4899" strokeWidth={2} />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>
               {userData?.firstName || ''} {userData?.lastName || ''}
             </Text>
-            
+
             <View style={styles.demographicsRow}>
               {userData?.gender && (
                 <>
@@ -429,12 +453,12 @@ export default function ProfileScreen() {
         {isSwitchedAccount && (
           <View style={styles.switchedAccountIndicator}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <View style={{ 
-                width: 32, 
-                height: 32, 
-                borderRadius: 16, 
-                backgroundColor: `${Colors.primary}15`, 
-                alignItems: 'center', 
+              <View style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: `${Colors.primary}15`,
+                alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 12,
               }}>
@@ -530,7 +554,7 @@ export default function ProfileScreen() {
                         style={[
                           styles.linkedAccountAvatar,
                           account.type === 'parent' &&
-                            styles.parentAccountAvatar,
+                          styles.parentAccountAvatar,
                         ]}
                       >
                         <Text style={styles.linkedAccountInitials}>
@@ -546,7 +570,7 @@ export default function ProfileScreen() {
                           style={[
                             styles.linkedAccountType,
                             account.type === 'parent' &&
-                              styles.parentAccountType,
+                            styles.parentAccountType,
                           ]}
                         >
                           {account.type === 'parent'

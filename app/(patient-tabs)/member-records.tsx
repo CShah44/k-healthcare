@@ -241,13 +241,19 @@ async function openPdfFile(fileUri: string) {
 }
 
 export default function MemberRecordsScreen() {
-  const { memberId } = useLocalSearchParams<{ memberId: string }>();
+  const { memberId, firstName, lastName } = useLocalSearchParams<{
+    memberId: string;
+    firstName?: string;
+    lastName?: string;
+  }>();
   const { user, userData } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const styles = createRecordsStyles(colors, isDarkMode);
   const { showAlert, AlertComponent } = useCustomAlert();
 
-  const [memberData, setMemberData] = useState<any>(null);
+  const [memberData, setMemberData] = useState<any>(
+    firstName || lastName ? { firstName, lastName, id: memberId } : null
+  );
   const [familyData, setFamilyData] = useState<any>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -514,7 +520,7 @@ export default function MemberRecordsScreen() {
     },
   };
 
-  if (loading) {
+  if (loading && !memberData) {
     return (
       <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
         <View style={styles.loadingContainer}>
@@ -618,10 +624,10 @@ export default function MemberRecordsScreen() {
                 record.status === 'normal'
                   ? Colors.medical.green
                   : record.status === 'abnormal'
-                  ? Colors.medical.red
-                  : record.status === 'pending'
-                  ? Colors.medical.blue
-                  : colors.textSecondary;
+                    ? Colors.medical.red
+                    : record.status === 'pending'
+                      ? Colors.medical.blue
+                      : colors.textSecondary;
               return (
                 <View
                   key={record.id}
@@ -660,7 +666,7 @@ export default function MemberRecordsScreen() {
                             <Text style={styles.recordTitle} numberOfLines={2}>
                               {record.title}
                             </Text>
-                            <View style={styles.recordMeta}>
+                            <View style={styles.recordMetaRow}>
                               <Text style={styles.recordSource}>
                                 {record.source === 'lab_uploaded'
                                   ? record.lab
@@ -670,19 +676,19 @@ export default function MemberRecordsScreen() {
                               <Text style={styles.recordDate}>
                                 {record.uploadedAt?.toDate
                                   ? record.uploadedAt
-                                      .toDate()
-                                      .toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                      })
+                                    .toDate()
+                                    .toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })
                                   : record.uploadedAt?.seconds
-                                  ? new Date(
+                                    ? new Date(
                                       record.uploadedAt.seconds * 1000
                                     ).toLocaleDateString('en-US', {
                                       month: 'short',
                                       day: 'numeric',
                                     })
-                                  : 'N/A'}
+                                    : 'N/A'}
                               </Text>
                             </View>
                             {/* Tags Row */}
@@ -846,14 +852,14 @@ export default function MemberRecordsScreen() {
                     {selectedRecord.uploadedAt?.toDate
                       ? selectedRecord.uploadedAt.toDate().toLocaleString()
                       : selectedRecord.uploadedAt?.seconds
-                      ? new Date(
+                        ? new Date(
                           selectedRecord.uploadedAt.seconds * 1000
                         ).toLocaleString()
-                      : 'N/A'}
+                        : 'N/A'}
                   </Text>
 
                   {selectedRecord.fileType?.startsWith('image') ||
-                  selectedRecord.fileType === 'application/pdf' ? (
+                    selectedRecord.fileType === 'application/pdf' ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
                       onPress={async () => {
