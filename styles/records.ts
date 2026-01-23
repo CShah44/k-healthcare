@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
@@ -29,12 +29,12 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
     },
 
     headerTitle: {
-      fontSize: 32,
+      fontSize: Platform.OS === 'web' ? 32 : 18,
       fontFamily: 'Satoshi-Variable',
       fontWeight: '700',
       color: colors.text,
       letterSpacing: -0.8,
-      lineHeight: 38,
+      lineHeight: Platform.OS === 'web' ? 38 : 20,
     },
 
     headerSubtitle: {
@@ -377,7 +377,9 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       borderRadius: 8,
       gap: 4,
       borderWidth: 1,
-      backgroundColor: isDarkMode ? colors.surfaceSecondary : 'rgba(255, 255, 255, 0.6)',
+      backgroundColor: isDarkMode
+        ? colors.surfaceSecondary
+        : 'rgba(255, 255, 255, 0.6)',
     },
 
     recordTagText: {
@@ -706,12 +708,6 @@ export const createRecordsStyles = (colors: any, isDarkMode?: boolean) =>
       color: colors.text,
       letterSpacing: -0.2,
       marginBottom: 12,
-    },
-
-    tagGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
     },
 
     tagChip: {

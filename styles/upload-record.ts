@@ -268,6 +268,11 @@ export const createUploadRecordStyles = (colors: any, isDarkMode?: boolean) =>
       marginBottom: 12,
     },
 
+    tagHeaderText: {
+      flex: 1,
+      marginRight: 12,
+    },
+
     tagLabel: {
       fontSize: 14,
       fontFamily: 'Satoshi-Variable',

@@ -106,19 +106,28 @@ export default function PatientHomeScreen() {
     headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
 
     statsOpacity.value = withDelay(150, withTiming(1, { duration: 600 }));
-    statsTranslateY.value = withDelay(150, withSpring(0, { damping: 20, stiffness: 90 }));
+    statsTranslateY.value = withDelay(
+      150,
+      withSpring(0, { damping: 20, stiffness: 90 }),
+    );
 
     actionsOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
-    actionsTranslateY.value = withDelay(300, withSpring(0, { damping: 20, stiffness: 90 }));
+    actionsTranslateY.value = withDelay(
+      300,
+      withSpring(0, { damping: 20, stiffness: 90 }),
+    );
 
     tipsOpacity.value = withDelay(450, withTiming(1, { duration: 600 }));
-    tipsTranslateY.value = withDelay(450, withSpring(0, { damping: 20, stiffness: 90 }));
+    tipsTranslateY.value = withDelay(
+      450,
+      withSpring(0, { damping: 20, stiffness: 90 }),
+    );
 
     // Skeleton shimmer animation
     skeletonShimmer.value = withRepeat(
       withTiming(1, { duration: 1500 }),
       -1,
-      false
+      false,
     );
   }, []);
 
@@ -137,7 +146,7 @@ export default function PatientHomeScreen() {
       // Load medical records and count in parallel
       const [records, totalRecordsSnapshot] = await Promise.all([
         RecordsService.getRecentRecords(user!.uid, 5),
-        getDocs(query(collection(db, 'patients', user!.uid, 'records')))
+        getDocs(query(collection(db, 'patients', user!.uid, 'records'))),
       ]);
 
       setMedicalRecords(records);
@@ -154,10 +163,10 @@ export default function PatientHomeScreen() {
             : 1;
           setFamilyMembersCount(membersCount);
         } else {
-          setFamilyMembersCount(1);
+          setFamilyMembersCount(0);
         }
       } else {
-        setFamilyMembersCount(1); // Just the user if no family
+        setFamilyMembersCount(0); // Just the user if no family
       }
       setLoadingFamily(false);
     } catch (error) {
@@ -193,7 +202,7 @@ export default function PatientHomeScreen() {
     const opacity = interpolate(
       skeletonShimmer.value,
       [0, 0.5, 1],
-      [0.3, 0.6, 0.3]
+      [0.3, 0.6, 0.3],
     );
     return { opacity };
   });
@@ -252,9 +261,7 @@ export default function PatientHomeScreen() {
               </Text>
               {userData?.patientId && (
                 <View style={styles.idContainer}>
-                  <Text style={styles.idText}>
-                    ID: {userData.patientId}
-                  </Text>
+                  <Text style={styles.idText}>ID: {userData.patientId}</Text>
                 </View>
               )}
             </View>
@@ -279,30 +286,22 @@ export default function PatientHomeScreen() {
           {/* Stats Cards */}
           <Animated.View style={[styles.statsContainer, statsStyle]}>
             <TouchableOpacity
-              style={[
-                styles.statCard,
-                !isDarkMode && styles.statCardAccent1,
-              ]}
+              style={[styles.statCard, !isDarkMode && styles.statCardAccent1]}
               onPress={() => router.push('/(patient-tabs)/records')}
               activeOpacity={0.8}
             >
-              <View
-                style={[
-                  styles.statIcon,
-                  styles.statIconAccent1,
-                ]}
-              >
-                <FileText
-                  size={18}
-                  color="#009485"
-                  strokeWidth={1.8}
-                />
+              <View style={[styles.statIcon, styles.statIconAccent1]}>
+                <FileText size={18} color="#009485" strokeWidth={1.8} />
               </View>
               <View style={styles.statContent}>
                 {loadingRecords ? (
                   <View style={styles.skeletonContainer}>
-                    <Animated.View style={[styles.skeletonNumber, skeletonStyle]} />
-                    <Animated.View style={[styles.skeletonLabel, skeletonStyle]} />
+                    <Animated.View
+                      style={[styles.skeletonNumber, skeletonStyle]}
+                    />
+                    <Animated.View
+                      style={[styles.skeletonLabel, skeletonStyle]}
+                    />
                   </View>
                 ) : (
                   <>
@@ -310,7 +309,10 @@ export default function PatientHomeScreen() {
                       {totalRecords}
                     </Text>
                     <Text
-                      style={[styles.statLabel, { color: colors.textSecondary }]}
+                      style={[
+                        styles.statLabel,
+                        { color: colors.textSecondary },
+                      ]}
                     >
                       Records
                     </Text>
@@ -320,26 +322,22 @@ export default function PatientHomeScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.statCard,
-                !isDarkMode && styles.statCardAccent2,
-              ]}
-              onPress={() => router.push('/(patient-tabs)/family')}
+              style={[styles.statCard, !isDarkMode && styles.statCardAccent2]}
+              onPress={() => router.push('/family-tree')}
               activeOpacity={0.8}
             >
-              <View
-                style={[
-                  styles.statIcon,
-                  styles.statIconAccent2,
-                ]}
-              >
+              <View style={[styles.statIcon, styles.statIconAccent2]}>
                 <Users size={18} color="#6366F1" strokeWidth={1.8} />
               </View>
               <View style={styles.statContent}>
                 {loadingFamily ? (
                   <View style={styles.skeletonContainer}>
-                    <Animated.View style={[styles.skeletonNumber, skeletonStyle]} />
-                    <Animated.View style={[styles.skeletonLabel, skeletonStyle]} />
+                    <Animated.View
+                      style={[styles.skeletonNumber, skeletonStyle]}
+                    />
+                    <Animated.View
+                      style={[styles.skeletonLabel, skeletonStyle]}
+                    />
                   </View>
                 ) : (
                   <>
@@ -347,7 +345,10 @@ export default function PatientHomeScreen() {
                       {familyMembersCount}
                     </Text>
                     <Text
-                      style={[styles.statLabel, { color: colors.textSecondary }]}
+                      style={[
+                        styles.statLabel,
+                        { color: colors.textSecondary },
+                      ]}
                     >
                       Family
                     </Text>
@@ -361,14 +362,13 @@ export default function PatientHomeScreen() {
           <Animated.View style={[styles.actionsContainer, actionsStyle]}>
             <View style={styles.actionButtons}>
               <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.actionButtonPrimary,
-                ]}
+                style={[styles.actionButton, styles.actionButtonPrimary]}
                 onPress={() => router.push('/(patient-tabs)/upload-record')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.actionIconWrapper, styles.actionIconPrimary]}>
+                <View
+                  style={[styles.actionIconWrapper, styles.actionIconPrimary]}
+                >
                   <Plus size={22} color="#FFFFFF" strokeWidth={2} />
                 </View>
                 <Text style={[styles.actionText, styles.actionTextPrimary]}>
@@ -377,14 +377,13 @@ export default function PatientHomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.actionButtonSecondary,
-                ]}
+                style={[styles.actionButton, styles.actionButtonSecondary]}
                 onPress={() => router.push('/(patient-tabs)/records')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.actionIconWrapper, styles.actionIconSecondary]}>
+                <View
+                  style={[styles.actionIconWrapper, styles.actionIconSecondary]}
+                >
                   <FileText size={20} color="#8B5CF6" strokeWidth={1.8} />
                 </View>
                 <Text style={[styles.actionText, { color: colors.text }]}>
@@ -395,14 +394,16 @@ export default function PatientHomeScreen() {
               {Platform.OS === 'web' && (
                 <>
                   <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      styles.actionButtonSecondary,
-                    ]}
+                    style={[styles.actionButton, styles.actionButtonSecondary]}
                     onPress={() => router.push('/(patient-tabs)/family-tree')}
                     activeOpacity={0.8}
                   >
-                    <View style={[styles.actionIconWrapper, { backgroundColor: '#D1FAE5' }]}>
+                    <View
+                      style={[
+                        styles.actionIconWrapper,
+                        { backgroundColor: '#D1FAE5' },
+                      ]}
+                    >
                       <Users size={20} color="#10B981" strokeWidth={1.8} />
                     </View>
                     <Text style={[styles.actionText, { color: colors.text }]}>
@@ -411,14 +412,16 @@ export default function PatientHomeScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      styles.actionButtonSecondary,
-                    ]}
+                    style={[styles.actionButton, styles.actionButtonSecondary]}
                     onPress={() => router.push('/(patient-tabs)/vaccinations')}
                     activeOpacity={0.8}
                   >
-                    <View style={[styles.actionIconWrapper, { backgroundColor: '#FEF3C7' }]}>
+                    <View
+                      style={[
+                        styles.actionIconWrapper,
+                        { backgroundColor: '#FEF3C7' },
+                      ]}
+                    >
                       <Syringe size={20} color="#F59E0B" strokeWidth={1.8} />
                     </View>
                     <Text style={[styles.actionText, { color: colors.text }]}>
@@ -432,11 +435,30 @@ export default function PatientHomeScreen() {
 
           {/* Wellness Tip Card */}
           <Animated.View style={[styles.tipsContainer, tipsStyle]}>
-            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: colors.text, marginBottom: 10 },
+              ]}
+            >
               Daily Tip
             </Text>
-            <View style={[styles.tipCard, { backgroundColor: isDarkMode ? colors.card : currentTip.bgColor }]}>
-              <View style={[styles.tipIconWrapper, { backgroundColor: `${currentTip.color}18` }]}>
+            <View
+              style={[
+                styles.tipCard,
+                {
+                  backgroundColor: isDarkMode
+                    ? colors.card
+                    : currentTip.bgColor,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.tipIconWrapper,
+                  { backgroundColor: `${currentTip.color}18` },
+                ]}
+              >
                 <TipIcon size={20} color={currentTip.color} strokeWidth={1.8} />
               </View>
               <View style={styles.tipContent}>
@@ -452,7 +474,9 @@ export default function PatientHomeScreen() {
 
           {/* Health Summary Card */}
           <Animated.View style={[styles.summaryContainer, tipsStyle]}>
-            <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
+            <View
+              style={[styles.summaryCard, { backgroundColor: colors.card }]}
+            >
               <View style={styles.summaryHeader}>
                 <Text style={[styles.summaryTitle, { color: colors.text }]}>
                   Your Health at a Glance
@@ -460,27 +484,48 @@ export default function PatientHomeScreen() {
               </View>
               <View style={styles.summaryContent}>
                 <View style={styles.summaryItem}>
-                  <View style={[styles.summaryDot, { backgroundColor: '#10B981' }]} />
-                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                  <View
+                    style={[styles.summaryDot, { backgroundColor: '#10B981' }]}
+                  />
+                  <Text
+                    style={[
+                      styles.summaryText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {totalRecords} records stored securely
                   </Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <View style={[styles.summaryDot, { backgroundColor: '#6366F1' }]} />
-                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-                    {familyMembersCount} family member{familyMembersCount !== 1 ? 's' : ''} connected
+                  <View
+                    style={[styles.summaryDot, { backgroundColor: '#6366F1' }]}
+                  />
+                  <Text
+                    style={[
+                      styles.summaryText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {familyMembersCount} family member
+                    {familyMembersCount !== 1 ? 's' : ''} connected
                   </Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <View style={[styles.summaryDot, { backgroundColor: '#009485' }]} />
-                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                  <View
+                    style={[styles.summaryDot, { backgroundColor: '#009485' }]}
+                  />
+                  <Text
+                    style={[
+                      styles.summaryText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     All data encrypted & protected
                   </Text>
                 </View>
               </View>
             </View>
           </Animated.View>
-
         </ScrollView>
       </LinearGradient>
     </SafeAreaView>

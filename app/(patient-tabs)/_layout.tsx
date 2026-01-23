@@ -6,6 +6,7 @@ import { Platform, StatusBar, View, ActivityIndicator } from 'react-native';
 import { layoutStyles } from '../../styles/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { CustomTabBar } from '@/components/ui/CustomTabBar';
 
 export default function PatientTabsLayout() {
   const { colors } = useTheme();
@@ -34,116 +35,43 @@ export default function PatientTabsLayout() {
   return (
     <>
       <StatusBar
-        barStyle={colors.background === Colors.light.background ? "dark-content" : "light-content"}
+        barStyle={
+          colors.background === Colors.light.background
+            ? 'dark-content'
+            : 'light-content'
+        }
         backgroundColor={colors.background}
         translucent={Platform.OS === 'android'}
       />
       <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          tabBarShowLabel: true,
-          tabBarLabelPosition: 'below-icon',
-          tabBarActiveTintColor: Colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
-          tabBarStyle: {
-            ...layoutStyles.tabBarStyle,
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            shadowColor: colors.shadow,
-          },
-          tabBarLabelStyle: {
-            ...layoutStyles.tabBarLabelStyle,
-            fontFamily: 'Satoshi-Variable',
-          },
-          tabBarIconStyle: layoutStyles.tabBarIconStyle,
         }}
       >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Home',
-            tabBarIcon: ({ color, size }) => (
-              <Heart size={size} color={color} strokeWidth={2} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="records"
-          options={{
-            title: 'Records',
-            tabBarIcon: ({ color, size }) => (
-              <FileText size={size} color={color} strokeWidth={2} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="family-tree"
-          options={{
-            title: 'Family',
-            tabBarIcon: ({ color, size }) => (
-              <Users size={size} color={color} strokeWidth={2} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({ color, size }) => (
-              <User size={size} color={color} strokeWidth={2} />
-            ),
-          }}
-        />
-
-        {/* Hidden routes - these won't appear in the tab bar */}
-        <Tabs.Screen
-          name="member-records"
-          options={{
-            href: null,
-          }}
-        />
+        <Tabs.Screen name="index" options={{ title: 'Home' }} />
+        <Tabs.Screen name="records" options={{ title: 'Records' }} />
         <Tabs.Screen
           name="upload-record"
           options={{
-            href: null,
+            title: 'Upload',
+            // We need to allow it to be a navigable route for the tab bar to pick it up or we manually handle it.
+            // If href is null, it might not be in the state.routes passed to tabBar.
+            // However, CustomTabBar can manually navigate to it if it exists in the stack.
+            // To be safe, we let it be a normal tab screen but we don't need to show it in the standard tab bar because we use a custom one.
           }}
         />
-        <Tabs.Screen
-          name="edit-profile"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="access-requests"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="allergies"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="diagnoses"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="visits"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="vaccinations"
-          options={{
-            href: null,
-          }}
-        />
+        <Tabs.Screen name="family-tree" options={{ title: 'Family' }} />
+        <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+
+        {/* Hidden routes */}
+        <Tabs.Screen name="member-records" options={{ href: null }} />
+        <Tabs.Screen name="edit-profile" options={{ href: null }} />
+        <Tabs.Screen name="access-requests" options={{ href: null }} />
+        <Tabs.Screen name="allergies" options={{ href: null }} />
+        <Tabs.Screen name="diagnoses" options={{ href: null }} />
+        <Tabs.Screen name="visits" options={{ href: null }} />
+        <Tabs.Screen name="vaccinations" options={{ href: null }} />
       </Tabs>
     </>
   );

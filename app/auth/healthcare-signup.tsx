@@ -133,7 +133,10 @@ export default function HealthcareSignupScreen() {
     headerOpacity.value = withTiming(1, { duration: 600 });
     headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
     formOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-    formTranslateY.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 100 }));
+    formTranslateY.value = withDelay(
+      200,
+      withSpring(0, { damping: 18, stiffness: 100 }),
+    );
   }, []);
 
   const headerStyle = useAnimatedStyle(() => ({
@@ -155,7 +158,7 @@ export default function HealthcareSignupScreen() {
 
   const updateDoctorVerificationData = (
     field: keyof DoctorVerificationData,
-    value: string
+    value: string,
   ) => {
     setDoctorVerificationData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -183,7 +186,13 @@ export default function HealthcareSignupScreen() {
       const taskId = nanoid(16);
       const groupId = nanoid(16);
 
-      const response = await fetch('http://localhost:3001/verify-doctor', {
+      // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
+      const apiUrl =
+        Platform.OS === 'android'
+          ? 'http://10.0.2.2:3001/verify-doctor'
+          : 'http://localhost:3001/verify-doctor';
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,14 +218,14 @@ export default function HealthcareSignupScreen() {
         setDoctorVerificationStatus('failed');
         setVerificationError(
           result.message ||
-          'Doctor credentials could not be verified. Please check your details.'
+            'Doctor credentials could not be verified. Please check your details.',
         );
       }
     } catch (error) {
       console.error('Doctor verification error:', error);
       setDoctorVerificationStatus('failed');
       setVerificationError(
-        'Verification service is currently unavailable. Please try again later.'
+        'Verification service is currently unavailable. Please try again later.',
       );
     } finally {
       setIsVerifyingDoctor(false);
@@ -282,14 +291,23 @@ export default function HealthcareSignupScreen() {
     }
 
     if (formData.role === 'doctor' && doctorVerificationStatus !== 'verified') {
-      Alert.alert('Verification Required', 'Please verify your doctor credentials before signing up.');
+      Alert.alert(
+        'Verification Required',
+        'Please verify your doctor credentials before signing up.',
+      );
       return;
     }
 
-    setOtpLoading(true);
-    setOtpError('');
     try {
-      const response = await fetch('http://localhost:3001/signup', {
+      setOtpLoading(true);
+      setOtpError('');
+      // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
+      const apiUrl =
+        Platform.OS === 'android'
+          ? 'http://10.0.2.2:3001/signup'
+          : 'http://localhost:3001/signup';
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email }),
@@ -312,7 +330,13 @@ export default function HealthcareSignupScreen() {
     setOtpLoading(true);
     setOtpError('');
     try {
-      const response = await fetch('http://localhost:3001/verify-otp', {
+      // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
+      const apiUrl =
+        Platform.OS === 'android'
+          ? 'http://10.0.2.2:3001/verify-otp'
+          : 'http://localhost:3001/verify-otp';
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email, otp }),
@@ -343,14 +367,29 @@ export default function HealthcareSignupScreen() {
           colors={[colors.background, colors.surface, colors.card]}
           style={authStyles.loadingGradient}
         >
-          <View style={[authStyles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
-          <View style={[authStyles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
+          <View
+            style={[
+              authStyles.loadingDecorativeCircle1,
+              { backgroundColor: `${Colors.primary}08` },
+            ]}
+          />
+          <View
+            style={[
+              authStyles.loadingDecorativeCircle2,
+              { backgroundColor: `${Colors.medical.green}06` },
+            ]}
+          />
           <View style={authStyles.loadingContent}>
-            <View style={[authStyles.loadingIconWrapper, {
-              backgroundColor: `${Colors.primary}15`,
-              borderColor: `${Colors.primary}30`,
-              shadowColor: colors.shadow,
-            }]}>
+            <View
+              style={[
+                authStyles.loadingIconWrapper,
+                {
+                  backgroundColor: `${Colors.primary}15`,
+                  borderColor: `${Colors.primary}30`,
+                  shadowColor: colors.shadow,
+                },
+              ]}
+            >
               <Stethoscope size={48} color={Colors.primary} strokeWidth={2} />
             </View>
             <View style={authStyles.spinnerContainer}>
@@ -359,7 +398,12 @@ export default function HealthcareSignupScreen() {
             <Text style={[authStyles.loadingTitle, { color: colors.text }]}>
               Creating your professional account...
             </Text>
-            <Text style={[authStyles.loadingSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                authStyles.loadingSubtitle,
+                { color: colors.textSecondary },
+              ]}
+            >
               Please wait while we set up your profile
             </Text>
           </View>
@@ -369,12 +413,19 @@ export default function HealthcareSignupScreen() {
   }
 
   return (
-    <SafeAreaView style={[authStyles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[authStyles.container, { backgroundColor: colors.background }]}
+    >
       <LinearGradient
         colors={[colors.background, colors.surface]}
         style={authStyles.backgroundGradient}
       >
-        <View style={[authStyles.decorativeCircle, { backgroundColor: `${Colors.primary}04` }]} />
+        <View
+          style={[
+            authStyles.decorativeCircle,
+            { backgroundColor: `${Colors.primary}04` },
+          ]}
+        />
 
         <AnimatedView style={[authStyles.header, headerStyle]}>
           <TouchableOpacity
@@ -394,7 +445,10 @@ export default function HealthcareSignupScreen() {
         >
           <ScrollView
             style={authStyles.scrollView}
-            contentContainerStyle={[authStyles.scrollContent, { paddingHorizontal: 24 }]}
+            contentContainerStyle={[
+              authStyles.scrollContent,
+              { paddingHorizontal: 24 },
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -402,7 +456,10 @@ export default function HealthcareSignupScreen() {
               {/* Header Section */}
               <AnimatedView
                 entering={FadeInDown.delay(100).springify()}
-                style={[authStyles.logoContainer, { marginTop: 8, marginBottom: 40 }]}
+                style={[
+                  authStyles.logoContainer,
+                  { marginTop: 8, marginBottom: 40 },
+                ]}
               >
                 <View
                   style={[
@@ -413,17 +470,31 @@ export default function HealthcareSignupScreen() {
                     },
                   ]}
                 >
-                  <Stethoscope size={32} color={Colors.primary} strokeWidth={2.5} />
+                  <Stethoscope
+                    size={32}
+                    color={Colors.primary}
+                    strokeWidth={2.5}
+                  />
                 </View>
                 <AnimatedText
                   entering={FadeInDown.delay(200).springify()}
-                  style={[authStyles.title, { color: colors.text, fontSize: 32, marginBottom: 8 }]}
+                  style={[
+                    authStyles.title,
+                    { color: colors.text, fontSize: 32, marginBottom: 8 },
+                  ]}
                 >
                   Professional Registration
                 </AnimatedText>
                 <AnimatedText
                   entering={FadeInDown.delay(300).springify()}
-                  style={[authStyles.subtitle, { color: colors.textSecondary, fontSize: 15, lineHeight: 22 }]}
+                  style={[
+                    authStyles.subtitle,
+                    {
+                      color: colors.textSecondary,
+                      fontSize: 15,
+                      lineHeight: 22,
+                    },
+                  ]}
                 >
                   Join the Svastheya Healthcare Network
                 </AnimatedText>
@@ -435,81 +506,132 @@ export default function HealthcareSignupScreen() {
               >
                 {/* Personal Details Section */}
                 <View style={[authStyles.sectionHeader, { marginBottom: 24 }]}>
-                  <View style={{ width: 3, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 12 }} />
+                  <View
+                    style={{
+                      width: 3,
+                      height: 20,
+                      backgroundColor: Colors.primary,
+                      borderRadius: 2,
+                      marginRight: 12,
+                    }}
+                  />
                   <User size={18} color={Colors.primary} strokeWidth={2} />
-                  <Text style={[authStyles.sectionTitle, { color: colors.text, fontSize: 20, marginLeft: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.sectionTitle,
+                      { color: colors.text, fontSize: 20, marginLeft: 8 },
+                    ]}
+                  >
                     Personal Details
                   </Text>
                 </View>
 
                 <View style={[authStyles.nameRow, { marginBottom: 24 }]}>
                   <View style={authStyles.nameInputContainer}>
-                    <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    <Text
+                      style={[
+                        authStyles.inputLabel,
+                        { color: colors.text, marginBottom: 8 },
+                      ]}
+                    >
                       First Name
                     </Text>
                     <Input
                       placeholder="First name"
                       value={formData.firstName}
-                      onChangeText={(value) => updateFormData('firstName', value)}
+                      onChangeText={(value) =>
+                        updateFormData('firstName', value)
+                      }
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.firstName ? Colors.light.error : colors.border,
+                          borderColor: errors.firstName
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
                     />
                     {errors.firstName && (
-                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.firstName}</Text>
+                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                        {errors.firstName}
+                      </Text>
                     )}
                   </View>
                   <View style={authStyles.nameInputContainer}>
-                    <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    <Text
+                      style={[
+                        authStyles.inputLabel,
+                        { color: colors.text, marginBottom: 8 },
+                      ]}
+                    >
                       Middle Name
                     </Text>
                     <Input
                       placeholder="Middle name"
                       value={formData.middleName}
-                      onChangeText={(value) => updateFormData('middleName', value)}
+                      onChangeText={(value) =>
+                        updateFormData('middleName', value)
+                      }
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.middleName ? Colors.light.error : colors.border,
+                          borderColor: errors.middleName
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
                     />
                     {errors.middleName && (
-                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.middleName}</Text>
+                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                        {errors.middleName}
+                      </Text>
                     )}
                   </View>
                   <View style={authStyles.nameInputContainer}>
-                    <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    <Text
+                      style={[
+                        authStyles.inputLabel,
+                        { color: colors.text, marginBottom: 8 },
+                      ]}
+                    >
                       Last Name
                     </Text>
                     <Input
                       placeholder="Last name"
                       value={formData.lastName}
-                      onChangeText={(value) => updateFormData('lastName', value)}
+                      onChangeText={(value) =>
+                        updateFormData('lastName', value)
+                      }
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.lastName ? Colors.light.error : colors.border,
+                          borderColor: errors.lastName
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
                     />
                     {errors.lastName && (
-                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.lastName}</Text>
+                      <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                        {errors.lastName}
+                      </Text>
                     )}
                   </View>
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Professional Email
                   </Text>
                   <View style={authStyles.inputWrapper}>
@@ -523,7 +645,9 @@ export default function HealthcareSignupScreen() {
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.email ? Colors.light.error : colors.border,
+                          borderColor: errors.email
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -534,29 +658,45 @@ export default function HealthcareSignupScreen() {
                       style={authStyles.inputIcon}
                     />
                   </View>
-                  <Text style={[authStyles.passwordHint, { color: colors.textSecondary, marginTop: 6 }]}>
+                  <Text
+                    style={[
+                      authStyles.passwordHint,
+                      { color: colors.textSecondary, marginTop: 6 },
+                    ]}
+                  >
                     Use your professional or institutional email address
                   </Text>
                   {errors.email && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.email}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.email}
+                    </Text>
                   )}
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Phone Number
                   </Text>
                   <View style={authStyles.inputWrapper}>
                     <Input
                       placeholder="Enter your phone number"
                       value={formData.phoneNumber}
-                      onChangeText={(value) => updateFormData('phoneNumber', value)}
+                      onChangeText={(value) =>
+                        updateFormData('phoneNumber', value)
+                      }
                       keyboardType="phone-pad"
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.phoneNumber ? Colors.light.error : colors.border,
+                          borderColor: errors.phoneNumber
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -568,12 +708,19 @@ export default function HealthcareSignupScreen() {
                     />
                   </View>
                   {errors.phoneNumber && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.phoneNumber}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.phoneNumber}
+                    </Text>
                   )}
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Gender
                   </Text>
                   <Input
@@ -584,18 +731,27 @@ export default function HealthcareSignupScreen() {
                       authStyles.input,
                       {
                         backgroundColor: colors.card,
-                        borderColor: errors.gender ? Colors.light.error : colors.border,
+                        borderColor: errors.gender
+                          ? Colors.light.error
+                          : colors.border,
                         color: colors.text,
                       },
                     ]}
                   />
                   {errors.gender && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.gender}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.gender}
+                    </Text>
                   )}
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 32 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Address
                   </Text>
                   <Input
@@ -609,28 +765,55 @@ export default function HealthcareSignupScreen() {
                       authStyles.multilineInput,
                       {
                         backgroundColor: colors.card,
-                        borderColor: errors.address ? Colors.light.error : colors.border,
+                        borderColor: errors.address
+                          ? Colors.light.error
+                          : colors.border,
                         color: colors.text,
                       },
                     ]}
                   />
                   {errors.address && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.address}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.address}
+                    </Text>
                   )}
                 </View>
 
                 {/* Professional Details Section */}
-                <View style={[authStyles.sectionHeader, { marginTop: 8, marginBottom: 24 }]}>
-                  <View style={{ width: 3, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 12 }} />
+                <View
+                  style={[
+                    authStyles.sectionHeader,
+                    { marginTop: 8, marginBottom: 24 },
+                  ]}
+                >
+                  <View
+                    style={{
+                      width: 3,
+                      height: 20,
+                      backgroundColor: Colors.primary,
+                      borderRadius: 2,
+                      marginRight: 12,
+                    }}
+                  />
                   <Briefcase size={18} color={Colors.primary} strokeWidth={2} />
-                  <Text style={[authStyles.sectionTitle, { color: colors.text, fontSize: 20, marginLeft: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.sectionTitle,
+                      { color: colors.text, fontSize: 20, marginLeft: 8 },
+                    ]}
+                  >
                     Professional Details
                   </Text>
                 </View>
 
                 {/* Role Selection */}
                 <View style={[authStyles.roleSelection, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 12 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 12 },
+                    ]}
+                  >
                     Professional Role
                   </Text>
                   <View style={authStyles.roleButtons}>
@@ -639,9 +822,13 @@ export default function HealthcareSignupScreen() {
                         authStyles.roleButton,
                         {
                           backgroundColor: colors.card,
-                          borderColor: formData.role === 'doctor' ? Colors.primary : colors.border,
+                          borderColor:
+                            formData.role === 'doctor'
+                              ? Colors.primary
+                              : colors.border,
                         },
-                        formData.role === 'doctor' && authStyles.roleButtonActive,
+                        formData.role === 'doctor' &&
+                          authStyles.roleButtonActive,
                       ]}
                       onPress={() => updateFormData('role', 'doctor')}
                       activeOpacity={0.7}
@@ -650,7 +837,10 @@ export default function HealthcareSignupScreen() {
                         style={[
                           authStyles.roleButtonText,
                           {
-                            color: formData.role === 'doctor' ? '#ffffff' : colors.text,
+                            color:
+                              formData.role === 'doctor'
+                                ? '#ffffff'
+                                : colors.text,
                           },
                         ]}
                       >
@@ -662,9 +852,13 @@ export default function HealthcareSignupScreen() {
                         authStyles.roleButton,
                         {
                           backgroundColor: colors.card,
-                          borderColor: formData.role === 'lab_assistant' ? Colors.primary : colors.border,
+                          borderColor:
+                            formData.role === 'lab_assistant'
+                              ? Colors.primary
+                              : colors.border,
                         },
-                        formData.role === 'lab_assistant' && authStyles.roleButtonActive,
+                        formData.role === 'lab_assistant' &&
+                          authStyles.roleButtonActive,
                       ]}
                       onPress={() => updateFormData('role', 'lab_assistant')}
                       activeOpacity={0.7}
@@ -673,7 +867,10 @@ export default function HealthcareSignupScreen() {
                         style={[
                           authStyles.roleButtonText,
                           {
-                            color: formData.role === 'lab_assistant' ? '#ffffff' : colors.text,
+                            color:
+                              formData.role === 'lab_assistant'
+                                ? '#ffffff'
+                                : colors.text,
                           },
                         ]}
                       >
@@ -684,19 +881,28 @@ export default function HealthcareSignupScreen() {
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     License Number
                   </Text>
                   <View style={authStyles.inputWrapper}>
                     <Input
                       placeholder="Enter your license number"
                       value={formData.licenseNumber}
-                      onChangeText={(value) => updateFormData('licenseNumber', value)}
+                      onChangeText={(value) =>
+                        updateFormData('licenseNumber', value)
+                      }
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.licenseNumber ? Colors.light.error : colors.border,
+                          borderColor: errors.licenseNumber
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -707,11 +913,18 @@ export default function HealthcareSignupScreen() {
                       style={authStyles.inputIcon}
                     />
                   </View>
-                  <Text style={[authStyles.passwordHint, { color: colors.textSecondary, marginTop: 6 }]}>
+                  <Text
+                    style={[
+                      authStyles.passwordHint,
+                      { color: colors.textSecondary, marginTop: 6 },
+                    ]}
+                  >
                     Your professional license or registration number
                   </Text>
                   {errors.licenseNumber && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.licenseNumber}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.licenseNumber}
+                    </Text>
                   )}
                 </View>
 
@@ -728,7 +941,11 @@ export default function HealthcareSignupScreen() {
                     ]}
                   >
                     <View style={authStyles.verificationHeader}>
-                      <Shield size={20} color={Colors.primary} strokeWidth={2} />
+                      <Shield
+                        size={20}
+                        color={Colors.primary}
+                        strokeWidth={2}
+                      />
                       <Text
                         style={[
                           authStyles.verificationTitle,
@@ -744,11 +961,21 @@ export default function HealthcareSignupScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      To ensure patient safety and maintain professional standards, we verify all doctor credentials through official medical council databases. This process typically takes 1-2 minutes.
+                      To ensure patient safety and maintain professional
+                      standards, we verify all doctor credentials through
+                      official medical council databases. This process typically
+                      takes 1-2 minutes.
                     </Text>
 
-                    <View style={[authStyles.inputContainer, { marginBottom: 20 }]}>
-                      <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    <View
+                      style={[authStyles.inputContainer, { marginBottom: 20 }]}
+                    >
+                      <Text
+                        style={[
+                          authStyles.inputLabel,
+                          { color: colors.text, marginBottom: 8 },
+                        ]}
+                      >
                         Registration Number
                       </Text>
                       <Input
@@ -768,15 +995,25 @@ export default function HealthcareSignupScreen() {
                       />
                     </View>
 
-                    <View style={[authStyles.inputContainer, { marginBottom: 20 }]}>
-                      <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    <View
+                      style={[authStyles.inputContainer, { marginBottom: 20 }]}
+                    >
+                      <Text
+                        style={[
+                          authStyles.inputLabel,
+                          { color: colors.text, marginBottom: 8 },
+                        ]}
+                      >
                         Year of Registration
                       </Text>
                       <Input
                         placeholder="YYYY"
                         value={doctorVerificationData.yearOfRegistration}
                         onChangeText={(value) =>
-                          updateDoctorVerificationData('yearOfRegistration', value)
+                          updateDoctorVerificationData(
+                            'yearOfRegistration',
+                            value,
+                          )
                         }
                         keyboardType="numeric"
                         maxLength={4}
@@ -791,8 +1028,15 @@ export default function HealthcareSignupScreen() {
                       />
                     </View>
 
-                    <View style={[authStyles.inputContainer, { marginBottom: 20 }]}>
-                      <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                    <View
+                      style={[authStyles.inputContainer, { marginBottom: 20 }]}
+                    >
+                      <Text
+                        style={[
+                          authStyles.inputLabel,
+                          { color: colors.text, marginBottom: 8 },
+                        ]}
+                      >
                         Medical Council Name
                       </Text>
                       <TouchableOpacity
@@ -818,35 +1062,48 @@ export default function HealthcareSignupScreen() {
                           {doctorVerificationData.councilName ||
                             'Select Medical Council'}
                         </Text>
-                        <Text style={[authStyles.dropdownArrow, { color: colors.textSecondary }]}>
+                        <Text
+                          style={[
+                            authStyles.dropdownArrow,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           ▼
                         </Text>
                       </TouchableOpacity>
                     </View>
 
                     {verificationError && (
-                      <Text style={[authStyles.errorText, { marginBottom: 16 }]}>{verificationError}</Text>
+                      <Text
+                        style={[authStyles.errorText, { marginBottom: 16 }]}
+                      >
+                        {verificationError}
+                      </Text>
                     )}
 
                     {doctorVerificationStatus === 'verified' && (
-                      <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: `${Colors.light.success}15`,
-                        padding: 12,
-                        borderRadius: 12,
-                        marginBottom: 16,
-                        borderWidth: 1,
-                        borderColor: `${Colors.light.success}30`,
-                      }}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: `${Colors.light.success}15`,
+                          padding: 12,
+                          borderRadius: 12,
+                          marginBottom: 16,
+                          borderWidth: 1,
+                          borderColor: `${Colors.light.success}30`,
+                        }}
+                      >
                         <CheckCircle size={20} color={Colors.light.success} />
-                        <Text style={{
-                          marginLeft: 10,
-                          fontSize: 14,
-                          fontFamily: 'Satoshi-Variable',
-                          color: Colors.light.success,
-                          fontWeight: '600',
-                        }}>
+                        <Text
+                          style={{
+                            marginLeft: 10,
+                            fontSize: 14,
+                            fontFamily: 'Satoshi-Variable',
+                            color: Colors.light.success,
+                            fontWeight: '600',
+                          }}
+                        >
                           Credentials verified successfully
                         </Text>
                       </View>
@@ -870,8 +1127,9 @@ export default function HealthcareSignupScreen() {
                         }
                         style={[
                           authStyles.verifyButton,
-                          (isVerifyingDoctor || doctorVerificationStatus === 'verified') &&
-                          authStyles.buttonDisabled,
+                          (isVerifyingDoctor ||
+                            doctorVerificationStatus === 'verified') &&
+                            authStyles.buttonDisabled,
                         ]}
                       >
                         <View style={authStyles.verifyButtonContent}>
@@ -896,19 +1154,28 @@ export default function HealthcareSignupScreen() {
                 )}
 
                 <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Department / Specialty
                   </Text>
                   <View style={authStyles.inputWrapper}>
                     <Input
                       placeholder="e.g., Cardiology, Emergency, Laboratory"
                       value={formData.department}
-                      onChangeText={(value) => updateFormData('department', value)}
+                      onChangeText={(value) =>
+                        updateFormData('department', value)
+                      }
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.department ? Colors.light.error : colors.border,
+                          borderColor: errors.department
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -920,24 +1187,35 @@ export default function HealthcareSignupScreen() {
                     />
                   </View>
                   {errors.department && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.department}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.department}
+                    </Text>
                   )}
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 32 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Hospital / Clinic Name
                   </Text>
                   <View style={authStyles.inputWrapper}>
                     <Input
                       placeholder="Enter your workplace name"
                       value={formData.hospital}
-                      onChangeText={(value) => updateFormData('hospital', value)}
+                      onChangeText={(value) =>
+                        updateFormData('hospital', value)
+                      }
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.hospital ? Colors.light.error : colors.border,
+                          borderColor: errors.hospital
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -949,34 +1227,63 @@ export default function HealthcareSignupScreen() {
                     />
                   </View>
                   {errors.hospital && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.hospital}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.hospital}
+                    </Text>
                   )}
                 </View>
 
                 {/* Security Section */}
-                <View style={[authStyles.sectionHeader, { marginTop: 8, marginBottom: 24 }]}>
-                  <View style={{ width: 3, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 12 }} />
+                <View
+                  style={[
+                    authStyles.sectionHeader,
+                    { marginTop: 8, marginBottom: 24 },
+                  ]}
+                >
+                  <View
+                    style={{
+                      width: 3,
+                      height: 20,
+                      backgroundColor: Colors.primary,
+                      borderRadius: 2,
+                      marginRight: 12,
+                    }}
+                  />
                   <Lock size={18} color={Colors.primary} strokeWidth={2} />
-                  <Text style={[authStyles.sectionTitle, { color: colors.text, fontSize: 20, marginLeft: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.sectionTitle,
+                      { color: colors.text, fontSize: 20, marginLeft: 8 },
+                    ]}
+                  >
                     Account Security
                   </Text>
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 24 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Password
                   </Text>
                   <View style={authStyles.inputWrapper}>
                     <Input
                       placeholder="Create a secure password"
                       value={formData.password}
-                      onChangeText={(value) => updateFormData('password', value)}
+                      onChangeText={(value) =>
+                        updateFormData('password', value)
+                      }
                       secureTextEntry={!showPassword}
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.password ? Colors.light.error : colors.border,
+                          borderColor: errors.password
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -992,36 +1299,54 @@ export default function HealthcareSignupScreen() {
                       )}
                     </TouchableOpacity>
                   </View>
-                  <Text style={[authStyles.passwordHint, { color: colors.textSecondary, marginTop: 6 }]}>
+                  <Text
+                    style={[
+                      authStyles.passwordHint,
+                      { color: colors.textSecondary, marginTop: 6 },
+                    ]}
+                  >
                     Minimum 6 characters recommended for security
                   </Text>
                   {errors.password && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.password}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.password}
+                    </Text>
                   )}
                 </View>
 
                 <View style={[authStyles.inputContainer, { marginBottom: 32 }]}>
-                  <Text style={[authStyles.inputLabel, { color: colors.text, marginBottom: 8 }]}>
+                  <Text
+                    style={[
+                      authStyles.inputLabel,
+                      { color: colors.text, marginBottom: 8 },
+                    ]}
+                  >
                     Confirm Password
                   </Text>
                   <View style={authStyles.inputWrapper}>
                     <Input
                       placeholder="Re-enter your password"
                       value={formData.confirmPassword}
-                      onChangeText={(value) => updateFormData('confirmPassword', value)}
+                      onChangeText={(value) =>
+                        updateFormData('confirmPassword', value)
+                      }
                       secureTextEntry={!showConfirmPassword}
                       style={[
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.confirmPassword ? Colors.light.error : colors.border,
+                          borderColor: errors.confirmPassword
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
                     />
                     <TouchableOpacity
                       style={authStyles.eyeIcon}
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onPress={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff size={20} color={colors.textSecondary} />
@@ -1031,7 +1356,9 @@ export default function HealthcareSignupScreen() {
                     </TouchableOpacity>
                   </View>
                   {errors.confirmPassword && (
-                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>{errors.confirmPassword}</Text>
+                    <Text style={[authStyles.errorText, { marginTop: 6 }]}>
+                      {errors.confirmPassword}
+                    </Text>
                   )}
                 </View>
 
@@ -1045,7 +1372,8 @@ export default function HealthcareSignupScreen() {
                     colors={[Colors.primary, '#1e40af']}
                     style={[
                       authStyles.primaryButton,
-                      (isSubmitting || isLoading || otpLoading) && authStyles.buttonDisabled,
+                      (isSubmitting || isLoading || otpLoading) &&
+                        authStyles.buttonDisabled,
                     ]}
                   >
                     {isSubmitting || isLoading || otpLoading ? (
@@ -1064,10 +1392,18 @@ export default function HealthcareSignupScreen() {
                 entering={FadeInDown.delay(500).springify()}
                 style={[authStyles.footer, { marginTop: 24, marginBottom: 32 }]}
               >
-                <Text style={[authStyles.footerText, { color: colors.textSecondary, fontSize: 15 }]}>
+                <Text
+                  style={[
+                    authStyles.footerText,
+                    { color: colors.textSecondary, fontSize: 15 },
+                  ]}
+                >
                   Already registered?{' '}
                   <Text
-                    style={[authStyles.linkText, { fontSize: 15, fontWeight: '600' }]}
+                    style={[
+                      authStyles.linkText,
+                      { fontSize: 15, fontWeight: '600' },
+                    ]}
                     onPress={() => router.push('/auth/healthcare-login')}
                   >
                     Login
@@ -1096,10 +1432,7 @@ export default function HealthcareSignupScreen() {
           >
             <View style={authStyles.councilModalHeader}>
               <Text
-                style={[
-                  authStyles.councilModalTitle,
-                  { color: colors.text },
-                ]}
+                style={[authStyles.councilModalTitle, { color: colors.text }]}
               >
                 Select Medical Council
               </Text>
@@ -1161,8 +1494,14 @@ export default function HealthcareSignupScreen() {
             <Text style={[authStyles.modalTitle, { color: colors.text }]}>
               Verify Your Email
             </Text>
-            <Text style={[authStyles.modalDescription, { color: colors.textSecondary }]}>
-              We've sent a verification code to {formData.email}. Please enter it below to complete your professional registration.
+            <Text
+              style={[
+                authStyles.modalDescription,
+                { color: colors.textSecondary },
+              ]}
+            >
+              We've sent a verification code to {formData.email}. Please enter
+              it below to complete your professional registration.
             </Text>
             <TextInput
               value={otp}

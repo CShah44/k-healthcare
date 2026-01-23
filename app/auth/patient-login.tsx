@@ -58,7 +58,10 @@ export default function PatientLoginScreen() {
     headerOpacity.value = withTiming(1, { duration: 600 });
     headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 90 });
     formOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-    formTranslateY.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 100 }));
+    formTranslateY.value = withDelay(
+      200,
+      withSpring(0, { damping: 18, stiffness: 100 }),
+    );
   }, []);
 
   const headerStyle = useAnimatedStyle(() => ({
@@ -104,7 +107,10 @@ export default function PatientLoginScreen() {
     } catch (error: any) {
       setIsNavigating(false);
       setIsSubmitting(false);
-      showAlert('Login Failed', error.message || 'Invalid credentials. Please try again.');
+      showAlert(
+        'Login Failed',
+        error.message || 'Invalid credentials. Please try again.',
+      );
     }
   };
 
@@ -132,15 +138,35 @@ export default function PatientLoginScreen() {
           colors={[colors.background, colors.surface, colors.card]}
           style={authStyles.loadingGradient}
         >
-          <View style={[authStyles.loadingDecorativeCircle1, { backgroundColor: `${Colors.primary}08` }]} />
-          <View style={[authStyles.loadingDecorativeCircle2, { backgroundColor: `${Colors.medical.green}06` }]} />
-          <View style={[authStyles.loadingDecorativeCircle3, { backgroundColor: `${Colors.medical.blue}05` }]} />
+          <View
+            style={[
+              authStyles.loadingDecorativeCircle1,
+              { backgroundColor: `${Colors.primary}08` },
+            ]}
+          />
+          <View
+            style={[
+              authStyles.loadingDecorativeCircle2,
+              { backgroundColor: `${Colors.medical.green}06` },
+            ]}
+          />
+          <View
+            style={[
+              authStyles.loadingDecorativeCircle3,
+              { backgroundColor: `${Colors.medical.blue}05` },
+            ]}
+          />
           <View style={authStyles.loadingContent}>
-            <View style={[authStyles.loadingIconWrapper, {
-              backgroundColor: `${Colors.primary}15`,
-              borderColor: `${Colors.primary}30`,
-              shadowColor: colors.shadow
-            }]}>
+            <View
+              style={[
+                authStyles.loadingIconWrapper,
+                {
+                  backgroundColor: `${Colors.primary}15`,
+                  borderColor: `${Colors.primary}30`,
+                  shadowColor: colors.shadow,
+                },
+              ]}
+            >
               <Heart size={48} color={Colors.primary} strokeWidth={2} />
             </View>
             <View style={authStyles.spinnerContainer}>
@@ -149,11 +175,21 @@ export default function PatientLoginScreen() {
             <Text style={[authStyles.loadingTitle, { color: colors.text }]}>
               Signing you in...
             </Text>
-            <Text style={[authStyles.loadingSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                authStyles.loadingSubtitle,
+                { color: colors.textSecondary },
+              ]}
+            >
               Please wait while we verify your credentials
             </Text>
             <View style={authStyles.progressContainer}>
-              <View style={[authStyles.progressBar, { backgroundColor: colors.border }]}>
+              <View
+                style={[
+                  authStyles.progressBar,
+                  { backgroundColor: colors.border },
+                ]}
+              >
                 <LinearGradient
                   colors={Colors.gradients.primary}
                   style={authStyles.progressFill}
@@ -167,12 +203,19 @@ export default function PatientLoginScreen() {
   }
 
   return (
-    <SafeAreaView style={[authStyles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[authStyles.container, { backgroundColor: colors.background }]}
+    >
       <LinearGradient
         colors={[colors.background, colors.surface]}
         style={authStyles.backgroundGradient}
       >
-        <View style={[authStyles.decorativeCircle, { backgroundColor: `${Colors.primary}06` }]} />
+        <View
+          style={[
+            authStyles.decorativeCircle,
+            { backgroundColor: `${Colors.primary}06` },
+          ]}
+        />
 
         <AnimatedView style={[authStyles.header, headerStyle]}>
           <TouchableOpacity
@@ -180,7 +223,7 @@ export default function PatientLoginScreen() {
               authStyles.backButton,
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
-            onPress={() => router.replace('/auth/role-selection')}
+            onPress={() => router.back()}
             disabled={isSubmitting}
           >
             <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
@@ -246,14 +289,18 @@ export default function PatientLoginScreen() {
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.identifier ? Colors.light.error : colors.border,
+                          borderColor: errors.identifier
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
                     />
                   </View>
                   {errors.identifier && (
-                    <Text style={authStyles.errorText}>{errors.identifier}</Text>
+                    <Text style={authStyles.errorText}>
+                      {errors.identifier}
+                    </Text>
                   )}
                 </View>
 
@@ -272,7 +319,9 @@ export default function PatientLoginScreen() {
                         authStyles.input,
                         {
                           backgroundColor: colors.card,
-                          borderColor: errors.password ? Colors.light.error : colors.border,
+                          borderColor: errors.password
+                            ? Colors.light.error
+                            : colors.border,
                           color: colors.text,
                         },
                       ]}
@@ -298,7 +347,9 @@ export default function PatientLoginScreen() {
                   onPress={() => setShowForgot(true)}
                   disabled={isSubmitting}
                 >
-                  <Text style={authStyles.forgotPasswordText}>Forgot Password?</Text>
+                  <Text style={authStyles.forgotPasswordText}>
+                    Forgot Password?
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -326,7 +377,12 @@ export default function PatientLoginScreen() {
                 entering={FadeInDown.delay(500).springify()}
                 style={authStyles.footer}
               >
-                <Text style={[authStyles.footerText, { color: colors.textSecondary }]}>
+                <Text
+                  style={[
+                    authStyles.footerText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Don't have an account?{' '}
                   <Text
                     style={authStyles.linkText}
@@ -356,8 +412,14 @@ export default function PatientLoginScreen() {
             <Text style={[authStyles.modalTitle, { color: colors.text }]}>
               Reset Password
             </Text>
-            <Text style={[authStyles.modalDescription, { color: colors.textSecondary }]}>
-              Enter your email address and we'll send you a link to reset your password.
+            <Text
+              style={[
+                authStyles.modalDescription,
+                { color: colors.textSecondary },
+              ]}
+            >
+              Enter your email address and we'll send you a link to reset your
+              password.
             </Text>
             <TextInput
               placeholder="Email address"

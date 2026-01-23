@@ -1,11 +1,15 @@
-import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import {
+  Stack,
+  useRouter,
+  useSegments,
+  useRootNavigationState,
+} from 'expo-router';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator, StatusBar, Platform } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { StatusBar, Platform } from 'react-native';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -24,7 +28,8 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === 'auth';
     const inPatientGroup = segments[0] === '(patient-tabs)';
     const inHealthcareGroup = segments[0] === '(healthcare-tabs)';
-    const isIndex = segments.length === 0 || segments[0] === 'index';
+    const isIndex =
+      (segments as string[]).length === 0 || segments[0] === 'index';
 
     // Don't interfere with index route - it handles its own navigation
     if (isIndex) return;
@@ -36,24 +41,29 @@ function RootLayoutNav() {
       // Redirect to signed-in state if authenticated and trying to access auth pages
       if (userData?.role === 'patient') {
         router.replace('/(patient-tabs)');
-      } else if (userData?.role === 'doctor' || userData?.role === 'lab_assistant') {
+      } else if (
+        userData?.role === 'doctor' ||
+        userData?.role === 'lab_assistant'
+      ) {
         router.replace('/(healthcare-tabs)');
       }
     } else if (user) {
       // Strict Role-Based Access Control
       if (userData?.role === 'patient' && inHealthcareGroup) {
         router.replace('/(patient-tabs)');
-      } else if ((userData?.role === 'doctor' || userData?.role === 'lab_assistant') && inPatientGroup) {
+      } else if (
+        (userData?.role === 'doctor' || userData?.role === 'lab_assistant') &&
+        inPatientGroup
+      ) {
         router.replace('/(healthcare-tabs)');
       }
     }
   }, [user, userData, isLoading, segments, rootNavigationState]);
 
-
   return (
     <>
       <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
         translucent={Platform.OS === 'android'}
       />
@@ -99,4 +109,3 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
-

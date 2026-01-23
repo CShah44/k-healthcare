@@ -1,40 +1,84 @@
 import { Alert } from 'react-native';
-import { doc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import {
+  doc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+} from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 import { MedicalRecord } from '@/types/medical';
 
 // Permission and access control
-export function canEditRecord(record: any, userData: any, memberId: string, familyData?: any): boolean {
+export function canEditRecord(
+  record: any,
+  userData: any,
+  memberId: string,
+  familyData?: any,
+): boolean {
   // Users can edit/delete their own records
   if (memberId === userData?.uid) return true;
-  
+
   // Family creators (owners) can edit any family member's records
   if (familyData && familyData.createdBy === userData?.uid) return true;
-  
+
   // All other family members can only view records, not edit
   return false;
 }
+
+// Helper to check if a record is a prescription
+export const isPrescription = (record: any): boolean => {
+  return (
+    record.type === 'prescriptions' ||
+    record.type === 'prescription' ||
+    record.tags?.includes('prescriptions') ||
+    record.tags?.includes('prescription')
+  );
+};
+
+// Helper function to check if a record matches a filter by tags
+export const matchesFilterByTags = (
+  record: any,
+  filterId: string,
+  predefinedTagIds: string[],
+): boolean => {
+  if (filterId === 'all') return true;
+  if (filterId === 'prescriptions') return isPrescription(record);
+  if (filterId === 'lab_reports') {
+    return (
+      record.type === 'lab_reports' ||
+      record.source === 'lab_uploaded' ||
+      record.tags?.includes('lab_reports')
+    );
+  }
+  if (filterId === 'uploaded') {
+    return record.type === 'uploaded' || record.source === 'user_uploaded';
+  }
+  // Check if any of the record's tags match predefined tag IDs
+  return (
+    record.tags?.some(
+      (tag: string) => predefinedTagIds.includes(tag) && tag === filterId,
+    ) || false
+  );
+};
 
 // Record management functions
 export async function updateMemberRecord(
   memberId: string,
   recordId: string,
   title: string,
-  tags: string[]
+  tags: string[],
 ) {
   if (!title.trim()) {
     throw new Error('Please enter a valid title');
   }
 
   try {
-    await updateDoc(
-      doc(db, 'patients', memberId, 'records', recordId),
-      {
-        title: title.trim(),
-        tags: tags,
-        updatedAt: new Date(),
-      }
-    );
+    await updateDoc(doc(db, 'patients', memberId, 'records', recordId), {
+      title: title.trim(),
+      tags: tags,
+      updatedAt: new Date(),
+    });
     return true;
   } catch (error) {
     console.error('Error updating record:', error);
@@ -53,11 +97,15 @@ export async function deleteMemberRecord(memberId: string, recordId: string) {
 }
 
 // Tag management
-export function toggleEditTag(tagId: string, editTags: string[], setEditTags: React.Dispatch<React.SetStateAction<string[]>>) {
+export function toggleEditTag(
+  tagId: string,
+  editTags: string[],
+  setEditTags: React.Dispatch<React.SetStateAction<string[]>>,
+) {
   setEditTags((prev: string[]) =>
     prev.includes(tagId)
       ? prev.filter((id: string) => id !== tagId)
-      : [...prev, tagId]
+      : [...prev, tagId],
   );
 }
 
@@ -84,7 +132,9 @@ export async function openFile(url: string, fileType: string) {
 export function filterMemberRecords(
   records: any[],
   searchQuery: string,
-  selectedTags: string[]
+  selectedTags: string[],
+  selectedFilter: string = 'all',
+  predefinedTagIds: string[] = [],
 ) {
   return records.filter((record) => {
     // Search filter
@@ -100,12 +150,22 @@ export function filterMemberRecords(
       (record.tags &&
         record.tags.some((tag: string) => selectedTags.includes(tag)));
 
-    return matchesSearch && matchesTags;
+    // Type filter - check type, source, and tags
+    const matchesType =
+      selectedFilter === 'all' ||
+      record.type === selectedFilter ||
+      matchesFilterByTags(record, selectedFilter, predefinedTagIds);
+
+    return matchesSearch && matchesTags && matchesType;
   });
 }
 
 // Permission display helpers
-export function getPermissionText(userData: any, memberId: string, familyData?: any): string {
+export function getPermissionText(
+  userData: any,
+  memberId: string,
+  familyData?: any,
+): string {
   if (memberId === userData?.uid) {
     return 'Your Records';
   } else if (familyData && familyData.createdBy === userData?.uid) {
@@ -115,7 +175,11 @@ export function getPermissionText(userData: any, memberId: string, familyData?: 
   }
 }
 
-export function getPermissionColor(userData: any, memberId: string, familyData?: any): string {
+export function getPermissionColor(
+  userData: any,
+  memberId: string,
+  familyData?: any,
+): string {
   if (memberId === userData?.uid) {
     return '#3b82f6'; // blue
   } else if (familyData && familyData.createdBy === userData?.uid) {
@@ -125,7 +189,9 @@ export function getPermissionColor(userData: any, memberId: string, familyData?:
   }
 }
 
-export const fetchMemberRecords = async (memberId: string): Promise<MedicalRecord[]> => {
+export const fetchMemberRecords = async (
+  memberId: string,
+): Promise<MedicalRecord[]> => {
   const records: MedicalRecord[] = [];
   const recordsCollection = collection(db, `patients/${memberId}/records`);
   const recordsSnapshot = await getDocs(recordsCollection);
@@ -133,4 +199,4 @@ export const fetchMemberRecords = async (memberId: string): Promise<MedicalRecor
     records.push({ id: doc.id, ...doc.data() } as MedicalRecord);
   });
   return records;
-}; 
+};

@@ -1,6 +1,21 @@
 import { Colors } from '@/constants/Colors';
-import { Heart, Brain, Bone, Activity, TestTube2, Pill, FileText, Tag } from 'lucide-react-native';
-import { doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  Heart,
+  Brain,
+  Bone,
+  Activity,
+  TestTube2,
+  Pill,
+  FileText,
+  Tag,
+} from 'lucide-react-native';
+import {
+  doc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 
 // Predefined tags for medical records
@@ -83,7 +98,7 @@ export async function saveUserCustomTags(userId: string, tags: string[]) {
         customTags: tags,
         updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
   } catch (error) {
     console.error('Error saving custom tags:', error);
@@ -111,7 +126,7 @@ export async function addCustomTag(
   selectedTags: string[],
   setCustomTags: React.Dispatch<React.SetStateAction<string[]>>,
   setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>,
-  showAlert: (title: string, message: string) => void
+  showAlert: (title: string, message: string) => void,
 ) {
   const trimmedTag = newTagInput.trim().toLowerCase();
   if (!trimmedTag) {
@@ -120,10 +135,7 @@ export async function addCustomTag(
   }
 
   // Check if tag already exists
-  const allExistingTags = [
-    ...PREDEFINED_TAGS.map((t) => t.id),
-    ...customTags,
-  ];
+  const allExistingTags = [...PREDEFINED_TAGS.map((t) => t.id), ...customTags];
   if (allExistingTags.includes(trimmedTag)) {
     showAlert('Error', 'This tag already exists');
     return;
@@ -141,15 +153,19 @@ export async function addCustomTag(
     // Show success feedback
     showAlert(
       'Success',
-      `Tag "${trimmedTag}" has been added and is now available for filtering!`
+      `Tag "${trimmedTag}" has been added and is now available for filtering!`,
     );
   } catch (error) {
     console.error('Error adding custom tag:', error);
     showAlert('Error', 'Failed to save custom tag. Please try again.');
 
     // Revert local changes on error
-    setCustomTags((prev: string[]) => prev.filter((tag: string) => tag !== trimmedTag));
-    setSelectedTags((prev: string[]) => prev.filter((tag: string) => tag !== trimmedTag));
+    setCustomTags((prev: string[]) =>
+      prev.filter((tag: string) => tag !== trimmedTag),
+    );
+    setSelectedTags((prev: string[]) =>
+      prev.filter((tag: string) => tag !== trimmedTag),
+    );
   }
 }
 
@@ -160,12 +176,14 @@ export async function removeCustomTag(
   selectedTags: string[],
   setCustomTags: React.Dispatch<React.SetStateAction<string[]>>,
   setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>,
-  showAlert: (title: string, message: string) => void
+  showAlert: (title: string, message: string) => void,
 ) {
   try {
     const newCustomTags = customTags.filter((id: string) => id !== tagId);
     setCustomTags(newCustomTags);
-    setSelectedTags((prev: string[]) => prev.filter((id: string) => id !== tagId));
+    setSelectedTags((prev: string[]) =>
+      prev.filter((id: string) => id !== tagId),
+    );
 
     // Save to database
     await saveUserCustomTags(userId, newCustomTags);
@@ -183,7 +201,12 @@ export function canEditRecord(record: any): boolean {
   return record.type === 'uploaded' || record.source !== 'lab_uploaded';
 }
 
-export async function addTagToRecord(userId: string, recordId: string, tagId: string, medicalRecords: any[]) {
+export async function addTagToRecord(
+  userId: string,
+  recordId: string,
+  tagId: string,
+  medicalRecords: any[],
+) {
   try {
     const record = medicalRecords.find((r) => r.id === recordId);
     if (!record) return;
@@ -202,7 +225,12 @@ export async function addTagToRecord(userId: string, recordId: string, tagId: st
   }
 }
 
-export async function removeTagFromRecord(userId: string, recordId: string, tagId: string, medicalRecords: any[]) {
+export async function removeTagFromRecord(
+  userId: string,
+  recordId: string,
+  tagId: string,
+  medicalRecords: any[],
+) {
   try {
     const record = medicalRecords.find((r) => r.id === recordId);
     if (!record) return;
@@ -224,7 +252,7 @@ export async function updateRecord(
   recordId: string,
   title: string,
   tags: string[],
-  showAlert: (title: string, message: string) => void
+  showAlert: (title: string, message: string) => void,
 ) {
   if (!title.trim()) {
     showAlert('Error', 'Please enter a valid title');
@@ -232,14 +260,11 @@ export async function updateRecord(
   }
 
   try {
-    await updateDoc(
-      doc(db, 'patients', userId, 'records', recordId),
-      {
-        title: title.trim(),
-        tags: tags,
-        updatedAt: new Date(),
-      }
-    );
+    await updateDoc(doc(db, 'patients', userId, 'records', recordId), {
+      title: title.trim(),
+      tags: tags,
+      updatedAt: new Date(),
+    });
     showAlert('Success', 'Record updated successfully');
   } catch (error) {
     console.error('Error updating record:', error);
@@ -262,7 +287,7 @@ export function filterRecords(
   medicalRecords: any[],
   searchQuery: string,
   selectedTags: string[],
-  selectedFilter: string
+  selectedFilter: string,
 ) {
   return medicalRecords.filter((record) => {
     // Search filter
@@ -292,7 +317,7 @@ export function getAvailableTags(medicalRecords: any[], customTags: string[]) {
       medicalRecords
         .flatMap((record) => record.tags || [])
         .concat(PREDEFINED_TAGS.map((tag) => tag.id))
-        .concat(customTags)
-    )
+        .concat(customTags),
+    ),
   );
-} 
+}

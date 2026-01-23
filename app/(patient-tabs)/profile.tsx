@@ -41,7 +41,14 @@ import { deletePatientAccount } from './services/accountDeletion';
 import { Modal } from 'react-native';
 import { calculateAge } from './services/profileHelpers';
 import { RecordsService } from '@/services/recordsService';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+  doc,
+} from 'firebase/firestore';
 import { db } from '@/constants/firebase';
 
 export default function ProfileScreen() {
@@ -54,6 +61,7 @@ export default function ProfileScreen() {
     isSwitchedAccount,
     originalUserId,
     isLoading: authLoading,
+    refreshUserData,
   } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const styles = createProfileStyles(colors, isDarkMode);
@@ -103,7 +111,11 @@ export default function ProfileScreen() {
         // Already in MM/DD/YYYY format
         const parts = dob.split('/');
         if (parts.length === 3) {
-          date = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+          date = new Date(
+            parseInt(parts[2]),
+            parseInt(parts[0]) - 1,
+            parseInt(parts[1]),
+          );
         } else {
           date = new Date(dob);
         }
@@ -136,20 +148,27 @@ export default function ProfileScreen() {
       }
       return null;
     } catch (error) {
-      console.error('Error calculating age:', error, 'Date:', userData.dateOfBirth);
+      console.error(
+        'Error calculating age:',
+        error,
+        'Date:',
+        userData.dateOfBirth,
+      );
       return null;
     }
   };
 
   // Format patient ID for display (e.g., 1EG4-TE5-MK72)
   const formatPatientId = () => {
-    const id = userData?.patientId || formatUserId(userData?.customUserId, userData?.role || '');
+    const id =
+      userData?.patientId ||
+      formatUserId(userData?.customUserId, userData?.role || '');
     // Format to match reference style if it's a long ID
     if (id.length > 8) {
       // Try to format as XXX-XXX-XXXX if possible
       const cleaned = id.replace(/[^A-Z0-9]/gi, '').toUpperCase();
       if (cleaned.length >= 8) {
-        return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 7)}-${cleaned.slice(7, 11)}`;
+        return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 11)}`;
       }
     }
     return id;
@@ -171,6 +190,34 @@ export default function ProfileScreen() {
     fetchAccessibleAccounts();
   }, [userData?.linkedAccounts, userData?.parentAccountId]);
 
+  // Real-time listener for user updates (e.g. new child account added)
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.uid),
+      async (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          // Check if linkedAccounts or familyId changed to avoid unnecessary refreshes
+          // (Simple comparison or just always refresh as refreshUserData is relatively cheap auth-wise)
+          if (
+            JSON.stringify(data.linkedAccounts) !==
+              JSON.stringify(userData?.linkedAccounts) ||
+            data.familyId !== userData?.familyId
+          ) {
+            console.log(
+              'Real-time update detected in profile, refreshing data...',
+            );
+            await refreshUserData();
+          }
+        }
+      },
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid, userData?.linkedAccounts, userData?.familyId]);
+
   useEffect(() => {
     const fetchRecordCounts = async () => {
       if (!user?.uid) return;
@@ -178,15 +225,28 @@ export default function ProfileScreen() {
       try {
         const recordsRef = collection(db, 'patients', user.uid, 'records');
         const snapshot = await getDocs(recordsRef);
-        const records = snapshot.docs.map(doc => doc.data());
+        const records = snapshot.docs.map((doc) => doc.data());
 
         const counts = {
-          allergies: records.filter(r => r.tags?.includes('allergy') || r.type === 'allergy').length,
-          diagnoses: records.filter(r => r.diagnosis || r.tags?.includes('diagnosis') || r.type === 'diagnosis').length,
-          visits: records.filter(r => r.type === 'consultation' || r.type === 'visit').length,
-          prescriptions: records.filter(r => r.type === 'prescription' || r.type === 'prescriptions').length,
-          vaccinations: records.filter(r => r.type === 'vaccination' || r.tags?.includes('vaccination')).length,
-          documents: records.filter(r => r.fileUrl || r.fileType).length,
+          allergies: records.filter(
+            (r) => r.tags?.includes('allergy') || r.type === 'allergy',
+          ).length,
+          diagnoses: records.filter(
+            (r) =>
+              r.diagnosis ||
+              r.tags?.includes('diagnosis') ||
+              r.type === 'diagnosis',
+          ).length,
+          visits: records.filter(
+            (r) => r.type === 'consultation' || r.type === 'visit',
+          ).length,
+          prescriptions: records.filter(
+            (r) => r.type === 'prescription' || r.type === 'prescriptions',
+          ).length,
+          vaccinations: records.filter(
+            (r) => r.type === 'vaccination' || r.tags?.includes('vaccination'),
+          ).length,
+          documents: records.filter((r) => r.fileUrl || r.fileType).length,
         };
 
         setRecordCounts(counts);
@@ -238,10 +298,23 @@ export default function ProfileScreen() {
   const handleDeleteAccount = async () => {
     try {
       setIsDeleting(true);
+      const isChildDeletion = isSwitchedAccount && originalUserId;
+
       await deletePatientAccount(user?.uid || '');
-      // Auth state change will handle navigation
-      // Redirect to index which will show role-selection
-      router.replace('/');
+
+      if (isChildDeletion) {
+        // If we deleted a child account, we need to switch back to the main account
+        // to avoid being stuck in a "deleted user" state.
+        await switchToAccount(originalUserId!);
+        setIsDeleting(false);
+        setShowDeleteModal(false);
+        Alert.alert('Success', 'Child account deleted successfully');
+        // No need to replace route, switchToAccount will trigger state updates
+      } else {
+        // Self-deletion (logout handles navigation)
+        // Redirect to index which will show role-selection
+        router.replace('/');
+      }
     } catch (error: any) {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -333,7 +406,7 @@ export default function ProfileScreen() {
       icon: Palette,
       iconColor: '#8B5CF6',
       iconBg: '#EDE9FE',
-      onPress: () => { }, // No navigation, handled by toggle
+      onPress: () => {}, // No navigation, handled by toggle
       showToggle: true,
     },
     {
@@ -411,7 +484,8 @@ export default function ProfileScreen() {
                   <View style={styles.demographicItem}>
                     <Text style={styles.demographicLabel}>GENDER</Text>
                     <Text style={styles.demographicValue}>
-                      {userData.gender.charAt(0).toUpperCase() + userData.gender.slice(1)}
+                      {userData.gender.charAt(0).toUpperCase() +
+                        userData.gender.slice(1)}
                     </Text>
                   </View>
                   {(() => {
@@ -452,16 +526,20 @@ export default function ProfileScreen() {
 
         {isSwitchedAccount && (
           <View style={styles.switchedAccountIndicator}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <View style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: `${Colors.primary}15`,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+            >
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: `${Colors.primary}15`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}
+              >
                 <Users size={16} color={Colors.primary} strokeWidth={2} />
               </View>
               <Text style={styles.switchedAccountText}>
@@ -489,7 +567,12 @@ export default function ProfileScreen() {
                 onPress={item.onPress}
                 activeOpacity={0.7}
               >
-                <View style={[styles.clinicalProfileIcon, { backgroundColor: item.iconBg }]}>
+                <View
+                  style={[
+                    styles.clinicalProfileIcon,
+                    { backgroundColor: item.iconBg },
+                  ]}
+                >
                   <item.icon size={20} color={item.iconColor} strokeWidth={2} />
                 </View>
                 <Text style={styles.clinicalProfileItemText}>{item.title}</Text>
@@ -498,7 +581,11 @@ export default function ProfileScreen() {
                     <Text style={styles.countBadgeText}>{item.count}</Text>
                   </View>
                 )}
-                <ChevronRight size={18} color={colors.textSecondary} style={styles.chevron} />
+                <ChevronRight
+                  size={18}
+                  color={colors.textSecondary}
+                  style={styles.chevron}
+                />
               </TouchableOpacity>
             ))}
           </View>
@@ -516,14 +603,23 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
                 disabled={item.showToggle}
               >
-                <View style={[styles.settingsIcon, { backgroundColor: item.iconBg }]}>
+                <View
+                  style={[
+                    styles.settingsIcon,
+                    { backgroundColor: item.iconBg },
+                  ]}
+                >
                   <item.icon size={20} color={item.iconColor} strokeWidth={2} />
                 </View>
                 <Text style={styles.settingsItemText}>{item.title}</Text>
                 {item.showToggle ? (
                   <ThemeToggle size={20} />
                 ) : (
-                  <ChevronRight size={18} color={colors.textSecondary} style={styles.chevron} />
+                  <ChevronRight
+                    size={18}
+                    color={colors.textSecondary}
+                    style={styles.chevron}
+                  />
                 )}
               </TouchableOpacity>
             ))}
@@ -554,7 +650,7 @@ export default function ProfileScreen() {
                         style={[
                           styles.linkedAccountAvatar,
                           account.type === 'parent' &&
-                          styles.parentAccountAvatar,
+                            styles.parentAccountAvatar,
                         ]}
                       >
                         <Text style={styles.linkedAccountInitials}>
@@ -570,7 +666,7 @@ export default function ProfileScreen() {
                           style={[
                             styles.linkedAccountType,
                             account.type === 'parent' &&
-                            styles.parentAccountType,
+                              styles.parentAccountType,
                           ]}
                         >
                           {account.type === 'parent'

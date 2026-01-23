@@ -296,7 +296,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       }
 
-      // onAuthStateChanged will handle state updates
+      // Manually set state to avoid race condition with onAuthStateChanged reading before write
+      setUserData(userDataForFirestore);
+      setActiveAccountId(newUser.uid);
+      setFirebaseUser(newUser); // Ensure firebase user is set
     } catch (error: any) {
       console.error('Signup error:', error);
 

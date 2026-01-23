@@ -45,6 +45,7 @@ import {
   Users,
   Search,
   Filter,
+  Plus,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -184,7 +185,7 @@ function getUserEncryptionKey(uid: string): string {
 async function decryptFileFromUrl(
   url: string,
   record: any,
-  uid: string
+  uid: string,
 ): Promise<string> {
   // Download encrypted file
   const response = await fetch(url);
@@ -204,15 +205,15 @@ async function decryptFileFromUrl(
         (word >> 24) & 0xff,
         (word >> 16) & 0xff,
         (word >> 8) & 0xff,
-        word & 0xff
+        word & 0xff,
       );
       return arr;
     },
-    []
+    [],
   );
   const decryptedUint8 = new Uint8Array(decryptedBytes).slice(
     0,
-    decrypted.sigBytes
+    decrypted.sigBytes,
   );
 
   if (Platform.OS === 'web') {
@@ -224,12 +225,14 @@ async function decryptFileFromUrl(
     // On mobile, write PDF to a temp file and return file:// URI
     const base64 = uint8ArrayToBase64(decryptedUint8);
     const fileUri = `${FileSystem.cacheDirectory}svastheya_${Date.now()}.pdf`;
-    await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+    await FileSystem.writeAsStringAsync(fileUri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
     return fileUri;
   } else {
     // For images, return data URI
     return `data:${record.fileType};base64,${uint8ArrayToBase64(
-      decryptedUint8
+      decryptedUint8,
     )}`;
   }
 }
@@ -252,7 +255,7 @@ export default function MemberRecordsScreen() {
   const { showAlert, AlertComponent } = useCustomAlert();
 
   const [memberData, setMemberData] = useState<any>(
-    firstName || lastName ? { firstName, lastName, id: memberId } : null
+    firstName || lastName ? { firstName, lastName, id: memberId } : null,
   );
   const [familyData, setFamilyData] = useState<any>(null);
   const [records, setRecords] = useState<any[]>([]);
@@ -270,7 +273,16 @@ export default function MemberRecordsScreen() {
   const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [tagSearchQuery, setTagSearchQuery] = useState('');
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+  const [showCustomTagModal, setShowCustomTagModal] = useState(false);
+  const [newTagInput, setNewTagInput] = useState('');
+  const [addingTag, setAddingTag] = useState(false);
 
   // Animation values - subtle animations
   const headerOpacity = useSharedValue(1);
@@ -331,13 +343,126 @@ export default function MemberRecordsScreen() {
     loadMemberData();
   }, [user, userData, memberId]);
 
+  // Load user's custom tags on component mount
+  useEffect(() => {
+    if (user) {
+      loadUserCustomTags();
+    }
+  }, [user]);
+
+  const loadUserCustomTags = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingTags(true);
+      const userTagsDoc = await getDoc(doc(db, 'userTags', user.uid));
+      if (userTagsDoc.exists()) {
+        const data = userTagsDoc.data();
+        setCustomTags(data.customTags || []);
+      }
+    } catch (error) {
+      console.error('Error loading custom tags:', error);
+    } finally {
+      setLoadingTags(false);
+    }
+  };
+
+  const saveUserCustomTags = async (tags: string[]) => {
+    if (!user) return;
+
+    try {
+      await updateDoc(doc(db, 'userTags', user.uid), {
+        customTags: tags,
+        updatedAt: new Date(),
+      });
+    } catch (error) {
+      // If doc doesn't exist, create it
+      try {
+        await updateDoc(doc(db, 'userTags', user.uid), {
+          customTags: tags,
+          updatedAt: new Date(),
+        });
+      } catch (e) {
+        // Fallback or better handling if needed
+      }
+    }
+  };
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId],
+    );
+  };
+
+  const getAllAvailableTags = () => {
+    return [
+      ...PREDEFINED_TAGS,
+      ...customTags.map((tag) => ({
+        id: tag,
+        label: tag.charAt(0).toUpperCase() + tag.slice(1),
+        icon: Tag,
+        color: Colors.primary,
+        isCustom: true,
+      })),
+    ];
+  };
+
+  const addCustomTag = async () => {
+    const trimmedTag = newTagInput.trim().toLowerCase();
+    if (!trimmedTag) {
+      showAlert('Error', 'Please enter a tag name');
+      return;
+    }
+
+    const allExistingTags = [
+      ...PREDEFINED_TAGS.map((t) => t.id),
+      ...customTags,
+    ];
+    if (allExistingTags.includes(trimmedTag)) {
+      showAlert('Error', 'This tag already exists');
+      return;
+    }
+
+    try {
+      setAddingTag(true);
+      const newCustomTags = [...customTags, trimmedTag];
+      setCustomTags(newCustomTags);
+      setSelectedTags((prev) => [...prev, trimmedTag]);
+      await saveUserCustomTags(newCustomTags);
+      setNewTagInput('');
+      setShowCustomTagModal(false);
+    } catch (error) {
+      console.error('Error adding custom tag:', error);
+      showAlert('Error', 'Failed to save custom tag');
+      setCustomTags((prev) => prev.filter((tag) => tag !== trimmedTag));
+      setSelectedTags((prev) => prev.filter((tag) => tag !== trimmedTag));
+    } finally {
+      setAddingTag(false);
+    }
+  };
+
+  const removeCustomTag = async (tagId: string) => {
+    try {
+      const newCustomTags = customTags.filter((id) => id !== tagId);
+      setCustomTags(newCustomTags);
+      setSelectedTags((prev) => prev.filter((id) => id !== tagId));
+      await saveUserCustomTags(newCustomTags);
+    } catch (error) {
+      console.error('Error removing custom tag:', error);
+      showAlert('Error', 'Failed to remove custom tag');
+      setCustomTags((prev) => [...prev, tagId]);
+    }
+  };
+
   // Real-time records listener
   useEffect(() => {
     if (!memberId) return;
 
     const q = query(
       collection(db, 'patients', memberId, 'records'),
-      orderBy('uploadedAt', 'desc')
+      orderBy('uploadedAt', 'desc'),
     );
 
     const unsubscribe = onSnapshot(
@@ -351,7 +476,7 @@ export default function MemberRecordsScreen() {
       },
       (error) => {
         console.error('Failed to fetch member records:', error);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -401,7 +526,7 @@ export default function MemberRecordsScreen() {
     if (!canEditRecord(record, userData, memberId!, familyData)) {
       showAlert(
         'Permission Denied',
-        'You can only edit your own records. Only the family owner can edit other family members\' records.'
+        "You can only edit your own records. Only the family owner can edit other family members' records.",
       );
       return;
     }
@@ -421,7 +546,7 @@ export default function MemberRecordsScreen() {
         memberId,
         selectedRecord.id,
         editTitle,
-        editTags
+        editTags,
       );
       setShowEditModal(false);
       setSelectedRecord(null);
@@ -438,7 +563,7 @@ export default function MemberRecordsScreen() {
     if (!canEditRecord(record, userData, memberId!, familyData)) {
       showAlert(
         'Permission Denied',
-        'You can only delete your own records. Only the family owner can delete other family members\' records.'
+        "You can only delete your own records. Only the family owner can delete other family members' records.",
       );
       return;
     }
@@ -466,7 +591,7 @@ export default function MemberRecordsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -474,14 +599,48 @@ export default function MemberRecordsScreen() {
     setEditTags((prev: string[]) =>
       prev.includes(tagId)
         ? prev.filter((id: string) => id !== tagId)
-        : [...prev, tagId]
+        : [...prev, tagId],
     );
   };
+
+  const filters = [
+    { id: 'all', label: 'All', count: records.length },
+    {
+      id: 'uploaded',
+      label: 'Uploads',
+      count: records.filter(
+        (r) => r.type === 'uploaded' || r.source === 'user_uploaded',
+      ).length,
+    },
+    {
+      id: 'lab_reports',
+      label: 'Lab Reports',
+      count: records.filter(
+        (r) =>
+          r.type === 'lab_reports' ||
+          r.source === 'lab_uploaded' ||
+          r.tags?.includes('lab_reports'),
+      ).length,
+    },
+    {
+      id: 'prescriptions',
+      label: 'Prescriptions',
+      count: records.filter(
+        (r) =>
+          r.type === 'prescriptions' ||
+          r.type === 'prescription' ||
+          r.tags?.includes('prescriptions') ||
+          r.tags?.includes('prescription'),
+      ).length,
+    },
+  ];
 
   const filteredRecords = filterMemberRecords(
     records,
     searchQuery,
-    selectedTags
+    selectedTags,
+    selectedFilter,
+    PREDEFINED_TAGS.map((t) => t.id),
   );
 
   // Update permission text and color to use extracted services
@@ -522,7 +681,13 @@ export default function MemberRecordsScreen() {
 
   if (loading && !memberData) {
     return (
-      <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
+      <SafeAreaView
+        style={
+          Platform.OS === 'ios' || Platform.OS === 'android'
+            ? mobileStyles.container
+            : styles.container
+        }
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading member records...</Text>
@@ -532,17 +697,32 @@ export default function MemberRecordsScreen() {
   }
 
   return (
-    <SafeAreaView style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.container : styles.container}>
+    <SafeAreaView
+      style={
+        Platform.OS === 'ios' || Platform.OS === 'android'
+          ? mobileStyles.container
+          : styles.container
+      }
+    >
       <LinearGradient
-        colors={isDarkMode ? [colors.surface, colors.surfaceSecondary] : ['#FAF8F3', '#FAF8F3']}
+        colors={
+          isDarkMode
+            ? [colors.surface, colors.surfaceSecondary]
+            : ['#FAF8F3', '#FAF8F3']
+        }
         style={styles.backgroundGradient}
       >
         {/* Header */}
-        <Animated.View style={[styles.header, Platform.OS === 'web' ? headerAnimatedStyle : {}]}>
+        <Animated.View
+          style={[
+            styles.header,
+            Platform.OS === 'web' ? headerAnimatedStyle : {},
+          ]}
+        >
           <View style={styles.headerLeft}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.back()}
+              onPress={() => router.replace('/family-tree')}
             >
               <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
@@ -561,55 +741,172 @@ export default function MemberRecordsScreen() {
                       <Text style={styles.permissionText}>Full Access</Text>
                     </View>
                   )}
-                {familyData?.createdBy !== user?.uid &&
-                  memberId !== user?.uid && (
-                    <View style={styles.viewOnlyBadge}>
-                      <Eye size={12} color={Colors.medical.blue} />
-                      <Text style={styles.viewOnlyText}>View Only</Text>
-                    </View>
-                  )}
-                {memberId === user?.uid && (
-                  <View style={styles.ownRecordsBadge}>
-                    <Users size={12} color={Colors.primary} />
-                    <Text style={styles.ownRecordsText}>Your Records</Text>
-                  </View>
-                )}
               </View>
             </View>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => setSearchQuery('')}
+              style={[
+                styles.headerButton,
+                showSearch && styles.headerButtonActive,
+              ]}
+              onPress={() => setShowSearch(!showSearch)}
             >
-              <Search size={20} color={colors.text} strokeWidth={2} />
+              <Search
+                size={20}
+                color={showSearch ? Colors.primary : colors.text}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                selectedTags.length > 0 && styles.headerButtonActive,
+              ]}
+              onPress={() => setShowTagModal(true)}
+            >
+              <Filter
+                size={20}
+                color={selectedTags.length > 0 ? Colors.primary : colors.text}
+                strokeWidth={2}
+              />
+              {selectedTags.length > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>
+                    {selectedTags.length}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </Animated.View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Search size={18} color={'#222'} strokeWidth={2} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search records..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={colors.textSecondary}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <X size={18} color={'#222'} strokeWidth={2} />
+        {/* Filter Tabs */}
+        <View style={styles.filtersContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersContent}
+          >
+            {filters.map((filter) => (
+              <TouchableOpacity
+                key={filter.id}
+                style={[
+                  styles.filterTab,
+                  selectedFilter === filter.id && styles.filterTabActive,
+                ]}
+                onPress={() => setSelectedFilter(filter.id)}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    selectedFilter === filter.id && styles.filterTextActive,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+                <View
+                  style={[
+                    styles.filterCount,
+                    selectedFilter === filter.id && styles.filterCountActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterCountText,
+                      selectedFilter === filter.id &&
+                        styles.filterCountTextActive,
+                    ]}
+                  >
+                    {filter.count}
+                  </Text>
+                </View>
               </TouchableOpacity>
-            )}
-          </View>
+            ))}
+          </ScrollView>
         </View>
+
+        {/* Search Bar */}
+        {showSearch && (
+          <Animated.View
+            style={styles.searchContainer}
+            entering={
+              Platform.OS === 'web' ? FadeInDown.springify() : undefined
+            }
+          >
+            <View style={styles.searchInputContainer}>
+              <Search size={18} color={colors.textSecondary} strokeWidth={2} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search records, doctors, labs..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <X size={18} color={colors.textSecondary} strokeWidth={2} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Selected Tags */}
+        {selectedTags.length > 0 && (
+          <View style={styles.selectedTagsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.selectedTagsList}>
+                {selectedTags.map((tagId) => {
+                  const tagInfo = getTagInfo(tagId);
+                  return (
+                    <TouchableOpacity
+                      key={tagId}
+                      style={[
+                        styles.selectedTag,
+                        { backgroundColor: `${tagInfo.color}20` },
+                      ]}
+                      onPress={() =>
+                        setSelectedTags((prev) =>
+                          prev.filter((id) => id !== tagId),
+                        )
+                      }
+                    >
+                      <tagInfo.icon
+                        size={14}
+                        color={tagInfo.color}
+                        strokeWidth={2}
+                      />
+                      <Text
+                        style={[
+                          styles.selectedTagText,
+                          { color: tagInfo.color },
+                        ]}
+                      >
+                        {tagInfo.label}
+                      </Text>
+                      <X size={12} color={tagInfo.color} strokeWidth={2} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Records List */}
         <ScrollView
-          style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordsList : styles.recordsList}
-          contentContainerStyle={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordsContent : styles.recordsContent}
+          style={
+            Platform.OS === 'ios' || Platform.OS === 'android'
+              ? mobileStyles.recordsList
+              : styles.recordsList
+          }
+          contentContainerStyle={
+            Platform.OS === 'ios' || Platform.OS === 'android'
+              ? mobileStyles.recordsContent
+              : styles.recordsContent
+          }
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -617,9 +914,14 @@ export default function MemberRecordsScreen() {
             filteredRecords.map((record, index) => {
               const { icon: IconComponent, color } = getRecordIcon(
                 record.type,
-                record.source
+                record.source,
               );
-              const canEdit = canEditRecord(record, userData, memberId!, familyData);
+              const canEdit = canEditRecord(
+                record,
+                userData,
+                memberId!,
+                familyData,
+              );
               const statusColor =
                 record.status === 'normal'
                   ? Colors.medical.green
@@ -629,18 +931,19 @@ export default function MemberRecordsScreen() {
                       ? Colors.medical.blue
                       : colors.textSecondary;
               return (
-                <View
-                  key={record.id}
-                  style={{ marginBottom: 16 }}
-                >
+                <View key={record.id} style={{ marginBottom: 16 }}>
                   <TouchableOpacity
-                    style={Platform.OS === 'ios' || Platform.OS === 'android' ? mobileStyles.recordCard : [
-                      styles.recordCard,
-                      {
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                      },
-                    ]}
+                    style={
+                      Platform.OS === 'ios' || Platform.OS === 'android'
+                        ? mobileStyles.recordCard
+                        : [
+                            styles.recordCard,
+                            {
+                              backgroundColor: colors.card,
+                              borderColor: colors.border,
+                            },
+                          ]
+                    }
                     activeOpacity={0.7}
                     onPress={() => {
                       setSelectedRecord(record);
@@ -676,18 +979,18 @@ export default function MemberRecordsScreen() {
                               <Text style={styles.recordDate}>
                                 {record.uploadedAt?.toDate
                                   ? record.uploadedAt
-                                    .toDate()
-                                    .toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
+                                      .toDate()
+                                      .toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
                                   : record.uploadedAt?.seconds
                                     ? new Date(
-                                      record.uploadedAt.seconds * 1000
-                                    ).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
+                                        record.uploadedAt.seconds * 1000,
+                                      ).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
                                     : 'N/A'}
                               </Text>
                             </View>
@@ -731,24 +1034,6 @@ export default function MemberRecordsScreen() {
                             )}
                           </View>
                         </View>
-                        {/* Status Badge */}
-                        {record.status && (
-                          <View
-                            style={[
-                              styles.statusBadge,
-                              { backgroundColor: `${statusColor}15` },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.statusText,
-                                { color: statusColor },
-                              ]}
-                            >
-                              {record.status}
-                            </Text>
-                          </View>
-                        )}
                         {/* Action Icons */}
                         <View style={styles.recordActions}>
                           <TouchableOpacity
@@ -761,13 +1046,13 @@ export default function MemberRecordsScreen() {
                                 const decryptedUri = await decryptFileFromUrl(
                                   record.fileUrl,
                                   record,
-                                  memberId // use memberId as uid
+                                  memberId, // use memberId as uid
                                 );
                                 setPdfPreviewUri(decryptedUri);
                               } catch (e) {
                                 showAlert(
                                   'Error',
-                                  'Failed to decrypt and open file.'
+                                  'Failed to decrypt and open file.',
                                 );
                                 setShowPdfPreview(false);
                               }
@@ -781,16 +1066,6 @@ export default function MemberRecordsScreen() {
                           </TouchableOpacity>
                           {canEdit && (
                             <>
-                              <TouchableOpacity
-                                style={styles.actionButton}
-                                onPress={() => handleEditRecord(record)}
-                              >
-                                <Edit3
-                                  size={16}
-                                  color={Colors.medical.blue}
-                                  strokeWidth={2}
-                                />
-                              </TouchableOpacity>
                               <TouchableOpacity
                                 style={styles.actionButton}
                                 onPress={() => handleDeleteRecord(record)}
@@ -853,13 +1128,13 @@ export default function MemberRecordsScreen() {
                       ? selectedRecord.uploadedAt.toDate().toLocaleString()
                       : selectedRecord.uploadedAt?.seconds
                         ? new Date(
-                          selectedRecord.uploadedAt.seconds * 1000
-                        ).toLocaleString()
+                            selectedRecord.uploadedAt.seconds * 1000,
+                          ).toLocaleString()
                         : 'N/A'}
                   </Text>
 
                   {selectedRecord.fileType?.startsWith('image') ||
-                    selectedRecord.fileType === 'application/pdf' ? (
+                  selectedRecord.fileType === 'application/pdf' ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
                       onPress={async () => {
@@ -869,13 +1144,13 @@ export default function MemberRecordsScreen() {
                           const decryptedUri = await decryptFileFromUrl(
                             selectedRecord.fileUrl,
                             selectedRecord,
-                            memberId // use memberId as uid
+                            memberId, // use memberId as uid
                           );
                           setPdfPreviewUri(decryptedUri);
                         } catch (e) {
                           showAlert(
                             'Error',
-                            'Failed to decrypt and open file.'
+                            'Failed to decrypt and open file.',
                           );
                           setShowPdfPreview(false);
                         }
@@ -962,7 +1237,13 @@ export default function MemberRecordsScreen() {
                 />
               ) : selectedRecord?.fileType === 'application/pdf' ? (
                 // Show loading indicator while useEffect opens the PDF
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
                   <ActivityIndicator size="large" color="#fff" />
                   <Text style={{ color: '#fff', marginTop: 16 }}>
                     Opening PDF in system viewer...
@@ -996,6 +1277,356 @@ export default function MemberRecordsScreen() {
               </View>
             )}
           </SafeAreaView>
+        </Modal>
+
+        {/* Tag Filter Modal */}
+        <Modal
+          visible={showTagModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => {
+            setShowTagModal(false);
+            setTagSearchQuery('');
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.tagModalContent}>
+              <View style={styles.tagModalHeader}>
+                <View style={styles.tagModalHeaderTitle}>
+                  <Text style={styles.modalTitle}>Filter by Tags</Text>
+                  {selectedTags.length > 0 && (
+                    <View style={styles.selectedTagsCountBadge}>
+                      <Text style={styles.selectedTagsCountText}>
+                        {selectedTags.length}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.tagModalHeaderActions}>
+                  <TouchableOpacity
+                    style={styles.addCustomTagHeaderButton}
+                    onPress={() => {
+                      setShowTagModal(false);
+                      setShowCustomTagModal(true);
+                    }}
+                  >
+                    <Plus size={18} color={primary} strokeWidth={2.5} />
+                    <Text style={styles.addCustomTagHeaderText}>Add Tag</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowTagModal(false);
+                      setTagSearchQuery('');
+                    }}
+                    style={styles.closeModalButton}
+                  >
+                    <X size={22} color={colors.text} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Tag Search Bar */}
+              <View style={styles.tagSearchContainer}>
+                <View style={styles.tagSearchInputContainer}>
+                  <Search
+                    size={18}
+                    color={colors.textSecondary}
+                    strokeWidth={2}
+                  />
+                  <TextInput
+                    style={styles.tagSearchInput}
+                    placeholder="Search tags..."
+                    placeholderTextColor={colors.textTertiary}
+                    value={tagSearchQuery}
+                    onChangeText={setTagSearchQuery}
+                  />
+                  {tagSearchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setTagSearchQuery('')}
+                      style={styles.clearSearchButton}
+                    >
+                      <X
+                        size={16}
+                        color={colors.textSecondary}
+                        strokeWidth={2}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.tagsList}
+                showsVerticalScrollIndicator={false}
+              >
+                {loadingTags ? (
+                  <View style={styles.loadingTagsContainer}>
+                    <ActivityIndicator size="small" color={primary} />
+                    <Text style={styles.loadingTagsText}>
+                      Loading your tags...
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {/* Medical Tags Section */}
+                    {getAllAvailableTags()
+                      .filter((tag: any) => !tag.isCustom)
+                      .filter(
+                        (tag: any) =>
+                          tagSearchQuery === '' ||
+                          tag.label
+                            .toLowerCase()
+                            .includes(tagSearchQuery.toLowerCase()),
+                      ).length > 0 && (
+                      <View style={styles.tagSection}>
+                        <Text style={styles.tagSectionTitle}>
+                          Medical Categories
+                        </Text>
+                        <View style={styles.tagGrid}>
+                          {getAllAvailableTags()
+                            .filter((tag: any) => !tag.isCustom)
+                            .filter(
+                              (tag: any) =>
+                                tagSearchQuery === '' ||
+                                tag.label
+                                  .toLowerCase()
+                                  .includes(tagSearchQuery.toLowerCase()),
+                            )
+                            .map((tag: any) => {
+                              const isSelected = selectedTags.includes(tag.id);
+                              const tagCount = records.filter((r: any) =>
+                                r.tags?.includes(tag.id),
+                              ).length;
+                              return (
+                                <Animated.View
+                                  key={tag.id}
+                                  entering={FadeInDown.delay(50).springify()}
+                                >
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.tagChip,
+                                      isSelected && {
+                                        backgroundColor: `${tag.color}15`,
+                                        borderColor: tag.color,
+                                        borderWidth: 2,
+                                      },
+                                    ]}
+                                    onPress={() => toggleTag(tag.id)}
+                                    activeOpacity={0.7}
+                                  >
+                                    <tag.icon
+                                      size={16}
+                                      color={
+                                        isSelected
+                                          ? tag.color
+                                          : colors.textSecondary
+                                      }
+                                      strokeWidth={2.5}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.tagChipText,
+                                        isSelected && {
+                                          color: tag.color,
+                                          fontWeight: '600',
+                                        },
+                                      ]}
+                                    >
+                                      {tag.label}
+                                    </Text>
+                                    {tagCount > 0 && (
+                                      <View
+                                        style={[
+                                          styles.tagCountBadge,
+                                          isSelected && {
+                                            backgroundColor: tag.color,
+                                          },
+                                        ]}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.tagCountText,
+                                            isSelected && { color: '#ffffff' },
+                                          ]}
+                                        >
+                                          {tagCount}
+                                        </Text>
+                                      </View>
+                                    )}
+                                    {isSelected && (
+                                      <View
+                                        style={[
+                                          styles.tagSelectedIndicator,
+                                          { backgroundColor: tag.color },
+                                        ]}
+                                      >
+                                        <Check
+                                          size={12}
+                                          color="#ffffff"
+                                          strokeWidth={3}
+                                        />
+                                      </View>
+                                    )}
+                                  </TouchableOpacity>
+                                </Animated.View>
+                              );
+                            })}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Custom Tags Section */}
+                    {getAllAvailableTags()
+                      .filter((tag: any) => tag.isCustom)
+                      .filter(
+                        (tag: any) =>
+                          tagSearchQuery === '' ||
+                          tag.label
+                            .toLowerCase()
+                            .includes(tagSearchQuery.toLowerCase()),
+                      ).length > 0 && (
+                      <View style={styles.tagSection}>
+                        <View style={styles.tagSectionHeader}>
+                          <Text style={styles.tagSectionTitle}>
+                            Custom Tags
+                          </Text>
+                        </View>
+                        <View style={styles.tagGrid}>
+                          {getAllAvailableTags()
+                            .filter((tag: any) => tag.isCustom)
+                            .filter(
+                              (tag: any) =>
+                                tagSearchQuery === '' ||
+                                tag.label
+                                  .toLowerCase()
+                                  .includes(tagSearchQuery.toLowerCase()),
+                            )
+                            .map((tag: any) => {
+                              const isSelected = selectedTags.includes(tag.id);
+                              const tagCount = records.filter((r: any) =>
+                                r.tags?.includes(tag.id),
+                              ).length;
+                              return (
+                                <Animated.View
+                                  key={tag.id}
+                                  entering={FadeInDown.delay(50).springify()}
+                                >
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.tagChip,
+                                      isSelected && {
+                                        backgroundColor: `${primary}15`,
+                                        borderColor: primary,
+                                        borderWidth: 2,
+                                      },
+                                    ]}
+                                    onPress={() => toggleTag(tag.id)}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Tag
+                                      size={16}
+                                      color={
+                                        isSelected
+                                          ? primary
+                                          : colors.textSecondary
+                                      }
+                                      strokeWidth={2.5}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.tagChipText,
+                                        isSelected && {
+                                          color: primary,
+                                          fontWeight: '600',
+                                        },
+                                      ]}
+                                    >
+                                      {tag.label}
+                                    </Text>
+                                    {tagCount > 0 && (
+                                      <View
+                                        style={[
+                                          styles.tagCountBadge,
+                                          isSelected && {
+                                            backgroundColor: primary,
+                                          },
+                                        ]}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.tagCountText,
+                                            isSelected && { color: '#ffffff' },
+                                          ]}
+                                        >
+                                          {tagCount}
+                                        </Text>
+                                      </View>
+                                    )}
+                                    <TouchableOpacity
+                                      style={styles.removeCustomTagButton}
+                                      onPress={(e) => {
+                                        e.stopPropagation();
+                                        removeCustomTag(tag.id);
+                                      }}
+                                    >
+                                      <X
+                                        size={14}
+                                        color={colors.textSecondary}
+                                      />
+                                    </TouchableOpacity>
+                                  </TouchableOpacity>
+                                </Animated.View>
+                              );
+                            })}
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Custom Tag Input Modal */}
+        <Modal
+          visible={showCustomTagModal}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowCustomTagModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { padding: 24 }]}>
+              <Text style={styles.modalTitle}>Add Custom Tag</Text>
+              <TextInput
+                style={[styles.textInput, { marginTop: 16 }]}
+                placeholder="Enter tag name..."
+                value={newTagInput}
+                onChangeText={setNewTagInput}
+                autoFocus
+              />
+              <View style={[styles.editModalActions, { marginTop: 24 }]}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowCustomTagModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.updateButton, addingTag && { opacity: 0.7 }]}
+                  onPress={addCustomTag}
+                  disabled={addingTag}
+                >
+                  {addingTag ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text style={styles.updateButtonText}>Add Tag</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
 
         {/* Edit Modal */}

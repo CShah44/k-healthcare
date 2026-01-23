@@ -44,7 +44,15 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '@/constants/firebase';
-import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
@@ -72,8 +80,7 @@ function decryptEncryptedPDF(base64Encrypted: string, uid: string): Uint8Array {
   const decrypted = CryptoJS.AES.decrypt(base64Encrypted, key);
   const typedArray = new Uint8Array(decrypted.sigBytes);
   for (let i = 0; i < decrypted.sigBytes; i++) {
-    typedArray[i] =
-      (decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+    typedArray[i] = (decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
   }
   return typedArray;
 }
@@ -92,7 +99,10 @@ function getStoragePathFromUrl(url: string) {
   return match ? match[1] : '';
 }
 
-export const previewEncryptedPDF = async (storagePath: string, userUid: string) => {
+export const previewEncryptedPDF = async (
+  storagePath: string,
+  userUid: string,
+) => {
   try {
     const { data, error } = await supabase.storage
       .from(BUCKET)
@@ -109,7 +119,9 @@ export const previewEncryptedPDF = async (storagePath: string, userUid: string) 
       if (!base64) return;
 
       const decryptedBytes = decryptEncryptedPDF(base64, userUid ?? '');
-      const decryptedBlob = new Blob([decryptedBytes], { type: 'application/pdf' });
+      const decryptedBlob = new Blob([decryptedBytes], {
+        type: 'application/pdf',
+      });
 
       const objectUrl = URL.createObjectURL(decryptedBlob);
       router.push({
@@ -177,10 +189,14 @@ export default function UploadRecordScreen() {
     if (!user) return;
 
     try {
-      await setDoc(doc(db, 'userTags', user.uid), {
-        customTags: tags,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'userTags', user.uid),
+        {
+          customTags: tags,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
     } catch (error) {
       console.error('Error saving custom tags:', error);
       throw error;
@@ -273,7 +289,7 @@ export default function UploadRecordScreen() {
     setSelectedTags((prev) =>
       prev.includes(tagId)
         ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
+        : [...prev, tagId],
     );
   };
 
@@ -309,14 +325,17 @@ export default function UploadRecordScreen() {
       setShowCustomTagModal(false);
 
       // Show success feedback
-      Alert.alert('Success', `Tag "${trimmedTag}" has been added and selected!`);
+      Alert.alert(
+        'Success',
+        `Tag "${trimmedTag}" has been added and selected!`,
+      );
     } catch (error) {
       console.error('Error adding custom tag:', error);
       Alert.alert('Error', 'Failed to save custom tag. Please try again.');
 
       // Revert local changes on error
-      setCustomTags((prev) => prev.filter(tag => tag !== trimmedTag));
-      setSelectedTags((prev) => prev.filter(tag => tag !== trimmedTag));
+      setCustomTags((prev) => prev.filter((tag) => tag !== trimmedTag));
+      setSelectedTags((prev) => prev.filter((tag) => tag !== trimmedTag));
     } finally {
       setAddingTag(false);
     }
@@ -397,10 +416,15 @@ export default function UploadRecordScreen() {
           const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
           const encryptionKey = getUserEncryptionKey(user.uid);
 
-          const encrypted = CryptoJS.AES.encrypt(wordArray, encryptionKey).toString();
+          const encrypted = CryptoJS.AES.encrypt(
+            wordArray,
+            encryptionKey,
+          ).toString();
           const encryptedBytes = base64ToUint8Array(encrypted);
 
-          uploadBlob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
+          uploadBlob = new Blob([encryptedBytes], {
+            type: 'application/octet-stream',
+          });
         } else {
           uploadBlob = await response.blob();
         }
@@ -416,10 +440,15 @@ export default function UploadRecordScreen() {
         const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
         const encryptionKey = getUserEncryptionKey(user.uid);
 
-        const encrypted = CryptoJS.AES.encrypt(wordArray, encryptionKey).toString();
+        const encrypted = CryptoJS.AES.encrypt(
+          wordArray,
+          encryptionKey,
+        ).toString();
         const encryptedBytes = base64ToUint8Array(encrypted);
 
-        uploadBlob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
+        uploadBlob = new Blob([encryptedBytes], {
+          type: 'application/octet-stream',
+        });
       }
 
       if (!uploadBlob) {
@@ -474,7 +503,8 @@ export default function UploadRecordScreen() {
         encryption: {
           method: 'AES',
           keyHash: getUserEncryptionKey(user.uid),
-          enabled: fileType === 'application/pdf' || fileType.startsWith('image/'),
+          enabled:
+            fileType === 'application/pdf' || fileType.startsWith('image/'),
         },
       });
 
@@ -502,7 +532,11 @@ export default function UploadRecordScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={isDarkMode ? [colors.surface, colors.surfaceSecondary] : ['#FAF8F3', '#FAF8F3']}
+        colors={
+          isDarkMode
+            ? [colors.surface, colors.surfaceSecondary]
+            : ['#FAF8F3', '#FAF8F3']
+        }
         style={styles.backgroundGradient}
       >
         {/* Modern Header */}
@@ -549,12 +583,19 @@ export default function UploadRecordScreen() {
                       onPress={openDocumentPicker}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#DBEAFE' }]}>
+                      <View
+                        style={[
+                          styles.uploadOptionIcon,
+                          { backgroundColor: '#DBEAFE' },
+                        ]}
+                      >
                         <FileText size={24} color="#3B82F6" strokeWidth={2} />
                       </View>
                       <View style={styles.uploadOptionContent}>
                         <Text style={styles.uploadOptionText}>Upload PDF</Text>
-                        <Text style={styles.uploadOptionSubtext}>Select documents from your device</Text>
+                        <Text style={styles.uploadOptionSubtext}>
+                          Select documents from your device
+                        </Text>
                       </View>
                       <View style={styles.uploadOptionArrow}>
                         <ChevronRight size={18} color={colors.textSecondary} />
@@ -566,12 +607,19 @@ export default function UploadRecordScreen() {
                       onPress={openCamera}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#D1FAE5' }]}>
+                      <View
+                        style={[
+                          styles.uploadOptionIcon,
+                          { backgroundColor: '#D1FAE5' },
+                        ]}
+                      >
                         <Camera size={24} color="#10B981" strokeWidth={2} />
                       </View>
                       <View style={styles.uploadOptionContent}>
                         <Text style={styles.uploadOptionText}>Take Photo</Text>
-                        <Text style={styles.uploadOptionSubtext}>Capture with your camera</Text>
+                        <Text style={styles.uploadOptionSubtext}>
+                          Capture with your camera
+                        </Text>
                       </View>
                       <View style={styles.uploadOptionArrow}>
                         <ChevronRight size={18} color={colors.textSecondary} />
@@ -583,12 +631,21 @@ export default function UploadRecordScreen() {
                       onPress={openImagePicker}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#EDE9FE' }]}>
+                      <View
+                        style={[
+                          styles.uploadOptionIcon,
+                          { backgroundColor: '#EDE9FE' },
+                        ]}
+                      >
                         <ImageIcon size={24} color="#8B5CF6" strokeWidth={2} />
                       </View>
                       <View style={styles.uploadOptionContent}>
-                        <Text style={styles.uploadOptionText}>Choose from Gallery</Text>
-                        <Text style={styles.uploadOptionSubtext}>Select existing photos</Text>
+                        <Text style={styles.uploadOptionText}>
+                          Choose from Gallery
+                        </Text>
+                        <Text style={styles.uploadOptionSubtext}>
+                          Select existing photos
+                        </Text>
                       </View>
                       <View style={styles.uploadOptionArrow}>
                         <ChevronRight size={18} color={colors.textSecondary} />
@@ -625,30 +682,41 @@ export default function UploadRecordScreen() {
                             <Text style={styles.fileSizeText}>
                               {selectedFile.size
                                 ? `${(selectedFile.size / 1024 / 1024).toFixed(
-                                  2
-                                )} MB`
+                                    2,
+                                  )} MB`
                                 : 'Size unknown'}
                             </Text>
                             {/* Preview PDF Button */}
-                            {selectedFile && selectedFile.uri &&
-                              typeof (selectedFile as any).publicUrl === 'string' && (
+                            {selectedFile &&
+                              selectedFile.uri &&
+                              typeof (selectedFile as any).publicUrl ===
+                                'string' && (
                                 <TouchableOpacity
                                   style={styles.openPdfButton}
                                   onPress={async () => {
-                                    const publicUrl = (selectedFile as any).publicUrl;
+                                    const publicUrl = (selectedFile as any)
+                                      .publicUrl;
                                     if (!publicUrl) {
-                                      Alert.alert('Preview not available until uploaded.');
+                                      Alert.alert(
+                                        'Preview not available until uploaded.',
+                                      );
                                       return;
                                     }
-                                    const storagePath = getStoragePathFromUrl(publicUrl);
+                                    const storagePath =
+                                      getStoragePathFromUrl(publicUrl);
                                     if (!storagePath) {
                                       Alert.alert('Error', 'Invalid file URL.');
                                       return;
                                     }
-                                    await previewEncryptedPDF(storagePath, user?.uid ?? '');
+                                    await previewEncryptedPDF(
+                                      storagePath,
+                                      user?.uid ?? '',
+                                    );
                                   }}
                                 >
-                                  <Text style={styles.openPdfText}>Preview PDF</Text>
+                                  <Text style={styles.openPdfText}>
+                                    Preview PDF
+                                  </Text>
                                 </TouchableOpacity>
                               )}
                           </View>
@@ -689,7 +757,7 @@ export default function UploadRecordScreen() {
                       {/* Tag Selection */}
                       <View style={styles.tagSection}>
                         <View style={styles.tagHeader}>
-                          <View>
+                          <View style={styles.tagHeaderText}>
                             <Text style={styles.tagLabel}>
                               Categories (Optional)
                             </Text>
@@ -697,6 +765,8 @@ export default function UploadRecordScreen() {
                               Select categories to help organize your records
                             </Text>
                           </View>
+                        </View>
+                        <View style={styles.tagGrid}>
                           <TouchableOpacity
                             style={styles.addCustomTagButton}
                             onPress={() => setShowCustomTagModal(true)}
@@ -711,8 +781,6 @@ export default function UploadRecordScreen() {
                               Add Custom
                             </Text>
                           </TouchableOpacity>
-                        </View>
-                        <View style={styles.tagGrid}>
                           {getAllAvailableTags().map((tag) => (
                             <TouchableOpacity
                               key={tag.id}
@@ -929,7 +997,7 @@ export default function UploadRecordScreen() {
                   style={[
                     styles.addCustomTagConfirmButton,
                     (!newTagInput.trim() || addingTag) &&
-                    styles.addCustomTagConfirmButtonDisabled,
+                      styles.addCustomTagConfirmButtonDisabled,
                   ]}
                   onPress={addCustomTag}
                   disabled={!newTagInput.trim() || addingTag}

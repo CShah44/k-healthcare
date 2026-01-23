@@ -27,9 +27,21 @@ export class FamilyService {
     creatorId: string,
     creatorName: string,
     creatorEmail: string,
-    familyName: string
+    familyName: string,
   ): Promise<string> {
     try {
+      // 1. Verify creator is not already in a family
+      const userDoc = await getDoc(doc(db, 'users', creatorId));
+      if (!userDoc.exists()) {
+        throw new Error('User not found');
+      }
+      const userData = userDoc.data();
+      if (userData.familyId) {
+        throw new Error(
+          'You are already in a family. Please leave your current family before creating a new one.',
+        );
+      }
+
       const familyId = doc(collection(db, 'families')).id;
       const now = new Date().toISOString();
 
@@ -66,9 +78,9 @@ export class FamilyService {
 
       await batch.commit();
       return familyId;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating family:', error);
-      throw new Error('Failed to create family');
+      throw new Error(error.message || 'Failed to create family');
     }
   }
 
@@ -122,7 +134,7 @@ export class FamilyService {
     inviterId: string,
     inviterName: string,
     memberIdentifier: string,
-    relation: FamilyRelation
+    relation: FamilyRelation,
   ): Promise<void> {
     try {
       // Find target user
@@ -143,7 +155,7 @@ export class FamilyService {
         invitationsRef,
         where('familyId', '==', familyId),
         where('invitedUserId', '==', targetUser.id),
-        where('status', '==', 'pending')
+        where('status', '==', 'pending'),
       );
 
       const existingSnapshot = await getDocs(existingInvitation);
@@ -155,7 +167,7 @@ export class FamilyService {
       const invitationId = doc(collection(db, 'family_invitations')).id;
       const now = new Date().toISOString();
       const expiresAt = new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString(); // 7 days
 
       const invitationData: FamilyInvitation = {
@@ -185,7 +197,7 @@ export class FamilyService {
       const q = query(
         invitationsRef,
         where('invitedUserId', '==', userId),
-        where('status', '==', 'pending')
+        where('status', '==', 'pending'),
       );
 
       const snapshot = await getDocs(q);
@@ -201,11 +213,23 @@ export class FamilyService {
     invitationId: string,
     userId: string,
     userName: string,
-    userEmail: string
+    userEmail: string,
   ): Promise<void> {
     try {
+      // 1. Verify user is not already in a family
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (!userDoc.exists()) {
+        throw new Error('User not found');
+      }
+      const userData = userDoc.data();
+      if (userData.familyId) {
+        throw new Error(
+          'You are already in a family. Please leave your current family before joining another.',
+        );
+      }
+
       const invitationDoc = await getDoc(
-        doc(db, 'family_invitations', invitationId)
+        doc(db, 'family_invitations', invitationId),
       );
 
       if (!invitationDoc.exists()) {
@@ -255,7 +279,7 @@ export class FamilyService {
       });
 
       await batch.commit();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting invitation:', error);
       throw error;
     }
@@ -278,7 +302,7 @@ export class FamilyService {
   static async kickFamilyMember(
     familyId: string,
     memberId: string,
-    ownerId: string
+    ownerId: string,
   ): Promise<void> {
     try {
       const familyDoc = await getDoc(doc(db, 'families', familyId));
@@ -297,6 +321,17 @@ export class FamilyService {
       // Prevent owner from kicking themselves
       if (memberId === ownerId) {
         throw new Error('Family owner cannot remove themselves');
+      }
+
+      // Check if the member is a child account
+      const memberUserDoc = await getDoc(doc(db, 'users', memberId));
+      if (memberUserDoc.exists()) {
+        const memberData = memberUserDoc.data();
+        if (memberData.isChildAccount) {
+          throw new Error(
+            'Child accounts cannot be removed from the family. Please delete the child account instead.',
+          );
+        }
       }
 
       const memberToRemove = family.members.find((m) => m.userId === memberId);
@@ -329,7 +364,7 @@ export class FamilyService {
   // Remove family member (deprecated - use kickFamilyMember instead)
   static async removeFamilyMember(
     familyId: string,
-    memberId: string
+    memberId: string,
   ): Promise<void> {
     try {
       const familyDoc = await getDoc(doc(db, 'families', familyId));
@@ -428,11 +463,11 @@ export class FamilyService {
       email: string;
     },
     relation: FamilyRelation,
-    parentId: string
+    parentId: string,
   ): Promise<void> {
     try {
       const now = new Date().toISOString();
-      
+
       // Add child to family members
       const newMember: FamilyMember = {
         userId: childUserId,
@@ -469,21 +504,25 @@ export class FamilyService {
       address: string;
       gender: string;
     },
-    relation: FamilyRelation
+    relation: FamilyRelation,
   ): Promise<string> {
     try {
       // This method is deprecated - use AuthContext.createChildAccount followed by addChildToFamily
-      throw new Error('This method is deprecated. Please use AuthContext.createChildAccount followed by FamilyService.addChildToFamily');
+      throw new Error(
+        'This method is deprecated. Please use AuthContext.createChildAccount followed by FamilyService.addChildToFamily',
+      );
     } catch (error) {
       console.error('Error creating child family member:', error);
-      throw new Error('This method is deprecated. Please use AuthContext.createChildAccount followed by FamilyService.addChildToFamily');
+      throw new Error(
+        'This method is deprecated. Please use AuthContext.createChildAccount followed by FamilyService.addChildToFamily',
+      );
     }
   }
 
   // Get family member's medical records (basic info only for privacy)
   static async getFamilyMemberRecords(
     memberId: string,
-    requesterId: string
+    requesterId: string,
   ): Promise<any[]> {
     try {
       // First verify that both users are in the same family
@@ -507,7 +546,7 @@ export class FamilyService {
       // Get basic medical records (you can customize what data to share)
       const recordsQuery = query(
         collection(db, 'medical_records'),
-        where('patientId', '==', memberId)
+        where('patientId', '==', memberId),
       );
 
       const snapshot = await getDocs(recordsQuery);
@@ -529,7 +568,7 @@ export class FamilyService {
   static async canEditMemberRecord(
     familyId: string,
     requesterId: string,
-    recordOwnerId: string
+    recordOwnerId: string,
   ): Promise<boolean> {
     try {
       // Get family data
@@ -556,7 +595,7 @@ export class FamilyService {
   // Get family member info by user ID
   static async getFamilyMemberInfo(
     memberId: string,
-    requesterId: string
+    requesterId: string,
   ): Promise<any | null> {
     try {
       // Get requester's data to verify family membership
@@ -580,7 +619,7 @@ export class FamilyService {
 
       // Verify they're in the same family
       if (memberData.familyId !== requesterData.familyId) {
-        throw new Error('Not authorized to view this member\'s information');
+        throw new Error("Not authorized to view this member's information");
       }
 
       return {
@@ -603,24 +642,25 @@ export class FamilyService {
       title?: string;
       tags?: string[];
       [key: string]: any;
-    }
+    },
   ): Promise<void> {
     try {
       // Check permissions
-      const canEdit = await this.canEditMemberRecord(familyId, requesterId, memberId);
+      const canEdit = await this.canEditMemberRecord(
+        familyId,
+        requesterId,
+        memberId,
+      );
       if (!canEdit) {
         throw new Error('You do not have permission to edit this record');
       }
 
       // Update the record
-      await updateDoc(
-        doc(db, 'patients', memberId, 'records', recordId),
-        {
-          ...updateData,
-          updatedAt: serverTimestamp(),
-          updatedBy: requesterId,
-        }
-      );
+      await updateDoc(doc(db, 'patients', memberId, 'records', recordId), {
+        ...updateData,
+        updatedAt: serverTimestamp(),
+        updatedBy: requesterId,
+      });
     } catch (error) {
       console.error('Error updating member record:', error);
       throw error;
@@ -632,11 +672,15 @@ export class FamilyService {
     familyId: string,
     memberId: string,
     recordId: string,
-    requesterId: string
+    requesterId: string,
   ): Promise<void> {
     try {
       // Check permissions
-      const canEdit = await this.canEditMemberRecord(familyId, requesterId, memberId);
+      const canEdit = await this.canEditMemberRecord(
+        familyId,
+        requesterId,
+        memberId,
+      );
       if (!canEdit) {
         throw new Error('You do not have permission to delete this record');
       }
