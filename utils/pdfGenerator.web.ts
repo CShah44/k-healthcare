@@ -61,7 +61,7 @@ export async function generatePrescriptionPdf(
   );
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(doctor?.specialty || 'General Physician', 200, 26, {
+  doc.text(doctor?.specialty || '', 200, 26, {
     align: 'right',
   });
   doc.text(doctor?.hospital || '', 200, 31, { align: 'right' });

@@ -60,7 +60,7 @@ export async function generatePrescriptionPdf(
           }
           <div class="doctor-info">
             <h2>Dr. ${doctor?.firstName || ''} ${doctor?.lastName || ''}</h2>
-            <p>${doctor?.specialty || 'General Physician'}</p>
+            <p>${doctor?.specialty || ''}</p>
             <p>License: ${doctor?.licenseNumber || 'N/A'}</p>
             <p>${doctor?.hospital || ''}</p>
           </div>
