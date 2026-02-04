@@ -61,19 +61,11 @@ import { createUploadRecordStyles } from '../../styles/upload-record';
 import {
   PREDEFINED_TAGS,
   getUserEncryptionKey,
-  base64ToUint8Array,
   uploadFile,
   addCustomTag,
   toggleTag,
 } from './services/uploadHelpers';
-
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
+import { base64ToUint8Array, uint8ArrayToBase64 } from '@/utils/base64';
 
 function decryptEncryptedPDF(base64Encrypted: string, uid: string): Uint8Array {
   const key = getUserEncryptionKey(uid);
@@ -119,7 +111,7 @@ export const previewEncryptedPDF = async (
       if (!base64) return;
 
       const decryptedBytes = decryptEncryptedPDF(base64, userUid ?? '');
-      const decryptedBlob = new Blob([decryptedBytes], {
+      const decryptedBlob = new Blob([decryptedBytes as BlobPart], {
         type: 'application/pdf',
       });
 
@@ -371,17 +363,6 @@ export default function UploadRecordScreen() {
     ];
   };
 
-  // Helper to convert base64 to Uint8Array
-  function base64ToUint8Array(base64: string): Uint8Array {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  }
-
   const handleUpload = async () => {
     if (!user) {
       Alert.alert('Error', 'User not found. Please log in again.');
@@ -422,7 +403,7 @@ export default function UploadRecordScreen() {
           ).toString();
           const encryptedBytes = base64ToUint8Array(encrypted);
 
-          uploadBlob = new Blob([encryptedBytes], {
+          uploadBlob = new Blob([encryptedBytes as BlobPart], {
             type: 'application/octet-stream',
           });
         } else {
@@ -446,7 +427,7 @@ export default function UploadRecordScreen() {
         ).toString();
         const encryptedBytes = base64ToUint8Array(encrypted);
 
-        uploadBlob = new Blob([encryptedBytes], {
+        uploadBlob = new Blob([encryptedBytes as BlobPart], {
           type: 'application/octet-stream',
         });
       }

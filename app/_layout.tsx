@@ -12,7 +12,9 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { StatusBar, Platform } from 'react-native';
 
 // Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Ignore if preventAutoHideAsync fails (e.g. already hidden)
+});
 
 function RootLayoutNav() {
   const { user, userData, isLoading } = useAuth();
@@ -92,9 +94,18 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
+    if (!loaded) return;
+    const hideSplash = async () => {
+      try {
+        if (Platform.OS === 'ios') {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        await SplashScreen.hideAsync();
+      } catch {
+        // Ignore: "No native splash screen registered" on iOS when view controller isn't ready
+      }
+    };
+    hideSplash();
   }, [loaded]);
 
   if (!loaded) {

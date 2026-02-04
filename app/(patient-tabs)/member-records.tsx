@@ -13,6 +13,7 @@ import {
   Platform,
   FlexAlignType,
   Dimensions,
+  InteractionManager,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -76,7 +77,8 @@ import {
 } from './services/memberRecordHelpers';
 import { WebView } from 'react-native-webview';
 import CryptoJS from 'crypto-js';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { base64ToUint8Array, uint8ArrayToBase64 } from '@/utils/base64';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 import { useCustomAlert } from '@/components/CustomAlert';
@@ -156,26 +158,6 @@ function getStoragePathFromUrl(url: string) {
   return match ? match[1] : '';
 }
 
-// Helper to convert base64 to Uint8Array
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-// Helper to convert Uint8Array to base64
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
 // Helper to get user encryption key (same as upload)
 function getUserEncryptionKey(uid: string): string {
   return CryptoJS.SHA256(uid + '_svastheya_secret').toString();
@@ -191,8 +173,9 @@ async function decryptFileFromUrl(
   const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
 
-  // Convert encrypted binary to base64
-  const encryptedBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
+  // Use CryptoJS Base64 so decrypt gets the exact format it expects
+  const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
+  const encryptedBase64 = wordArray.toString(CryptoJS.enc.Base64);
 
   // Get encryption key
   const key = getUserEncryptionKey(uid);
@@ -215,10 +198,12 @@ async function decryptFileFromUrl(
     0,
     decrypted.sigBytes,
   );
+  if (decrypted.sigBytes === 0 || decryptedUint8.length === 0) {
+    throw new Error('Decryption failed or empty content');
+  }
 
   if (Platform.OS === 'web') {
-    // Create a Blob and object URL for browser viewing
-    const blob = new Blob([decryptedUint8], { type: record.fileType });
+    const blob = new Blob([decryptedUint8 as BlobPart], { type: record.fileType });
     const blobUrl = URL.createObjectURL(blob);
     return blobUrl;
   } else if (record.fileType === 'application/pdf') {
@@ -235,12 +220,6 @@ async function decryptFileFromUrl(
       decryptedUint8,
     )}`;
   }
-}
-
-async function openPdfFile(fileUri: string) {
-  // For best experience on Android, install expo-intent-launcher and use it to open PDFs in external apps.
-  // For now, use Linking.openURL for both platforms.
-  await Linking.openURL(fileUri);
 }
 
 export default function MemberRecordsScreen() {
@@ -272,6 +251,7 @@ export default function MemberRecordsScreen() {
   // Add state for previewing
   const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewError, setPdfPreviewError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -1038,23 +1018,32 @@ export default function MemberRecordsScreen() {
                         <View style={styles.recordActions}>
                           <TouchableOpacity
                             style={styles.actionButton}
-                            onPress={async () => {
+                            onPress={() => {
                               setSelectedRecord(record);
+                              setPdfPreviewError(null);
                               setPdfPreviewUri(null);
                               setShowPdfPreview(true);
-                              try {
-                                const decryptedUri = await decryptFileFromUrl(
-                                  record.fileUrl,
-                                  record,
-                                  memberId, // use memberId as uid
-                                );
-                                setPdfPreviewUri(decryptedUri);
-                              } catch (e) {
-                                showAlert(
-                                  'Error',
-                                  'Failed to decrypt and open file.',
-                                );
-                                setShowPdfPreview(false);
+                              const runDecrypt = () => {
+                                (async () => {
+                                  try {
+                                    const decryptedUri = await decryptFileFromUrl(
+                                      record.fileUrl,
+                                      record,
+                                      memberId,
+                                    );
+                                    setPdfPreviewError(null);
+                                    setPdfPreviewUri(decryptedUri);
+                                  } catch (e) {
+                                    setPdfPreviewError('Failed to open file. Tap Close to try again.');
+                                  }
+                                })();
+                              };
+                              if (Platform.OS === 'web') {
+                                runDecrypt();
+                              } else {
+                                InteractionManager.runAfterInteractions(() => {
+                                  setTimeout(runDecrypt, 300);
+                                });
                               }
                             }}
                           >
@@ -1137,22 +1126,31 @@ export default function MemberRecordsScreen() {
                   selectedRecord.fileType === 'application/pdf' ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
-                      onPress={async () => {
+                      onPress={() => {
+                        setPdfPreviewError(null);
                         setPdfPreviewUri(null);
                         setShowPdfPreview(true);
-                        try {
-                          const decryptedUri = await decryptFileFromUrl(
-                            selectedRecord.fileUrl,
-                            selectedRecord,
-                            memberId, // use memberId as uid
-                          );
-                          setPdfPreviewUri(decryptedUri);
-                        } catch (e) {
-                          showAlert(
-                            'Error',
-                            'Failed to decrypt and open file.',
-                          );
-                          setShowPdfPreview(false);
+                        const runDecrypt = () => {
+                          (async () => {
+                            try {
+                              const decryptedUri = await decryptFileFromUrl(
+                                selectedRecord.fileUrl,
+                                selectedRecord,
+                                memberId,
+                              );
+                              setPdfPreviewError(null);
+                              setPdfPreviewUri(decryptedUri);
+                            } catch (e) {
+                              setPdfPreviewError('Failed to open file. Tap Close to try again.');
+                            }
+                          })();
+                        };
+                        if (Platform.OS === 'web') {
+                          runDecrypt();
+                        } else {
+                          InteractionManager.runAfterInteractions(() => {
+                            setTimeout(runDecrypt, 300);
+                          });
                         }
                       }}
                     >
@@ -1178,17 +1176,27 @@ export default function MemberRecordsScreen() {
           visible={showPdfPreview}
           animationType="slide"
           transparent={false}
-          onRequestClose={() => setShowPdfPreview(false)}
+          onRequestClose={() => {
+            setShowPdfPreview(false);
+            setPdfPreviewError(null);
+          }}
         >
           <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
             <TouchableOpacity
               style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
-              onPress={() => setShowPdfPreview(false)}
+              onPress={() => {
+                setShowPdfPreview(false);
+                setPdfPreviewError(null);
+              }}
             >
               <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
             </TouchableOpacity>
 
-            {pdfPreviewUri ? (
+            {pdfPreviewError ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>{pdfPreviewError}</Text>
+              </View>
+            ) : pdfPreviewUri ? (
               Platform.OS === 'web' ? (
                 <View style={{ flex: 1, marginTop: 60 }}>
                   {selectedRecord?.fileType?.startsWith('image') ? (
@@ -1236,19 +1244,15 @@ export default function MemberRecordsScreen() {
                   resizeMode="contain"
                 />
               ) : selectedRecord?.fileType === 'application/pdf' ? (
-                // Show loading indicator while useEffect opens the PDF
-                <View
-                  style={{
-                    flex: 1,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <ActivityIndicator size="large" color="#fff" />
-                  <Text style={{ color: '#fff', marginTop: 16 }}>
-                    Opening PDF in system viewer...
-                  </Text>
-                </View>
+                <WebView
+                  source={{ uri: pdfPreviewUri }}
+                  style={{ flex: 1, marginTop: 60 }}
+                  useWebKit
+                  originWhitelist={['file://', 'content://', '*']}
+                  allowFileAccess={true}
+                  javaScriptEnabled
+                  scalesPageToFit
+                />
               ) : (
                 <View
                   style={{
@@ -1274,6 +1278,11 @@ export default function MemberRecordsScreen() {
                 <Text style={{ color: '#fff', marginTop: 16 }}>
                   Decrypting file...
                 </Text>
+                {Platform.OS !== 'web' && (
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', marginTop: 8, fontSize: 12 }}>
+                    Large files may take a minute
+                  </Text>
+                )}
               </View>
             )}
           </SafeAreaView>

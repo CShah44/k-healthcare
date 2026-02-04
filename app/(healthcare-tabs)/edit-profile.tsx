@@ -31,7 +31,7 @@ import {
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadProfileAsset } from '@/app/(patient-tabs)/services/uploadHelpers';
+import { uploadProfileAsset } from '../(patient-tabs)/services/uploadHelpers';
 import { Image } from 'react-native';
 
 const { width } = Dimensions.get('window');

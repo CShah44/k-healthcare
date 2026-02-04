@@ -11,6 +11,7 @@ import {
   Linking,
   TextInput,
   Platform,
+  InteractionManager,
 } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { createRecordsStyles } from '../../styles/records';
@@ -48,6 +49,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
+import { WebView } from 'react-native-webview';
 
 import {
   collection,
@@ -63,8 +65,8 @@ import {
 } from 'firebase/firestore';
 import { router } from 'expo-router';
 import CryptoJS from 'crypto-js';
-import * as FileSystem from 'expo-file-system';
-import { WebView } from 'react-native-webview';
+import * as FileSystem from 'expo-file-system/legacy';
+import { base64ToUint8Array, uint8ArrayToBase64 } from '@/utils/base64';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 import { useCustomAlert } from '@/components/CustomAlert';
@@ -136,26 +138,6 @@ const PREDEFINED_TAGS = [
   },
 ];
 
-// Helper to convert base64 to Uint8Array
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-// Helper to convert Uint8Array to base64
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
 // Helper to get user encryption key (same as upload)
 function getUserEncryptionKey(uid: string): string {
   return CryptoJS.SHA256(uid + '_svastheya_secret').toString();
@@ -167,12 +149,22 @@ async function decryptFileFromUrl(
   record: any,
   user: any,
 ): Promise<string> {
-  // Download encrypted file
-  const response = await fetch(url);
+  // Download encrypted file with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  let response: Response;
+  try {
+    response = await fetch(url, { signal: controller.signal });
+  } catch (error) {
+    throw new Error('Failed to download file');
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const arrayBuffer = await response.arrayBuffer();
 
-  // Convert encrypted binary to base64
-  const encryptedBase64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
+  // Use CryptoJS Base64 so decrypt gets the exact format it expects
+  const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
+  const encryptedBase64 = wordArray.toString(CryptoJS.enc.Base64);
 
   // Get encryption key
   const key = getUserEncryptionKey(user.uid);
@@ -195,11 +187,11 @@ async function decryptFileFromUrl(
     0,
     decrypted.sigBytes,
   );
+  if (decrypted.sigBytes === 0 || decryptedUint8.length === 0) {
+    throw new Error('Decryption failed or empty content');
+  }
   if (Platform.OS === 'web') {
-    const blob = new Blob([decryptedUint8], { type: record.fileType });
-    if (decryptedUint8.length === 0) {
-      throw new Error('Decryption failed or empty content');
-    }
+    const blob = new Blob([decryptedUint8 as BlobPart], { type: record.fileType });
     const blobUrl = URL.createObjectURL(blob);
     return blobUrl;
   } else {
@@ -224,6 +216,8 @@ async function decryptFileFromUrl(
     return path; // returns file:// URI
   }
 }
+
+// Intentionally removed base64 data-uri approach; it was unreliable on mobile for large PDFs.
 
 export default function MedicalRecordsScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -254,6 +248,8 @@ export default function MedicalRecordsScreen() {
   // Add state for PDF preview
   const [pdfPreviewUri, setPdfPreviewUri] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewError, setPdfPreviewError] = useState<string | null>(null);
+  const [pendingPreview, setPendingPreview] = useState(false);
 
   useEffect(() => {
     if (
@@ -276,6 +272,63 @@ export default function MedicalRecordsScreen() {
 
   const { user } = useAuth();
   const { showAlert, AlertComponent } = useCustomAlert();
+  const pdfReadAccessUrl = React.useMemo(() => {
+    if (Platform.OS !== 'ios' || !pdfPreviewUri?.startsWith('file://')) {
+      return undefined;
+    }
+    const lastSlash = pdfPreviewUri.lastIndexOf('/');
+    if (lastSlash === -1) return undefined;
+    return pdfPreviewUri.slice(0, lastSlash + 1);
+  }, [pdfPreviewUri]);
+
+  useEffect(() => {
+    if (!pendingPreview || !showPdfPreview || !selectedRecord || pdfPreviewUri) {
+      return;
+    }
+
+    const runDecrypt = () => {
+      (async () => {
+        try {
+          const decryptedUri = await decryptFileFromUrl(
+            selectedRecord.fileUrl,
+            selectedRecord,
+            user,
+          );
+          setPdfPreviewUri(decryptedUri);
+          setPdfPreviewError(null);
+        } catch (e) {
+          setPdfPreviewError(
+            selectedRecord.fileType?.startsWith('image')
+              ? 'Failed to open image. Tap Close to try again.'
+              : 'Failed to open PDF. Tap Close to try again.',
+          );
+          showAlert(
+            'Error',
+            selectedRecord.fileType?.startsWith('image')
+              ? 'Failed to open image.'
+              : 'Failed to open PDF.',
+          );
+        } finally {
+          setPendingPreview(false);
+        }
+      })();
+    };
+
+    if (Platform.OS === 'web') {
+      runDecrypt();
+    } else {
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(runDecrypt, 50);
+      });
+    }
+  }, [
+    pendingPreview,
+    showPdfPreview,
+    selectedRecord,
+    pdfPreviewUri,
+    user,
+    showAlert,
+  ]);
 
   // Animation values - subtle animations for both web and mobile
   const headerOpacity = useSharedValue(1);
@@ -1941,23 +1994,14 @@ export default function MedicalRecordsScreen() {
                   {selectedRecord.fileType?.startsWith('image') ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
-                      onPress={async () => {
+                      onPress={() => {
+                        setPdfPreviewError(null);
                         setPdfPreviewUri(null);
-                        setShowPdfPreview(true);
-                        try {
-                          const decryptedUri = await decryptFileFromUrl(
-                            selectedRecord.fileUrl,
-                            selectedRecord,
-                            user,
-                          );
-                          setPdfPreviewUri(decryptedUri);
-                        } catch (e) {
-                          showAlert(
-                            'Error',
-                            'Failed to decrypt and open image.',
-                          );
-                          setShowPdfPreview(false);
-                        }
+                        setPreviewModalVisible(false);
+                        InteractionManager.runAfterInteractions(() => {
+                          setShowPdfPreview(true);
+                          setPendingPreview(true);
+                        });
                       }}
                     >
                       <Text style={styles.openPdfText}>View Image</Text>
@@ -1965,33 +2009,14 @@ export default function MedicalRecordsScreen() {
                   ) : selectedRecord.fileType === 'application/pdf' ? (
                     <TouchableOpacity
                       style={styles.openPdfButton}
-                      onPress={async () => {
-                        try {
-                          const decryptedUri = await decryptFileFromUrl(
-                            selectedRecord.fileUrl,
-                            selectedRecord,
-                            user,
-                          );
-
-                          if (Platform.OS === 'android') {
-                            // Android WebView cannot display PDFs directly - use system viewer
-                            if (await Sharing.isAvailableAsync()) {
-                              await Sharing.shareAsync(decryptedUri, {
-                                mimeType: 'application/pdf',
-                                dialogTitle: selectedRecord.title || 'Open PDF',
-                              });
-                            } else {
-                              showAlert('Error', 'PDF Viewer not available');
-                            }
-                          } else {
-                            // iOS and Web
-                            setPdfPreviewUri(decryptedUri);
-                            setShowPdfPreview(true);
-                          }
-                        } catch (e) {
-                          showAlert('Error', 'Failed to decrypt and open PDF.');
-                          setShowPdfPreview(false);
-                        }
+                      onPress={() => {
+                        setPdfPreviewError(null);
+                        setPdfPreviewUri(null);
+                        setPreviewModalVisible(false);
+                        InteractionManager.runAfterInteractions(() => {
+                          setShowPdfPreview(true);
+                          setPendingPreview(true);
+                        });
                       }}
                     >
                       <Text style={styles.openPdfText}>Open PDF</Text>
@@ -2012,16 +2037,27 @@ export default function MedicalRecordsScreen() {
           visible={showPdfPreview}
           animationType="slide"
           transparent={false}
-          onRequestClose={() => setShowPdfPreview(false)}
+          presentationStyle="fullScreen"
+          onRequestClose={() => {
+            setShowPdfPreview(false);
+            setPdfPreviewError(null);
+          }}
         >
           <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
             <TouchableOpacity
               style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}
-              onPress={() => setShowPdfPreview(false)}
+              onPress={() => {
+                setShowPdfPreview(false);
+                setPdfPreviewError(null);
+              }}
             >
               <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
             </TouchableOpacity>
-            {pdfPreviewUri ? (
+            {pdfPreviewError ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>{pdfPreviewError}</Text>
+              </View>
+            ) : pdfPreviewUri ? (
               selectedRecord?.fileType?.startsWith('image') ? (
                 <Image
                   source={{ uri: pdfPreviewUri }}
@@ -2052,8 +2088,37 @@ export default function MedicalRecordsScreen() {
                     style={{ flex: 1, marginTop: 60 }}
                     useWebKit
                     originWhitelist={['*']}
+                    allowFileAccess={true}
+                    allowFileAccessFromFileURLs={true}
+                    allowUniversalAccessFromFileURLs={true}
+                    allowingReadAccessToURL={pdfReadAccessUrl}
                     javaScriptEnabled
                     scalesPageToFit
+                    onError={(event) => {
+                      const message =
+                        event.nativeEvent?.description || 'Failed to render PDF.';
+                      setPdfPreviewError(message);
+                    }}
+                    onHttpError={(event) => {
+                      const message =
+                        event.nativeEvent?.description || 'Failed to load PDF.';
+                      setPdfPreviewError(message);
+                    }}
+                    startInLoadingState
+                    renderLoading={() => (
+                      <View
+                        style={{
+                          flex: 1,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <ActivityIndicator size="large" color="#fff" />
+                        <Text style={{ color: '#fff', marginTop: 16 }}>
+                          Loading PDF...
+                        </Text>
+                      </View>
+                    )}
                   />
                 )
               ) : (
@@ -2081,6 +2146,11 @@ export default function MedicalRecordsScreen() {
                 <Text style={{ color: '#fff', marginTop: 16 }}>
                   Decrypting file...
                 </Text>
+                {Platform.OS !== 'web' && (
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', marginTop: 8, fontSize: 12 }}>
+                    Large files may take a minute
+                  </Text>
+                )}
               </View>
             )}
           </SafeAreaView>

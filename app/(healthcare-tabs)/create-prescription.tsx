@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { uploadFile } from '@/app/(patient-tabs)/services/uploadHelpers';
+import { uploadFile } from '../(patient-tabs)/services/uploadHelpers';
 import { generatePrescriptionPdf } from '@/utils/pdfGenerator';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -26,7 +26,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '@/constants/firebase';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   ArrowLeft,
   Pill,
