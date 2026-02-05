@@ -13,6 +13,7 @@ import {
   Platform,
   InteractionManager,
 } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
 import { createRecordsStyles } from '../../styles/records';
 import Animated, {
@@ -49,8 +50,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/constants/firebase';
-import { WebView } from 'react-native-webview';
-
 import {
   collection,
   query,
@@ -66,6 +65,7 @@ import {
 import { router } from 'expo-router';
 import CryptoJS from 'crypto-js';
 import * as FileSystem from 'expo-file-system/legacy';
+import { WebView } from 'react-native-webview';
 import { base64ToUint8Array, uint8ArrayToBase64 } from '@/utils/base64';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
@@ -217,6 +217,23 @@ async function decryptFileFromUrl(
   }
 }
 
+async function openAndroidPdfExternally(fileUri: string) {
+  const contentUri = await FileSystem.getContentUriAsync(fileUri);
+  try {
+    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+      data: contentUri,
+      type: 'application/pdf',
+      flags: 1,
+    });
+  } catch (error) {
+    const canOpen = await Linking.canOpenURL(contentUri);
+    if (!canOpen) {
+      throw new Error('No app found to open this file');
+    }
+    await Linking.openURL(contentUri);
+  }
+}
+
 // Intentionally removed base64 data-uri approach; it was unreliable on mobile for large PDFs.
 
 export default function MedicalRecordsScreen() {
@@ -250,6 +267,7 @@ export default function MedicalRecordsScreen() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewError, setPdfPreviewError] = useState<string | null>(null);
   const [pendingPreview, setPendingPreview] = useState(false);
+  const [androidOpeningPdf, setAndroidOpeningPdf] = useState(false);
 
   useEffect(() => {
     if (
@@ -272,6 +290,25 @@ export default function MedicalRecordsScreen() {
 
   const { user } = useAuth();
   const { showAlert, AlertComponent } = useCustomAlert();
+  const openAndroidPdf = async () => {
+    if (!selectedRecord || !user) return;
+    setAndroidOpeningPdf(true);
+    try {
+      // Give the UI a moment to render the loading state
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const decryptedUri = await decryptFileFromUrl(
+        selectedRecord.fileUrl,
+        selectedRecord,
+        user,
+      );
+      await openAndroidPdfExternally(decryptedUri);
+    } catch (error) {
+      console.error('Android PDF open error:', error);
+      showAlert('Error', 'Failed to open PDF.');
+    } finally {
+      setAndroidOpeningPdf(false);
+    }
+  };
   const pdfReadAccessUrl = React.useMemo(() => {
     if (Platform.OS !== 'ios' || !pdfPreviewUri?.startsWith('file://')) {
       return undefined;
@@ -2013,6 +2050,12 @@ export default function MedicalRecordsScreen() {
                         setPdfPreviewError(null);
                         setPdfPreviewUri(null);
                         setPreviewModalVisible(false);
+                        if (Platform.OS === 'android') {
+                          InteractionManager.runAfterInteractions(() => {
+                            openAndroidPdf();
+                          });
+                          return;
+                        }
                         InteractionManager.runAfterInteractions(() => {
                           setShowPdfPreview(true);
                           setPendingPreview(true);
@@ -2080,6 +2123,19 @@ export default function MedicalRecordsScreen() {
                   >
                     <Text style={{ color: '#fff', marginTop: 16 }}>
                       Opening PDF in new tab...
+                    </Text>
+                  </View>
+                ) : Platform.OS === 'android' ? (
+                  <View
+                    style={{
+                      flex: 1,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <ActivityIndicator size="large" color="#fff" />
+                    <Text style={{ color: '#fff', marginTop: 16 }}>
+                      Opening PDF in your device viewer...
                     </Text>
                   </View>
                 ) : (
@@ -2154,6 +2210,23 @@ export default function MedicalRecordsScreen() {
               </View>
             )}
           </SafeAreaView>
+        </Modal>
+
+        {/* Android Opening Modal */}
+        <Modal
+          visible={androidOpeningPdf}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setAndroidOpeningPdf(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={[styles.modalSubtitle, { marginTop: 12, textAlign: 'center' }]}>
+                Opening PDF in your device viewer...
+              </Text>
+            </View>
+          </View>
         </Modal>
 
         {/* Edit Modal */}
