@@ -76,6 +76,7 @@ import {
   getPermissionColor,
 } from './services/memberRecordHelpers';
 import { WebView } from 'react-native-webview';
+import 'react-native-get-random-values';
 import CryptoJS from 'crypto-js';
 import * as FileSystem from 'expo-file-system/legacy';
 import { base64ToUint8Array, uint8ArrayToBase64 } from '@/utils/base64';

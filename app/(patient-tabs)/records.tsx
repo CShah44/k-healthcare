@@ -63,6 +63,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { router } from 'expo-router';
+import 'react-native-get-random-values';
 import CryptoJS from 'crypto-js';
 import * as FileSystem from 'expo-file-system/legacy';
 import { WebView } from 'react-native-webview';

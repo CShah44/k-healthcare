@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import CryptoJS from 'crypto-js';
 import { Colors } from '@/constants/Colors';
 import {
@@ -99,21 +100,22 @@ export async function uploadFile(
   fileBlob?: Blob,
 ) {
   try {
-    let uploadBlob: Blob | undefined;
+    let uploadBody: ArrayBuffer | Uint8Array | undefined;
+    let uploadContentType = '';
     let arrayBuffer: ArrayBuffer | undefined;
 
     if (fileBlob) {
       if (fileType === 'application/pdf' || fileType.startsWith('image/')) {
         arrayBuffer = await fileBlob.arrayBuffer();
       } else {
-        uploadBlob = fileBlob;
+        arrayBuffer = await fileBlob.arrayBuffer();
       }
     } else {
       const response = await fetch(fileUri);
       if (fileType === 'application/pdf' || fileType.startsWith('image/')) {
         arrayBuffer = await response.arrayBuffer();
       } else {
-        uploadBlob = await response.blob();
+        arrayBuffer = await response.arrayBuffer();
       }
     }
 
@@ -130,23 +132,22 @@ export async function uploadFile(
       ).toString();
       const encryptedBytes = base64ToUint8Array(encrypted);
 
-      uploadBlob = new Blob([encryptedBytes as any], {
-        type: 'application/octet-stream',
-      });
-    } else if (!uploadBlob) {
-      // Should satisfy the TS checker that uploadBlob is assigned if not encrypted
-      throw new Error('Failed to prepare upload blob');
+      uploadBody = encryptedBytes;
+      uploadContentType = 'application/octet-stream';
+    } else {
+      if (!arrayBuffer) {
+        throw new Error('Failed to prepare upload data');
+      }
+      uploadBody = arrayBuffer;
+      uploadContentType = fileType;
     }
 
     // Upload to Supabase
     // User requested path: uploads/user uid
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .upload(`uploads/${userId}/${Date.now()}_${fileName}`, uploadBlob, {
-        contentType:
-          fileType === 'application/pdf' || fileType.startsWith('image/')
-            ? 'application/octet-stream'
-            : fileType,
+      .upload(`uploads/${userId}/${Date.now()}_${fileName}`, uploadBody as any, {
+        contentType: uploadContentType || fileType,
       });
 
     if (error) {

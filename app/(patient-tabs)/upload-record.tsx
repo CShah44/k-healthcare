@@ -56,6 +56,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
+import 'react-native-get-random-values';
 import CryptoJS from 'crypto-js';
 import { createUploadRecordStyles } from '../../styles/upload-record';
 import {
@@ -223,16 +224,28 @@ export default function UploadRecordScreen() {
   const openImagePicker = async () => {
     try {
       setUploading(true);
+      const permission =
+        Platform.OS === 'web'
+          ? { granted: true }
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setUploading(false);
+        Alert.alert(
+          'Permission required',
+          'Please allow photo library access to select an image.',
+        );
+        return;
+      }
       let result;
       if (Platform.OS === 'web') {
         result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: ['images'],
           allowsEditing: true,
           quality: 1,
         });
       } else {
         result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: ['images'],
           allowsEditing: true,
           quality: 1,
         });
@@ -252,17 +265,25 @@ export default function UploadRecordScreen() {
 
   const openCamera = async () => {
     try {
+      if (Platform.OS === 'web') {
+        Alert.alert('Camera not supported on web');
+        return;
+      }
       setUploading(true);
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        setUploading(false);
+        Alert.alert(
+          'Permission required',
+          'Please allow camera access to take a photo.',
+        );
+        return;
+      }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         quality: 1,
       });
-      if (Platform.OS === 'web') {
-        Alert.alert('Camera not supported on web');
-        setUploading(false);
-        return;
-      }
 
       setUploading(false);
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -273,7 +294,12 @@ export default function UploadRecordScreen() {
       }
     } catch (e) {
       setUploading(false);
-      Alert.alert('Error', 'Could not open camera.');
+      const message =
+        e && typeof (e as Error).message === 'string'
+          ? (e as Error).message
+          : 'Could not open camera.';
+      console.error('Camera error:', e);
+      Alert.alert('Error', message);
     }
   };
 
@@ -383,7 +409,8 @@ export default function UploadRecordScreen() {
       let fileUri = '';
       let fileName = '';
       let fileType = '';
-      let uploadBlob: Blob | undefined;
+      let uploadBody: ArrayBuffer | Uint8Array | undefined;
+      let uploadContentType = '';
       if (selectedFile) {
         fileUri = selectedFile.uri;
         fileName = selectedFile.name;
@@ -403,11 +430,11 @@ export default function UploadRecordScreen() {
           ).toString();
           const encryptedBytes = base64ToUint8Array(encrypted);
 
-          uploadBlob = new Blob([encryptedBytes as BlobPart], {
-            type: 'application/octet-stream',
-          });
+          uploadBody = encryptedBytes;
+          uploadContentType = 'application/octet-stream';
         } else {
-          uploadBlob = await response.blob();
+          uploadBody = arrayBuffer;
+          uploadContentType = fileType;
         }
       } else if (selectedImage) {
         fileUri = selectedImage.uri;
@@ -427,21 +454,20 @@ export default function UploadRecordScreen() {
         ).toString();
         const encryptedBytes = base64ToUint8Array(encrypted);
 
-        uploadBlob = new Blob([encryptedBytes as BlobPart], {
-          type: 'application/octet-stream',
-        });
+        uploadBody = encryptedBytes;
+        uploadContentType = 'application/octet-stream';
       }
 
-      if (!uploadBlob) {
+      if (!uploadBody) {
         throw new Error('Failed to prepare file for upload.');
       }
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from(BUCKET)
-        .upload(`uploads/${user.uid}/${Date.now()}_${fileName}`, uploadBlob, {
+        .upload(`uploads/${user.uid}/${Date.now()}_${fileName}`, uploadBody as any, {
           upsert: false,
-          contentType: fileType,
+          contentType: uploadContentType || fileType,
         });
 
       if (error) {
